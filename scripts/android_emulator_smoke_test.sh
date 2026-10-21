@@ -24,8 +24,16 @@ if [[ -z "$APK" ]]; then
 fi
 echo "Testing APK: $APK"
 printf '%s\n' "$APK" > "$RESULTS/apk-path.txt"
-aapt dump badging "$APK" | tee "$RESULTS/apk-badging.txt"
-PACKAGE="$(aapt dump badging "$APK" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -n 1)"
+SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+AAPT="$(find "$SDK_ROOT/build-tools" -type f -name aapt -print -quit 2>/dev/null || true)"
+if [[ -z "$AAPT" ]]; then
+  echo "FAIL: aapt not found under $SDK_ROOT/build-tools"
+  find "$SDK_ROOT/build-tools" -maxdepth 2 -type f -name 'aapt*' -print 2>/dev/null || true
+  exit 11
+fi
+echo "Using Android package tool: $AAPT"
+"$AAPT" dump badging "$APK" | tee "$RESULTS/apk-badging.txt"
+PACKAGE="$("$AAPT" dump badging "$APK" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -n 1)"
 if [[ -z "$PACKAGE" ]]; then
   echo "FAIL: could not read Android package name"
   exit 11
