@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-ROOT="${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is not set}"
+ROOT="${1:-${GITHUB_WORKSPACE:-}}"
+if [[ -z "$ROOT" || ! -d "$ROOT" ]]; then
+  echo "FAIL: workspace root was not passed to smoke test and GITHUB_WORKSPACE is unavailable."
+  exit 2
+fi
 RESULTS="$ROOT/ui-test-results"
 GODOT_ROOT="$ROOT/godot-source"
 mkdir -p "$RESULTS"
 
 echo "=== APK discovery ==="
-APK="$(find "$GODOT_ROOT" -type f -name '*.apk' -print -quit)"
+APK="$ROOT/godot-editor-test.apk"
+if [[ ! -s "$APK" ]]; then
+  echo "Staged APK not found; falling back to a search under $GODOT_ROOT"
+  APK="$(find "$GODOT_ROOT" -type f -name '*.apk' -print -quit)"
+fi
 if [[ -z "$APK" ]]; then
   echo "FAIL: no APK found under $GODOT_ROOT"
   echo "Files under likely output directories:"
