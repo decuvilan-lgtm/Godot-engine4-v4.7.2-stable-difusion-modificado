@@ -99,48 +99,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           disable-animations: false
           script: |
-            set -eu
-            mkdir -p "$GITHUB_WORKSPACE/ui-test-results"
-            APK="$(find "$GITHUB_WORKSPACE/godot-source" -type f -name '*.apk' | head -n 1)"
-            test -n "$APK"
-            echo "Testing APK: $APK"
-            aapt dump badging "$APK" | tee "$GITHUB_WORKSPACE/ui-test-results/apk-badging.txt"
-            PACKAGE="$(aapt dump badging "$APK" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -n 1)"
-            test -n "$PACKAGE"
-            echo "Package: $PACKAGE"
-
-            # Xvfb is started as requested for headless graphical tooling; Android's screen
-            # itself is captured through adb so the screenshot reflects the emulator display.
-            Xvfb :99 -screen 0 1280x800x24 > "$GITHUB_WORKSPACE/ui-test-results/xvfb.log" 2>&1 &
-            XVFB_PID=$!
-            trap 'kill "$XVFB_PID" 2>/dev/null || true' EXIT
-            export DISPLAY=:99
-            for i in $(seq 1 20); do
-              if xdpyinfo -display :99 >/dev/null 2>&1; then break; fi
-              sleep 1
-            done
-            xdpyinfo -display :99 >/dev/null
-
-            adb install -r "$APK"
-            adb shell monkey -p "$PACKAGE" 1
-            sleep 45
-            adb shell screencap -p /sdcard/godot-editor-screen.png
-            adb pull /sdcard/godot-editor-screen.png "$GITHUB_WORKSPACE/ui-test-results/godot-editor-screen.png"
-            adb logcat -d -v threadtime > "$GITHUB_WORKSPACE/ui-test-results/logcat.txt"
-            adb shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1 || true
-            adb pull /sdcard/window.xml "$GITHUB_WORKSPACE/ui-test-results/window.xml" || true
-
-            if ! adb shell pidof "$PACKAGE" >/dev/null 2>&1; then
-              echo "FAIL: Godot Editor process is not running after launch."
-              tail -n 300 "$GITHUB_WORKSPACE/ui-test-results/logcat.txt"
-              exit 1
-            fi
-            if grep -E "FATAL EXCEPTION|Fatal signal [0-9]+|SIGSEGV" "$GITHUB_WORKSPACE/ui-test-results/logcat.txt" | grep -F "$PACKAGE" >/dev/null; then
-              echo "FAIL: fatal Android crash detected for $PACKAGE"
-              exit 1
-            fi
-            echo "PASS: APK installed and its process remained alive after 45 seconds."
-            echo "Review the screenshot and UI hierarchy artifact for visual layout/overlap issues."
+            bash "$GITHUB_WORKSPACE/scripts/android_emulator_smoke_test.sh"
 
       - name: Upload Android UI test evidence
         if: always() && (github.event_name == 'push' || inputs.run_type == 'full-android-build')
