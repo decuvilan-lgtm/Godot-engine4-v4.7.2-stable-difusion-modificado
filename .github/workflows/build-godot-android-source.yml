@@ -88,6 +88,27 @@ jobs:
             godot-source/platform/android/java/editor/build/outputs/apk/**/*.apk
             godot-source/bin/android_editor_builds/**/*.aab
 
+      # Stage the APK in the workspace root so the emulator action does not depend on
+      # a nested path or its shell's inherited GITHUB_WORKSPACE environment variable.
+      - name: Locate and stage APK for emulator test
+        if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Workspace: $GITHUB_WORKSPACE"
+          echo "Searching generated APKs:"
+          find "$GITHUB_WORKSPACE/godot-source" -type f -name '*.apk' -print
+          APK="$(find "$GITHUB_WORKSPACE/godot-source" -type f -name '*.apk' -print -quit)"
+          if [ -z "$APK" ]; then
+            echo "ERROR: Gradle reported success but no APK was found."
+            find "$GITHUB_WORKSPACE/godot-source" -type f \\( -name '*.aab' -o -name '*apk*' \\) -print | head -n 100
+            exit 1
+          fi
+          cp "$APK" "$GITHUB_WORKSPACE/godot-editor-test.apk"
+          test -s "$GITHUB_WORKSPACE/godot-editor-test.apk"
+          ls -lh "$GITHUB_WORKSPACE/godot-editor-test.apk"
+          sha256sum "$GITHUB_WORKSPACE/godot-editor-test.apk"
+
       # The APK includes ARM64 for phones and x86_64 so the same artifact can be installed in the hosted emulator.
       - name: Boot Android x86_64 emulator, install APK, launch, and capture UI
         if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
