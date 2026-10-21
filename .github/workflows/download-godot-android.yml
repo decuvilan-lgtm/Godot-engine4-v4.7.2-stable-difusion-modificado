@@ -1,0 +1,35 @@
+name: Download Godot Android Editor 4.7.2 Stable
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  download-android-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Download official Godot Android Editor APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_android_editor.apk"
+          curl --fail --location --retry 3 --retry-delay 5 "$URL" --output Godot_v4.7.2-stable_android_editor.apk
+          test -s Godot_v4.7.2-stable_android_editor.apk
+          echo "Downloaded size:"
+          du -h Godot_v4.7.2-stable_android_editor.apk
+          echo "SHA-256:"
+          sha256sum Godot_v4.7.2-stable_android_editor.apk
+      - name: Publish APK as a release asset in this repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create godot-4.7.2-android-original \
+            Godot_v4.7.2-stable_android_editor.apk \
+            --repo "${{ github.repository }}" \
+            --title "Godot 4.7.2 Stable - Android Editor (official APK)" \
+            --notes "Unmodified official Godot Engine Android Editor APK, downloaded from the upstream 4.7.2-stable GitHub release. SHA-256 is printed in the workflow logs."
