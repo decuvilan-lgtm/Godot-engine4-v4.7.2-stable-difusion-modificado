@@ -2,6 +2,15 @@ name: Build Godot Android Editor (source pipeline)
 
 on:
   workflow_dispatch:
+    inputs:
+      run_type:
+        description: "Choose full Android build or validate the GitHub import integration only"
+        type: choice
+        required: true
+        default: full-android-build
+        options:
+          - full-android-build
+          - validate-import-only
   push:
     paths:
       - ".github/workflows/build-godot-android-source.yml"
@@ -13,6 +22,7 @@ permissions:
 
 jobs:
   build-android-editor:
+    if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -20,31 +30,39 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Checkout official Godot 4.7.2 source
-        run: |
-          git clone --depth 1 --branch 4.7.2-stable https://github.com/godotengine/godot.git godot-source
+        uses: actions/checkout@v4
+        with:
+          repository: godotengine/godot
+          ref: 4.7.2-stable
+          path: godot-source
 
       - name: Apply GitHub import integration
         run: python "$GITHUB_WORKSPACE/scripts/apply_github_import_patch.py"
 
       - name: Set up Java 17
+        if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Set up Python
+        if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Install SCons
+        if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
         run: python -m pip install --upgrade pip scons
 
       - name: Download Android Swappy dependency
+        if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
         working-directory: godot-source
         run: python misc/scripts/install_swappy_android.py
 
       - name: Compile Android editor engine
+        if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
         working-directory: godot-source
         env:
           SCONS_CACHE: ${{ github.workspace }}/.scons-cache
@@ -52,11 +70,12 @@ jobs:
           scons platform=android target=editor arch=arm64 production=yes dev_mode=yes module_text_server_fb_enabled=yes swappy=yes -j2
 
       - name: Generate Android Editor APK
+        if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
         working-directory: godot-source/platform/android/java
         run: ./gradlew generateGodotEditor
 
       - name: Upload APK and build outputs
-        if: always()
+        if: always() && (github.event_name == 'push' || inputs.run_type == 'full-android-build')
         uses: actions/upload-artifact@v4
         with:
           name: godot-4.7.2-android-editor-build
@@ -66,4 +85,13 @@ jobs:
             godot-source/platform/android/java/editor/build/outputs/apk/**/*.apk
             godot-source/bin/android_editor_builds/**/*.aab
 
-# Trigger a fresh Actions run to validate the current GitHub import patcher.
+  validate-import-only:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_type == 'validate-import-only' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+      - name: Validate import integration patcher syntax
+        run: python -m py_compile scripts/apply_github_import_patch.py
+      - name: Run import integration patcher
+        run: python scripts/apply_github_import_patch.py
