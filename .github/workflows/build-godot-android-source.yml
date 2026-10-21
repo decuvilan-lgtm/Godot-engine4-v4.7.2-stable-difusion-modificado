@@ -91,6 +91,12 @@ jobs:
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v4
+      - name: Checkout official Godot 4.7.2 source
+        uses: actions/checkout@v4
+        with:
+          repository: godotengine/godot
+          ref: 4.7.2-stable
+          path: godot-source
       - name: Validate import integration patcher syntax
         run: python -m py_compile scripts/apply_github_import_patch.py
       - name: Run import integration patcher
