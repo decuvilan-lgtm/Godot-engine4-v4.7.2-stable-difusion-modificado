@@ -65,3 +65,5 @@ jobs:
             godot-source/bin/android_editor_builds/**/*.apk
             godot-source/platform/android/java/editor/build/outputs/apk/**/*.apk
             godot-source/bin/android_editor_builds/**/*.aab
+
+# Trigger a fresh Actions run to validate the current GitHub import patcher.
