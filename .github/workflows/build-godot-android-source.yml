@@ -1,0 +1,77 @@
+name: Build Godot Android Editor (source pipeline)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/build-godot-android-source.yml"
+      - "patches/github-sync/**"
+
+permissions:
+  contents: read
+
+jobs:
+  build-android-editor:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+
+      - name: Checkout official Godot 4.7.2 source
+        run: |
+          git clone --depth 1 --branch 4.7.2-stable https://github.com/godotengine/godot.git godot-source
+
+      - name: Apply GitHub integration patches (when present)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if compgen -G "patches/github-sync/*.patch" > /dev/null; then
+            for patch_file in patches/github-sync/*.patch; do
+              echo "Applying $patch_file"
+              git -C godot-source apply --check "$GITHUB_WORKSPACE/$patch_file"
+              git -C godot-source apply "$GITHUB_WORKSPACE/$patch_file"
+            done
+          else
+            echo "No GitHub integration patches yet; building an unmodified baseline."
+          fi
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install SCons
+        run: python -m pip install --upgrade pip scons
+
+      - name: Download Android Swappy dependency
+        working-directory: godot-source
+        run: python misc/scripts/install_swappy_android.py
+
+      - name: Compile Android editor engine
+        working-directory: godot-source
+        env:
+          SCONS_CACHE: ${{ github.workspace }}/.scons-cache
+        run: |
+          scons platform=android target=editor arch=arm64 production=yes dev_mode=yes module_text_server_fb_enabled=yes swappy=yes -j2
+
+      - name: Generate Android Editor APK
+        working-directory: godot-source/platform/android/java
+        run: ./gradlew generateGodotEditor
+
+      - name: Upload APK and build outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-4.7.2-android-editor-build
+          if-no-files-found: warn
+          path: |
+            godot-source/bin/android_editor_builds/**/*.apk
+            godot-source/platform/android/java/editor/build/outputs/apk/**/*.apk
+            godot-source/bin/android_editor_builds/**/*.aab
