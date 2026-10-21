@@ -1,7 +1,7 @@
 diff --git a/editor/project_manager/project_manager.h b/editor/project_manager/project_manager.h
 --- a/editor/project_manager/project_manager.h
 +++ b/editor/project_manager/project_manager.h
-@@ -34,6 +34,7 @@
+@@ -34,5 +34,6 @@
  class EditorTitleBar;
  class HFlowContainer;
 +class HTTPRequest;
@@ -15,7 +15,7 @@ diff --git a/editor/project_manager/project_manager.h b/editor/project_manager/p
 +	HTTPRequest *github_http_request = nullptr;
 +	String github_zip_path;
 +	String github_repo_name;
-@@ -193,3 +198,6 @@
+@@ -193,4 +198,7 @@
  	void _install_project(const String &p_zip_path, const String &p_title);
  	void _import_project();
 +	void _show_github_import_dialog();
@@ -25,13 +25,13 @@ diff --git a/editor/project_manager/project_manager.h b/editor/project_manager/p
 diff --git a/editor/project_manager/project_manager.cpp b/editor/project_manager/project_manager.cpp
 --- a/editor/project_manager/project_manager.cpp
 +++ b/editor/project_manager/project_manager.cpp
-@@ -63,3 +63,4 @@
+@@ -63,4 +63,5 @@
  #include "scene/gui/rich_text_label.h"
  #include "scene/gui/separator.h"
 +#include "scene/main/http_request.h"
  #include "scene/main/scene_tree.h"
  #include "scene/main/window.h"
-@@ -765,9 +765,54 @@
+@@ -765,8 +765,84 @@
  void ProjectManager::_import_project() {
  	project_dialog->set_mode(ProjectDialog::MODE_IMPORT);
  	project_dialog->ask_for_path_and_show();
@@ -116,7 +116,7 @@ diff --git a/editor/project_manager/project_manager.cpp b/editor/project_manager
  void ProjectManager::_new_project() {
  	project_dialog->set_mode(ProjectDialog::MODE_NEW);
  	project_dialog->show_dialog();
-@@ -1530,7 +1575,13 @@
+@@ -1530,6 +1575,12 @@
  			import_btn->set_text(TTRC("Import"));
  			import_btn->set_shortcut(ED_SHORTCUT("project_manager/import_project", TTRC("Import Project"), KeyModifierMask::CMD_OR_CTRL | Key::I));
  			import_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_import_project));
