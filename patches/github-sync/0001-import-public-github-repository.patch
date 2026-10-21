@@ -1,37 +1,37 @@
 diff --git a/editor/project_manager/project_manager.h b/editor/project_manager/project_manager.h
 --- a/editor/project_manager/project_manager.h
 +++ b/editor/project_manager/project_manager.h
+@@ -34,6 +34,7 @@
  class EditorTitleBar;
  class HFlowContainer;
 +class HTTPRequest;
  class LineEdit;
  class MarginContainer;
  class OptionButton;
-@@ -20,5 +20,6 @@
+@@ -174,1 +175,6 @@
  	ProjectDialog *project_dialog = nullptr;
 +	ConfirmationDialog *github_import_dialog = nullptr;
 +	LineEdit *github_repo_url = nullptr;
 +	HTTPRequest *github_http_request = nullptr;
 +	String github_zip_path;
 +	String github_repo_name;
-@@ -169,1 +170,6 @@
+@@ -193,3 +198,6 @@
  	void _install_project(const String &p_zip_path, const String &p_title);
  	void _import_project();
 +	void _show_github_import_dialog();
 +	void _github_import_confirmed();
 +	void _github_download_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);
  	void _new_project();
-
-@@ -183,4 +189,7 @@
 diff --git a/editor/project_manager/project_manager.cpp b/editor/project_manager/project_manager.cpp
 --- a/editor/project_manager/project_manager.cpp
 +++ b/editor/project_manager/project_manager.cpp
+@@ -63,3 +63,4 @@
  #include "scene/gui/rich_text_label.h"
  #include "scene/gui/separator.h"
 +#include "scene/main/http_request.h"
  #include "scene/main/scene_tree.h"
  #include "scene/main/window.h"
-@@ -62,4 +62,5 @@
+@@ -765,9 +765,54 @@
  void ProjectManager::_import_project() {
  	project_dialog->set_mode(ProjectDialog::MODE_IMPORT);
  	project_dialog->ask_for_path_and_show();
@@ -116,7 +116,8 @@ diff --git a/editor/project_manager/project_manager.cpp b/editor/project_manager
  void ProjectManager::_new_project() {
  	project_dialog->set_mode(ProjectDialog::MODE_NEW);
  	project_dialog->show_dialog();
-@@ -755,8 +755,84 @@
+@@ -1530,7 +1575,13 @@
+ 			import_btn->set_text(TTRC("Import"));
  			import_btn->set_shortcut(ED_SHORTCUT("project_manager/import_project", TTRC("Import Project"), KeyModifierMask::CMD_OR_CTRL | Key::I));
  			import_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_import_project));
  			hb->add_child(import_btn);
@@ -128,6 +129,3 @@ diff --git a/editor/project_manager/project_manager.cpp b/editor/project_manager
 +			hb->add_child(github_import_btn);
 +
  			scan_btn = memnew(Button);
- 			scan_btn->set_text(TTRC("Scan"));
-
-@@ -1520,7 +1605,13 @@
