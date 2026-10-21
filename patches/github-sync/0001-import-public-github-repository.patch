@@ -126,6 +126,6 @@ diff --git a/editor/project_manager/project_manager.cpp b/editor/project_manager
 +			github_import_btn->set_text(TTRC("GitHub"));
 +			github_import_btn->set_tooltip_text(TTRC("Download a project from a public GitHub repository."));
 +			github_import_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_show_github_import_dialog));
-+			hb->add_child(github_import_btn);
++ 			hb->add_child(github_import_btn);
 +
  			scan_btn = memnew(Button);
