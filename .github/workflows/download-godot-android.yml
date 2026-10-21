@@ -2,6 +2,9 @@ name: Download Godot Android Editor 4.7.2 Stable
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/download-godot-android.yml"
 
 permissions:
   contents: write
@@ -28,8 +31,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gh release create godot-4.7.2-android-original \
-            Godot_v4.7.2-stable_android_editor.apk \
-            --repo "${{ github.repository }}" \
-            --title "Godot 4.7.2 Stable - Android Editor (official APK)" \
-            --notes "Unmodified official Godot Engine Android Editor APK, downloaded from the upstream 4.7.2-stable GitHub release. SHA-256 is printed in the workflow logs."
+          if gh release view godot-4.7.2-android-original --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload godot-4.7.2-android-original Godot_v4.7.2-stable_android_editor.apk --repo "${{ github.repository }}" --clobber
+          else
+            gh release create godot-4.7.2-android-original \
+              Godot_v4.7.2-stable_android_editor.apk \
+              --repo "${{ github.repository }}" \
+              --title "Godot 4.7.2 Stable - Android Editor (official APK)" \
+              --notes "Unmodified official Godot Engine Android Editor APK, downloaded from the upstream 4.7.2-stable GitHub release. SHA-256 is printed in the workflow logs."
+          fi
