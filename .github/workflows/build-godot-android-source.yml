@@ -93,11 +93,11 @@ jobs:
         if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 30
           arch: x86_64
           profile: pixel_2
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
-          disable-animations: true
+          disable-animations: false
           script: |
             set -eu
             mkdir -p "$GITHUB_WORKSPACE/ui-test-results"
