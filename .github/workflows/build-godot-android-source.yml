@@ -120,7 +120,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           disable-animations: false
           script: |
-            bash "$GITHUB_WORKSPACE/scripts/android_emulator_smoke_test.sh"
+            bash "${{ github.workspace }}/scripts/android_emulator_smoke_test.sh" "${{ github.workspace }}"
 
       - name: Upload Android UI test evidence
         if: always() && (github.event_name == 'push' || inputs.run_type == 'full-android-build')
