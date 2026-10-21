@@ -117,8 +117,8 @@ jobs:
           api-level: 30
           arch: x86_64
           profile: pixel_2
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
-          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
           script: |
             bash "${{ github.workspace }}/scripts/android_emulator_smoke_test.sh" "${{ github.workspace }}"
 
