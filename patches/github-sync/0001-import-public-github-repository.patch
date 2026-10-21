@@ -116,7 +116,7 @@ diff --git a/editor/project_manager/project_manager.cpp b/editor/project_manager
  void ProjectManager::_new_project() {
  	project_dialog->set_mode(ProjectDialog::MODE_NEW);
  	project_dialog->show_dialog();
-@@ -1530,6 +1575,12 @@
+@@ -1530,7 +1575,13 @@
  			import_btn->set_text(TTRC("Import"));
  			import_btn->set_shortcut(ED_SHORTCUT("project_manager/import_project", TTRC("Import Project"), KeyModifierMask::CMD_OR_CTRL | Key::I));
  			import_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_import_project));
@@ -126,6 +126,6 @@ diff --git a/editor/project_manager/project_manager.cpp b/editor/project_manager
 +			github_import_btn->set_text(TTRC("GitHub"));
 +			github_import_btn->set_tooltip_text(TTRC("Download a project from a public GitHub repository."));
 +			github_import_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_show_github_import_dialog));
-+ 			hb->add_child(github_import_btn);
++			hb->add_child(github_import_btn);
 +
  			scan_btn = memnew(Button);
