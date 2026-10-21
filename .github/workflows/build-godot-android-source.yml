@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/workflows/build-godot-android-source.yml"
       - "patches/github-sync/**"
+      - "scripts/apply_github_import_patch.py"
 
 permissions:
   contents: read
@@ -22,19 +23,8 @@ jobs:
         run: |
           git clone --depth 1 --branch 4.7.2-stable https://github.com/godotengine/godot.git godot-source
 
-      - name: Apply GitHub integration patches (when present)
-        shell: bash
-        run: |
-          set -euo pipefail
-          if compgen -G "patches/github-sync/*.patch" > /dev/null; then
-            for patch_file in patches/github-sync/*.patch; do
-              echo "Applying $patch_file"
-              git -C godot-source apply --check "$GITHUB_WORKSPACE/$patch_file"
-              git -C godot-source apply "$GITHUB_WORKSPACE/$patch_file"
-            done
-          else
-            echo "No GitHub integration patches yet; building an unmodified baseline."
-          fi
+      - name: Apply GitHub import integration
+        run: python "$GITHUB_WORKSPACE/scripts/apply_github_import_patch.py"
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
