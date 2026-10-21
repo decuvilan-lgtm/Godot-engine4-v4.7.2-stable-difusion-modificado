@@ -99,7 +99,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
           script: |
-            set -euo pipefail
+            set -eu
             mkdir -p "$GITHUB_WORKSPACE/ui-test-results"
             APK="$(find "$GITHUB_WORKSPACE/godot-source" -type f -name '*.apk' | head -n 1)"
             test -n "$APK"
