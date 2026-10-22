@@ -1222,6 +1222,15 @@ func execute(arguments: Dictionary) -> Dictionary:
         raise RuntimeError("reparent_node is missing cycle prevention")
     if "_set_owner_recursive" not in (ADDON_OUT / "scripts/tools/scene/duplicate_node_tool.gd").read_text(encoding="utf-8"):
         raise RuntimeError("duplicate_node must preserve scene ownership in descendant nodes")
+    inspect_scene_ui = (ADDON_OUT / "scripts/tools/scene/inspect_scene_ui_controls_tool.gd").read_text(encoding="utf-8")
+    interact_scene_ui = (ADDON_OUT / "scripts/tools/scene/interact_scene_ui_control_tool.gd").read_text(encoding="utf-8")
+    if "get_edited_scene_root()" not in inspect_scene_ui or '"rect"' not in inspect_scene_ui:
+        raise RuntimeError("scene UI inspection must report layout geometry")
+    for required_action in ['"press"', '"set_text"', '"set_value"', '"set_checked"', '"select_option"', '"focus"']:
+        if required_action not in interact_scene_ui:
+            raise RuntimeError(f"scene UI interaction is missing action {required_action}")
+    if "separate running-game process" not in interact_scene_ui:
+        raise RuntimeError("scene UI interaction must state its runtime-preview scope")
 
     open_scene = (ADDON_OUT / "scripts/tools/editor/open_scene_tool.gd").read_text(encoding="utf-8")
     run_scene = (ADDON_OUT / "scripts/tools/editor/run_scene_tool.gd").read_text(encoding="utf-8")
