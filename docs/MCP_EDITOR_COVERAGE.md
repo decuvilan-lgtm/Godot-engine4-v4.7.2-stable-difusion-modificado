@@ -107,6 +107,18 @@ Every surface must ultimately have an explicit status and evidence. Prefer typed
 
 `inspect_editor_ui` and `activate_editor_ui_control` are source-level changes only. No packaging, parser, CI, APK build, or device test has been run for this addition.
 
+## Scene-tree organization tools — source added, not yet validated
+
+Three more typed actions are now generated and registered:
+
+| Tool | Intended coverage | Current status |
+|---|---|---|
+| `duplicate_node` | Duplicate a non-root node as a sibling | Source added; parser/runtime test pending |
+| `rename_node` | Rename a node while checking sibling-name collisions | Source added; parser/runtime test pending |
+| `reparent_node` | Move a node to another parent in the edited scene, with descendant-cycle and instanced-subscene guards | Source added; parser/runtime test pending |
+
+These actions are wired to Godot's editor undo/redo history. They are not yet verified in the running editor, and the final scene tree must be checked for correct ownership, naming, ordering, serialization, and undo/redo behavior.
+
 ## Latest source-level MCP expansion — not yet validated
 
 The packaging script now generates and registers five additional typed tools:
