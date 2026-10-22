@@ -60,6 +60,26 @@ jobs:
                   assert "execute_script_tool.gd" not in lowered
           print(f"Verified {len(names)} files in {archive}, including loopback, undo/redo, and no-eval checks")
           PY
+      - name: Verify Android APK workflow embeds the hardened addon
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          workflow = Path(".github/workflows/build-godot-android-source.yml").read_text(encoding="utf-8")
+          required = (
+              "5df91076250ece38ab182b2ca8b8a4a5d9a2d938",
+              "python scripts/package_safe_mcp_android.py",
+              "src/main/assets/mcp-addon",
+              "assets/mcp-addon/plugin.cfg",
+              "assets/mcp-addon/scripts/protocol/mcp_tool_registry.gd",
+              "bind_host = \\"127.0.0.1\\"",
+              "Access-Control-Allow-Origin: *",
+          )
+          missing = [item for item in required if item not in workflow]
+          assert not missing, f"Android APK workflow is missing MCP integration guards: {missing}"
+          assert "unzip -p \\"$APK\\" assets/mcp-addon/" in workflow, "final APK content is not inspected"
+          print("Android build workflow contains pinned addon, APK embedding, and final-package safety checks.")
+          PY
       - name: Upload safe MCP addon
         uses: actions/upload-artifact@v4
         with:
