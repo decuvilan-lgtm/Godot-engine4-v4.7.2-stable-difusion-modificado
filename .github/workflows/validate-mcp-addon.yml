@@ -43,7 +43,22 @@ jobs:
               registry = zf.read("addons/godot_mcp_android/scripts/protocol/mcp_tool_registry.gd").decode()
               assert "ExecuteScriptTool" not in registry
               assert "delete_project" not in registry
-          print(f"Verified {len(names)} files in {archive}")
+              assert "execute_script_tool.gd" not in "\\n".join(names)
+              set_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/set_node_property_tool.gd").decode()
+              remove_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/remove_node_tool.gd").decode()
+              http = zf.read("addons/godot_mcp_android/scripts/server/mcp_http_server.gd").decode()
+              ws = zf.read("addons/godot_mcp_android/scripts/server/mcp_websocket_server.gd").decode()
+              assert "get_editor_undo_redo()" in set_node and "add_undo_property" in set_node
+              assert "get_editor_undo_redo()" in remove_node and "queue_free()" not in remove_node
+              assert 'bind_host = "127.0.0.1"' in http and 'bind_host = "127.0.0.1"' in ws
+              assert "Access-Control-Allow-Origin: *" not in http
+              # There must be no project-deletion tool or generic script execution
+              # implementation anywhere in the final archive, not just the registry.
+              for name in names:
+                  lowered = name.lower()
+                  assert "delete_project" not in lowered
+                  assert "execute_script_tool.gd" not in lowered
+          print(f"Verified {len(names)} files in {archive}, including loopback, undo/redo, and no-eval checks")
           PY
       - name: Upload safe MCP addon
         uses: actions/upload-artifact@v4
