@@ -170,7 +170,7 @@ These are **partial editor capabilities**, not full Godot control. The MCP regis
 Two typed tools extend control from the edited scene into the actual running game:
 
 - `install_runtime_game_bridge` installs a project-local autoload companion at `res://addons/godot_mcp_android_runtime/game_runtime_bridge.gd`. It binds only to `127.0.0.1:37843`, refuses to overwrite an existing companion, and saves/verifies a recovery copy of `project.godot` before adding its autoload entry.
-- `control_runtime_game` sends typed JSON-line commands over loopback to request runtime status, enumerate live `Control` nodes and their global rectangles, click a control by scene-tree path, edit text fields, set Range values, toggle checkboxes, select OptionButton entries, inject mouse/key input, and enter/exit/toggle fullscreen.
+- `control_runtime_game` sends typed JSON-line commands over loopback to request runtime status, enumerate live `Control` nodes and their global rectangles, click a control by scene-tree path, edit text fields, set Range values, toggle checkboxes, select OptionButton entries, inject mouse/key input, synthesize touchscreen taps and swipes, and enter/exit/toggle fullscreen.
 
 ### Boundaries and required validation
 
@@ -188,3 +188,6 @@ Acceptance checks still required: start a project with the bridge installed; ver
 ## GitHub repository import: branch, tag, or commit
 
 The Project Manager import dialog now includes an optional ref field. A blank value uses the repository's default branch; a supplied branch, tag, or commit SHA is appended to the GitHub archive endpoint after input validation and URI encoding. The existing repository owner/name validation and public-repository-only flow remain in place. This has not been compiled or exercised on Android; the branch/tag/commit flow is not yet verified.
+
+
+Runtime gameplay input includes `mouse_move`, `touch` (press/release), and `swipe` actions in addition to mouse click and keyboard events. These generate Godot input events inside the running game. Coordinate mapping, multitouch behavior, orientation changes, and compatibility with each game's input code require Android device validation.
