@@ -97,6 +97,8 @@ jobs:
                   "addons/godot_mcp_android/scripts/tools/scene/duplicate_node_tool.gd": "DuplicateNodeTool",
                   "addons/godot_mcp_android/scripts/tools/scene/rename_node_tool.gd": "RenameNodeTool",
                   "addons/godot_mcp_android/scripts/tools/scene/reparent_node_tool.gd": "ReparentNodeTool",
+                  "addons/godot_mcp_android/scripts/tools/scene/inspect_scene_ui_controls_tool.gd": "InspectSceneUIControlsTool",
+                  "addons/godot_mcp_android/scripts/tools/scene/interact_scene_ui_control_tool.gd": "InteractSceneUIControlTool",
               }
               for path, registration in required_tools.items():
                   assert path in names, f"missing packaged MCP tool: {path}"
@@ -121,6 +123,11 @@ jobs:
               assert all("get_editor_undo_redo()" in tool and "undo_available" in tool for tool in (duplicate_node, rename_node, reparent_node))
               assert "is_ancestor_of(new_parent)" in reparent_node
               assert "_set_owner_recursive" in duplicate_node
+              inspect_scene_ui = zf.read("addons/godot_mcp_android/scripts/tools/scene/inspect_scene_ui_controls_tool.gd").decode()
+              interact_scene_ui = zf.read("addons/godot_mcp_android/scripts/tools/scene/interact_scene_ui_control_tool.gd").decode()
+              assert '"rect"' in inspect_scene_ui
+              assert all(action in interact_scene_ui for action in ('"press"', '"set_text"', '"set_value"', '"set_checked"', '"select_option"', '"focus"'))
+              assert "separate running-game process" in interact_scene_ui
               assert "project deletion/removal is permanently blocked" in activate_ui
               assert "confirm_destructive" in activate_ui
               set_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/set_node_property_tool.gd").decode()
