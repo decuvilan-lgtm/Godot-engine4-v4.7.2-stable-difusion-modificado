@@ -377,3 +377,12 @@ The MCP package hardening script is also being expanded so `write_file` and `edi
 - Reviewed Android build run [39828558952](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39828558952). The native build reached the modified Project Manager code and failed because the JSON parser passed `PackedByteArray::ptr()` as `const unsigned char *` to `String::utf8`, which expects `const char *`. The patch now casts the pointer explicitly. This correction is **not yet verified by a new full build**.
 - MCP `write_file` and `edit_file` now verify that the recovery copy matches the original text before the original file can be overwritten. If the recovery copy cannot be verified, the operation aborts.
 - These changes are source-only at this stage. No new APK has been produced from them, and the GitHub search UI, recovery behavior, final APK, and on-device MCP flow remain unverified until the planned integration is complete and validation is authorized.
+
+
+## MCP coverage expansion — 2026-10-22 (source changes, not yet validated)
+
+I expanded the Android MCP packaging script with five additional typed tools: `get_editor_state`, `open_scene`, `control_running_scene`, `get_node_properties`, and `create_resource`. The MCP validation workflow now requires these scripts and registry entries to exist in the final addon archive.
+
+**This does not give an AI every Godot capability.** The MCP only exposes operations implemented as registered tools. It still lacks broad control of all menus, 2D/3D viewport actions, import/reimport, complete Inspector editing, animation and TileMap/TileSet editors, debugger/profilers, export presets, plugin-specific controls, and many dialogs. The full scope is tracked in [the MCP editor coverage inventory](docs/MCP_EDITOR_COVERAGE.md).
+
+The five new tools are source changes only. They have not been run through the packaging workflow, the Godot headless parser, an MCP client, or the Android device. No new build or validation was launched, per the integration pause.
