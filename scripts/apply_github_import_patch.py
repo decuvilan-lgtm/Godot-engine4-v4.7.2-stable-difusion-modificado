@@ -19,7 +19,7 @@ if not HEADER.is_file() or not SOURCE.is_file():
 
 replace_once(HEADER,
     "class HFlowContainer;\nclass LineEdit;",
-    "class HFlowContainer;\nclass HTTPRequest;\nclass LineEdit;\nclass OptionButton;")
+    "class Button;\nclass HFlowContainer;\nclass HTTPRequest;\nclass LineEdit;\nclass OptionButton;")
 replace_once(HEADER,
     "ProjectDialog *project_dialog = nullptr;",
     "ProjectDialog *project_dialog = nullptr;\n\tConfirmationDialog *github_import_dialog = nullptr;\n\tLineEdit *github_repo_url = nullptr;\n\tHTTPRequest *github_http_request = nullptr;\n\tHTTPRequest *github_search_request = nullptr;\n\tConfirmationDialog *github_results_dialog = nullptr;\n\tOptionButton *github_repo_results = nullptr;\n\tString github_zip_path;\n\tString github_repo_name;\n\tString github_search_query;\n\tint github_search_page = 1;\n\tint github_search_total_count = 0;\n\tButton *github_search_more_btn = nullptr;\n\tConfirmationDialog *mcp_install_dialog = nullptr;")
