@@ -202,7 +202,7 @@ Do not claim literal 100% coverage until an automated inventory and device-side 
 
 ## Current MCP-to-APK integration status (checked 2026-10-22)
 
-**Important: the MCP addon is not yet integrated into the generated editor APK.** The successful MCP workflow currently creates a separate ZIP artifact, `godot-mcp-android-safe.zip`. The Android build workflow has a separate `package-safe-mcp-addon` job, but the APK packaging step does not consume or embed that addon.
+**Integration is in progress; not yet verified by a new APK build.** The build workflow has now been changed to check out the pinned MCP source, run the hardening/package script, copy the hardened addon files into Android editor assets at `assets/mcp-addon/`, and assert that key addon files and safety properties are present in the final APK. This change has not yet passed a new full Android build, so do not claim the APK contains them until a workflow run confirms it. The separate `godot-mcp-android-safe.zip` artifact remains available for testing.
 
 The reason this needs a deliberate design is that the upstream MCP code is a Godot `EditorPlugin`: Godot normally enables editor plugins per project. Merely copying the addon ZIP into the APK, or placing it somewhere inside the APK, would not make it available and active in every project. Do not call that integration.
 
@@ -215,6 +215,12 @@ The reason this needs a deliberate design is that the upstream MCP code is a God
 - Workflow run [39737203890](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39737203890) passed static packaging checks and produced artifact `godot-mcp-android-safe` (artifact ID `12407299346`).
 
 These are source/package checks only. They do not yet prove that Godot parses the addon, undo/redo works in a live editor, a compatible MCP client can connect, or that the feature works on Android.
+
+### Latest implementation step — embed the addon payload
+
+Commit `e0910b96537b3b04093bdf01c38ddded440e157d` updates `.github/workflows/build-godot-android-source.yml` to stage the hardened addon under the Android editor module's `src/main/assets/mcp-addon/` before Gradle packages the APK. The APK validation step now checks for the embedded `plugin.cfg` and tool registry, rejects generic script execution/project-deletion markers in the registry, verifies loopback bindings, and rejects wildcard CORS.
+
+**Status: code committed; build/runtime validation pending.** This is the first physical-embedding step, not the completed user-facing integration. The addon still needs a safe Project Manager/editor install flow that copies it into a chosen project and enables it only with user confirmation. The build must also confirm Android's Gradle packaging preserves the asset paths as expected.
 
 ### Source audit note (2026-10-22)
 
