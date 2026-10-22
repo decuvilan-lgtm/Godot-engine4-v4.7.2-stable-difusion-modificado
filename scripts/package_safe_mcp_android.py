@@ -973,6 +973,81 @@ func execute(arguments: Dictionary) -> Dictionary:
 		return {"ok": true, "action": action, "source": str(source.name), "signal": signal_name, "target": str(target.name), "method": method_name, "undo_available": true}
 	return tool_error("unsupported action")
 ''',
+        "scripts/tools/editor/read_editor_diagnostics_tool.gd": r'''@tool
+extends MCPTool
+
+
+func get_name() -> String:
+	return "read_editor_diagnostics"
+
+
+func get_description() -> String:
+	return "Read visible text from Godot editor Output/Debugger/log-style controls, including RichTextLabel and TextEdit content. This reads controls exposed in the editor UI and does not invent diagnostics."
+
+
+func get_input_schema() -> Dictionary:
+	return {
+		"type": "object",
+		"properties": {
+			"filter": {"type": "string", "description": "Optional case-insensitive filter against control path, name, class, and text."},
+			"max_controls": {"type": "integer", "description": "Maximum controls to return, clamped to 1..100."},
+			"max_chars_per_control": {"type": "integer", "description": "Maximum text characters per control, clamped to 100..10000."},
+			"visible_only": {"type": "boolean"},
+		},
+		"additionalProperties": false,
+	}
+
+
+func execute(arguments: Dictionary) -> Dictionary:
+	var base := editor_interface.get_base_control()
+	if base == null:
+		return tool_error("Godot editor base control is unavailable")
+	var filter_text := String(arguments.get("filter", "")).strip_edges().to_lower()
+	var max_controls := clampi(int(arguments.get("max_controls", 30)), 1, 100)
+	var max_chars := clampi(int(arguments.get("max_chars_per_control", 4000)), 100, 10000)
+	var visible_only := bool(arguments.get("visible_only", true))
+	var results: Array[Dictionary] = []
+	_walk_text_controls(base, base, filter_text, max_controls, max_chars, visible_only, results)
+	return {
+		"ok": true,
+		"count": results.size(),
+		"truncated": results.size() >= max_controls,
+		"controls": results,
+		"note": "Only text controls reachable in the editor UI tree are included; hidden tabs or diagnostics owned by another process may not be exposed.",
+	}
+
+
+func _walk_text_controls(node: Node, base: Node, filter_text: String, max_controls: int, max_chars: int, visible_only: bool, output: Array[Dictionary]) -> void:
+	if output.size() >= max_controls:
+		return
+	if node is Control:
+		var control := node as Control
+		var visible := control.is_visible_in_tree()
+		if (not visible_only or visible) and (control is RichTextLabel or control is TextEdit or control is Label):
+			var content := ""
+			if control is RichTextLabel:
+				content = (control as RichTextLabel).get_parsed_text()
+			elif control is TextEdit:
+				content = (control as TextEdit).text
+			elif control is Label:
+				content = (control as Label).text
+			var path := str(base.get_path_to(control))
+			var haystack := (path + " " + str(control.name) + " " + control.get_class() + " " + content).to_lower()
+			if filter_text == "" or haystack.contains(filter_text):
+				output.append({
+					"path": path,
+					"name": str(control.name),
+					"class": control.get_class(),
+					"visible": visible,
+					"text": content.left(max_chars),
+					"truncated_text": content.length() > max_chars,
+					"total_chars": content.length(),
+				})
+	for child in node.get_children():
+		if output.size() >= max_controls:
+			return
+		_walk_text_controls(child, base, filter_text, max_controls, max_chars, visible_only, output)
+''',
         "scripts/tools/editor/get_editor_state_tool.gd": r'''@tool
 extends MCPTool
 
@@ -1229,6 +1304,7 @@ func execute(arguments: Dictionary) -> Dictionary:
         'const ReorderNodeTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/reorder_node_tool.gd")\n'
         'const SetNodeGroupTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/set_node_group_tool.gd")\n'
         'const ManageNodeSignalTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/manage_node_signal_tool.gd")\n'
+        'const ReadEditorDiagnosticsTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/read_editor_diagnostics_tool.gd")\n'
         'const GetEditorStateTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/get_editor_state_tool.gd")\n'
         'const InspectEditorUITool := preload("res://addons/godot_mcp_android/scripts/tools/editor/inspect_editor_ui_tool.gd")\n'
         'const ActivateEditorUIControlTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/activate_editor_ui_control_tool.gd")\n'
@@ -1250,6 +1326,7 @@ func execute(arguments: Dictionary) -> Dictionary:
         '\tregister(ReorderNodeTool.new(editor_interface))\n'
         '\tregister(SetNodeGroupTool.new(editor_interface))\n'
         '\tregister(ManageNodeSignalTool.new(editor_interface))\n'
+        '\tregister(ReadEditorDiagnosticsTool.new(editor_interface))\n'
         '\tregister(GetEditorStateTool.new(editor_interface))\n'
         '\tregister(InspectEditorUITool.new(editor_interface))\n'
         '\tregister(ActivateEditorUIControlTool.new(editor_interface))\n'
@@ -1480,6 +1557,7 @@ func execute(arguments: Dictionary) -> Dictionary:
         "ReorderNodeTool",
         "SetNodeGroupTool",
         "ManageNodeSignalTool",
+        "ReadEditorDiagnosticsTool",
         "GetEditorStateTool",
         "InspectEditorUITool",
         "ActivateEditorUIControlTool",
