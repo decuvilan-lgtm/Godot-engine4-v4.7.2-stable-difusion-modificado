@@ -250,9 +250,9 @@ func get_input_schema() -> Dictionary:
 
 
 func execute(arguments: Dictionary) -> Dictionary:
-	var class_name := String(arguments.get("class_name", "")).strip_edges()
+	var resource_class := String(arguments.get("class_name", "")).strip_edges()
 	var resource_path := String(arguments.get("path", "")).strip_edges()
-	if class_name == "" or resource_path == "":
+	if resource_class == "" or resource_path == "":
 		return tool_error("class_name and path are required")
 	if not resource_path.begins_with("res://") or not is_safe_project_path(resource_path):
 		return tool_error("resource path must be a safe res:// path")
@@ -260,13 +260,13 @@ func execute(arguments: Dictionary) -> Dictionary:
 		return tool_error("resource path must end in .tres or .res")
 	if FileAccess.file_exists(resource_path):
 		return tool_error("resource path already exists; refusing to overwrite")
-	if not ClassDB.class_exists(class_name) or not ClassDB.can_instantiate(class_name):
-		return tool_error("class cannot be instantiated: %s" % class_name)
-	var instance = ClassDB.instantiate(class_name)
+	if not ClassDB.class_exists(resource_class) or not ClassDB.can_instantiate(resource_class):
+		return tool_error("class cannot be instantiated: %s" % resource_class)
+	var instance = ClassDB.instantiate(resource_class)
 	if not instance is Resource:
 		if instance != null:
 			instance.free()
-		return tool_error("class is not a Resource: %s" % class_name)
+		return tool_error("class is not a Resource: %s" % resource_class)
 	var resource: Resource = instance
 	var parent_path := resource_path.get_base_dir()
 	if parent_path.begins_with("res://") and parent_path != "res://":
@@ -281,7 +281,7 @@ func execute(arguments: Dictionary) -> Dictionary:
 		return tool_error("could not save resource: %s" % error_string(save_error))
 	return {
 		"ok": true,
-		"class_name": class_name,
+		"class_name": resource_class,
 		"path": resource_path,
 	}
 ''',
