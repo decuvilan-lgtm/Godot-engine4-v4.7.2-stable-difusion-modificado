@@ -817,6 +817,162 @@ func execute(arguments: Dictionary) -> Dictionary:
 		"scope": "embedded_subviewport_only",
 	}
 ''',
+        "scripts/tools/scene/reorder_node_tool.gd": r'''@tool
+extends MCPTool
+
+
+func get_name() -> String:
+	return "reorder_node"
+
+
+func get_description() -> String:
+	return "Reorder a node among its current siblings through Godot's undo/redo history."
+
+
+func get_input_schema() -> Dictionary:
+	return {
+		"type": "object",
+		"properties": {
+			"node_path": {"type": "string"},
+			"new_index": {"type": "integer", "description": "Zero-based child index."},
+		},
+		"required": ["node_path", "new_index"],
+		"additionalProperties": false,
+	}
+
+
+func execute(arguments: Dictionary) -> Dictionary:
+	var node := resolve_scene_node(String(arguments.get("node_path", ".")))
+	if node == null:
+		return tool_error("node not found")
+	if node == get_edited_scene_root():
+		return tool_error("cannot reorder the scene root")
+	var parent := node.get_parent()
+	if parent == null:
+		return tool_error("node has no parent")
+	var old_index := node.get_index()
+	var new_index := int(arguments.get("new_index", -1))
+	if new_index < 0 or new_index >= parent.get_child_count():
+		return tool_error("new_index is outside the sibling range")
+	if new_index == old_index:
+		return {"ok": true, "index": old_index, "unchanged": true}
+	var undo_redo := editor_interface.get_editor_undo_redo()
+	undo_redo.create_action("MCP: Reorder Node")
+	undo_redo.add_do_method(parent, "move_child", node, new_index)
+	undo_redo.add_undo_method(parent, "move_child", node, old_index)
+	undo_redo.commit_action()
+	return {"ok": true, "node_name": str(node.name), "old_index": old_index, "new_index": new_index, "undo_available": true}
+''',
+        "scripts/tools/scene/set_node_group_tool.gd": r'''@tool
+extends MCPTool
+
+
+func get_name() -> String:
+	return "set_node_group"
+
+
+func get_description() -> String:
+	return "Add or remove a node from a named group through Godot's undo/redo history."
+
+
+func get_input_schema() -> Dictionary:
+	return {
+		"type": "object",
+		"properties": {
+			"node_path": {"type": "string"},
+			"group_name": {"type": "string"},
+			"enabled": {"type": "boolean", "description": "True adds the group; false removes it."},
+		},
+		"required": ["node_path", "group_name", "enabled"],
+		"additionalProperties": false,
+	}
+
+
+func execute(arguments: Dictionary) -> Dictionary:
+	var node := resolve_scene_node(String(arguments.get("node_path", ".")))
+	if node == null:
+		return tool_error("node not found")
+	var group_name := String(arguments.get("group_name", "")).strip_edges()
+	if group_name == "" or group_name.contains("/") or group_name.contains(":"):
+		return tool_error("group_name must be non-empty and cannot contain path separators")
+	var enabled := bool(arguments.get("enabled", false))
+	var currently_enabled := node.is_in_group(group_name)
+	if enabled == currently_enabled:
+		return {"ok": true, "group_name": group_name, "enabled": enabled, "unchanged": true}
+	var undo_redo := editor_interface.get_editor_undo_redo()
+	undo_redo.create_action("MCP: Set Node Group")
+	if enabled:
+		undo_redo.add_do_method(node, "add_to_group", group_name, true)
+		undo_redo.add_undo_method(node, "remove_from_group", group_name)
+	else:
+		undo_redo.add_do_method(node, "remove_from_group", group_name)
+		undo_redo.add_undo_method(node, "add_to_group", group_name, true)
+	undo_redo.commit_action()
+	return {"ok": true, "node_name": str(node.name), "group_name": group_name, "enabled": enabled, "undo_available": true}
+''',
+        "scripts/tools/scene/manage_node_signal_tool.gd": r'''@tool
+extends MCPTool
+
+
+func get_name() -> String:
+	return "manage_node_signal"
+
+
+func get_description() -> String:
+	return "Connect or disconnect a signal between nodes in the currently edited scene, with undo/redo support."
+
+
+func get_input_schema() -> Dictionary:
+	return {
+		"type": "object",
+		"properties": {
+			"source_path": {"type": "string"},
+			"signal_name": {"type": "string"},
+			"target_path": {"type": "string"},
+			"method_name": {"type": "string"},
+			"action": {"type": "string", "enum": ["connect", "disconnect"]},
+		},
+		"required": ["source_path", "signal_name", "target_path", "method_name", "action"],
+		"additionalProperties": false,
+	}
+
+
+func execute(arguments: Dictionary) -> Dictionary:
+	var source := resolve_scene_node(String(arguments.get("source_path", ".")))
+	var target := resolve_scene_node(String(arguments.get("target_path", ".")))
+	if source == null or target == null:
+		return tool_error("source or target node not found in the edited scene")
+	var signal_name := String(arguments.get("signal_name", "")).strip_edges()
+	var method_name := String(arguments.get("method_name", "")).strip_edges()
+	if signal_name == "" or method_name == "" or method_name.contains("/") or method_name.contains(":"):
+		return tool_error("signal_name and method_name must be valid non-empty names")
+	if not source.has_signal(signal_name):
+		return tool_error("source node does not declare that signal")
+	if not target.has_method(method_name):
+		return tool_error("target node does not declare that method")
+	var callable := Callable(target, method_name)
+	var connected := source.is_connected(signal_name, callable)
+	var action := String(arguments.get("action", ""))
+	if action == "connect":
+		if connected:
+			return {"ok": true, "connected": true, "unchanged": true}
+		var undo_redo := editor_interface.get_editor_undo_redo()
+		undo_redo.create_action("MCP: Connect Signal")
+		undo_redo.add_do_method(source, "connect", signal_name, callable)
+		undo_redo.add_undo_method(source, "disconnect", signal_name, callable)
+		undo_redo.commit_action()
+		return {"ok": true, "action": action, "source": str(source.name), "signal": signal_name, "target": str(target.name), "method": method_name, "undo_available": true}
+	if action == "disconnect":
+		if not connected:
+			return {"ok": true, "connected": false, "unchanged": true}
+		var undo_redo := editor_interface.get_editor_undo_redo()
+		undo_redo.create_action("MCP: Disconnect Signal")
+		undo_redo.add_do_method(source, "disconnect", signal_name, callable)
+		undo_redo.add_undo_method(source, "connect", signal_name, callable)
+		undo_redo.commit_action()
+		return {"ok": true, "action": action, "source": str(source.name), "signal": signal_name, "target": str(target.name), "method": method_name, "undo_available": true}
+	return tool_error("unsupported action")
+''',
         "scripts/tools/editor/get_editor_state_tool.gd": r'''@tool
 extends MCPTool
 
@@ -1070,6 +1226,9 @@ func execute(arguments: Dictionary) -> Dictionary:
         'const InspectSceneUIControlsTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/inspect_scene_ui_controls_tool.gd")\n'
         'const InteractSceneUIControlTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/interact_scene_ui_control_tool.gd")\n'
         'const SendEditorViewportInputTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/send_editor_viewport_input_tool.gd")\n'
+        'const ReorderNodeTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/reorder_node_tool.gd")\n'
+        'const SetNodeGroupTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/set_node_group_tool.gd")\n'
+        'const ManageNodeSignalTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/manage_node_signal_tool.gd")\n'
         'const GetEditorStateTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/get_editor_state_tool.gd")\n'
         'const InspectEditorUITool := preload("res://addons/godot_mcp_android/scripts/tools/editor/inspect_editor_ui_tool.gd")\n'
         'const ActivateEditorUIControlTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/activate_editor_ui_control_tool.gd")\n'
@@ -1088,6 +1247,9 @@ func execute(arguments: Dictionary) -> Dictionary:
         '\tregister(InspectSceneUIControlsTool.new(editor_interface))\n'
         '\tregister(InteractSceneUIControlTool.new(editor_interface))\n'
         '\tregister(SendEditorViewportInputTool.new(editor_interface))\n'
+        '\tregister(ReorderNodeTool.new(editor_interface))\n'
+        '\tregister(SetNodeGroupTool.new(editor_interface))\n'
+        '\tregister(ManageNodeSignalTool.new(editor_interface))\n'
         '\tregister(GetEditorStateTool.new(editor_interface))\n'
         '\tregister(InspectEditorUITool.new(editor_interface))\n'
         '\tregister(ActivateEditorUIControlTool.new(editor_interface))\n'
@@ -1315,6 +1477,9 @@ func execute(arguments: Dictionary) -> Dictionary:
         "InspectSceneUIControlsTool",
         "InteractSceneUIControlTool",
         "SendEditorViewportInputTool",
+        "ReorderNodeTool",
+        "SetNodeGroupTool",
+        "ManageNodeSignalTool",
         "GetEditorStateTool",
         "InspectEditorUITool",
         "ActivateEditorUIControlTool",
