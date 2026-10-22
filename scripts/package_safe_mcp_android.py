@@ -1343,7 +1343,7 @@ func _process(_delta: float) -> void:
 
 func _send_response(response: Dictionary) -> void:
 	if _client != null and _client.get_status() == StreamPeerTCP.STATUS_CONNECTED:
-		_client.put_data((JSON.stringify(response) + "\\n").to_utf8_buffer())
+		_client.put_data((JSON.stringify(response) + "\n").to_utf8_buffer())
 	_client = null
 	_buffer.clear()
 
