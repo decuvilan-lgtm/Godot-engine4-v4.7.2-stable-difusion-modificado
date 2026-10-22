@@ -198,6 +198,13 @@ def main() -> int:
         "",
     )
 
+    # Keep the exact pre-edit contents available for the recovery copy.
+    replace_once(
+        ADDON_OUT / "scripts/tools/filesystem/edit_file_tool.gd",
+        "\\tvar content := file.get_as_text()",
+        "\\tvar content := file.get_as_text()\\n\\tvar original_content := content",
+    )
+
     # Editing a file also requires a recovery copy before the write begins.
     replace_once(
         ADDON_OUT / "scripts/tools/filesystem/edit_file_tool.gd",
@@ -211,7 +218,7 @@ def main() -> int:
 \tvar recovery_file := FileAccess.open(recovery_path, FileAccess.WRITE)
 \tif recovery_file == null:
 \t\treturn tool_error("cannot create recovery copy: %s" % error_string(FileAccess.get_open_error()))
-\trecovery_file.store_string(FileAccess.open(resource_path, FileAccess.READ).get_as_text())
+\trecovery_file.store_string(original_content)
 \trecovery_file.close()
 \tif not FileAccess.file_exists(recovery_path):
 \t\treturn tool_error("recovery copy was not created; original file was not changed")
