@@ -45,6 +45,17 @@ The listed tools are a useful initial bridge, but they do not establish full edi
 
 This list is not exhaustive; the full inventory in `MCP_EDITOR_COVERAGE.md` is the scope of record.
 
+## Concrete safety gaps found during source inspection
+
+- `write_file` and `edit_file` can overwrite an existing project file directly. They currently do not create a recovery copy or route the operation through Godot's undo manager.
+- `set_node_property` uses `node.set(property_name, value)` without first checking that the property exists, validating the value type, or recording a reversible editor action.
+- `remove_node` protects the edited scene root, but removes other nodes with `queue_free()` and does not use the editor undo/redo manager. It needs a reversible implementation or an explicit, conservative restriction before being treated as safe for autonomous use.
+- The common project-path helper rejects normalized paths that escape with `..`, but path validation still deserves tests for empty/directory paths, unusual separators, and platform-specific edge cases.
+- The HTTP server has wildcard CORS in upstream source; the packaging script removes that header. Both transport implementations also read host settings, so the package must continue to force loopback after settings are applied.
+- The registry contains more tools than the README's short public list: it also registers `get_node_property`, `remove_node`, `edit_file`, and `grep`. Audit the actual registry, not only the README.
+
+These are source-review findings, not proof that a particular exploit has been reproduced. Until each mutation has safe behavior and tests, the addon should not be described as fully safe for autonomous editing.
+
 ## Security and packaging checks
 
 The packaging job should continue to assert all of the following:
