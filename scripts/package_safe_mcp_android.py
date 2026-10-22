@@ -357,7 +357,7 @@ func execute(arguments: Dictionary) -> Dictionary:
 	undo_redo.create_action("MCP: Duplicate Node")
 	undo_redo.add_do_method(parent, "add_child", copy)
 	undo_redo.add_do_method(parent, "move_child", copy, original_index + 1)
-	undo_redo.add_do_method(copy, "set_owner", original_owner)
+	undo_redo.add_do_method(self, "_set_owner_recursive", copy, original_owner)
 	undo_redo.add_undo_method(parent, "remove_child", copy)
 	undo_redo.commit_action()
 	return {
@@ -366,6 +366,12 @@ func execute(arguments: Dictionary) -> Dictionary:
 		"duplicate_name": str(copy.name),
 		"undo_available": true,
 	}
+
+
+func _set_owner_recursive(node: Node, scene_owner: Node) -> void:
+	node.owner = scene_owner
+	for child in node.get_children():
+		_set_owner_recursive(child, scene_owner)
 ''',
         "scripts/tools/scene/rename_node_tool.gd": r'''@tool
 extends MCPTool
