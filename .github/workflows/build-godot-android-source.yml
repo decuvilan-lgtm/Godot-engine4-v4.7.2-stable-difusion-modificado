@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       run_type:
-        description: "Manual run: build and emulator-test the Android editor, or validate only the import patch"
+        description: "Manual run: build and validate the ARM64-only Android editor, or validate only the import patch"
         type: choice
         required: true
         default: full-android-build
@@ -15,8 +15,6 @@ on:
 permissions:
   contents: read
 
-# Keep only one build/test run alive for this branch. A newer manual run
-# supersedes an older one so multiple 90-minute Android builds do not pile up.
 concurrency:
   group: godot-android-editor-${{ github.ref }}
   cancel-in-progress: true
@@ -41,103 +39,81 @@ jobs:
         run: python "$GITHUB_WORKSPACE/scripts/apply_github_import_patch.py"
 
       - name: Set up Java 17
-        if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Set up Python
-        if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Install SCons
-        if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
         run: python -m pip install --upgrade pip scons
 
       - name: Download Android Swappy dependency
-        if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
         working-directory: godot-source
         run: python misc/scripts/install_swappy_android.py
 
-      - name: Compile Android editor engine for ARM64 phones and x86_64 emulator
-        if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
+      - name: Compile Android editor engine for ARM64 only
         working-directory: godot-source
         run: |
-          for arch in arm64 x86_64; do
-            echo "Compiling Android editor for $arch"
-            scons platform=android target=editor arch="$arch" production=yes dev_mode=yes module_text_server_fb_enabled=yes swappy=yes cache_path="${{ github.workspace }}/.scons-cache" -j2
-          done
+          set -euo pipefail
+          scons platform=android target=editor arch=arm64 production=yes dev_mode=yes module_text_server_fb_enabled=yes swappy=yes cache_path="${{ github.workspace }}/.scons-cache" -j2
 
       - name: Generate Android Editor APK
-        if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
         working-directory: godot-source/platform/android/java
-        run: ./gradlew generateGodotEditor
+        run: ./gradlew --no-daemon clean generateGodotEditor
 
-      - name: Upload APK and build outputs
-        if: always() && inputs.run_type == 'full-android-build'
-        uses: actions/upload-artifact@v4
-        with:
-          name: godot-4.7.2-android-editor-build
-          if-no-files-found: warn
-          path: |
-            godot-source/bin/android_editor_builds/**/*.apk
-            godot-source/platform/android/java/editor/build/outputs/apk/**/*.apk
-            godot-source/bin/android_editor_builds/**/*.aab
-
-      # Stage the APK in the workspace root so the emulator action does not depend on
-      # a nested path or its shell's inherited GITHUB_WORKSPACE environment variable.
-      - name: Locate and stage APK for emulator test
-        if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
+      - name: Locate, stage, and validate ARM64-only APK
         shell: bash
         run: |
           set -euo pipefail
-          echo "Workspace: $GITHUB_WORKSPACE"
-          echo "Searching generated APKs:"
-          find "$GITHUB_WORKSPACE/godot-source" -type f -name '*.apk' -print
           APK="$GITHUB_WORKSPACE/godot-source/platform/android/java/editor/build/outputs/apk/android/debug/android_editor-android-debug.apk"
           if [ ! -s "$APK" ]; then
-            echo "Preferred editor APK not found at: $APK"
-            echo "Searching generated APKs:"
-            find "$GITHUB_WORKSPACE/godot-source" -type f -name '*.apk' -print || true
-            APK="$(find "$GITHUB_WORKSPACE/godot-source/bin/android_editor_builds" -type f -name '*.apk' -print -quit 2>/dev/null || true)"
-          fi
-          if [ -z "$APK" ] || [ ! -s "$APK" ]; then
-            echo "ERROR: Build finished but no usable editor APK was found."
-            echo "Diagnostic: available Android bundles:"
-            find "$GITHUB_WORKSPACE/godot-source" -type f -name '*.aab' -print | head -n 100 || true
-            echo "Diagnostic: APK-related files:"
-            find "$GITHUB_WORKSPACE/godot-source" -type f -iname '*apk*' -print | head -n 100 || true
+            echo "Preferred editor APK not found; available APKs:"
+            find "$GITHUB_WORKSPACE/godot-source" -type f -name '*.apk' -print
             exit 1
           fi
-          echo "Selected APK: $APK"
-          cp "$APK" "$GITHUB_WORKSPACE/godot-editor-test.apk"
-          test -s "$GITHUB_WORKSPACE/godot-editor-test.apk"
-          ls -lh "$GITHUB_WORKSPACE/godot-editor-test.apk"
-          sha256sum "$GITHUB_WORKSPACE/godot-editor-test.apk"
 
-      # The APK includes ARM64 for phones and x86_64 so the same artifact can be installed in the hosted emulator.
-      - name: Boot Android x86_64 emulator, install APK, launch, and capture UI
-        if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 30
-          arch: x86_64
-          profile: pixel_2
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          disable-animations: true
-          script: |
-            bash "${{ github.workspace }}/scripts/android_emulator_smoke_test.sh" "${{ github.workspace }}"
+          cp "$APK" "$GITHUB_WORKSPACE/godot-editor-arm64.apk"
+          APK="$GITHUB_WORKSPACE/godot-editor-arm64.apk"
 
-      - name: Upload Android UI test evidence
-        if: always() && (github.event_name == 'push' || inputs.run_type == 'full-android-build')
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          AAPT="$BUILD_TOOLS/aapt"
+          APKSIGNER="$BUILD_TOOLS/apksigner"
+          ZIPALIGN="$BUILD_TOOLS/zipalign"
+
+          echo "=== APK details ==="
+          ls -lh "$APK"
+          sha256sum "$APK"
+          unzip -t "$APK"
+          "$AAPT" dump badging "$APK" | tee apk-badging.txt
+
+          echo "=== Enforce ARM64-only native code ==="
+          NATIVE_LINE="$(grep '^native-code:' apk-badging.txt || true)"
+          echo "$NATIVE_LINE"
+          if [ "$NATIVE_LINE" != "native-code: 'arm64-v8a'" ]; then
+            echo "ERROR: APK must contain only arm64-v8a; found: $NATIVE_LINE"
+            exit 1
+          fi
+
+          echo "=== Verify APK signature ==="
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+
+          echo "=== Verify ZIP alignment ==="
+          "$ZIPALIGN" -c -v 4 "$APK"
+
+      - name: Upload ARM64-only Android editor APK
+        if: always() && inputs.run_type == 'full-android-build'
         uses: actions/upload-artifact@v4
         with:
-          name: godot-android-ui-test-evidence
-          path: ui-test-results/
-          if-no-files-found: warn
+          name: godot-4.7.2-android-editor-arm64-only
+          if-no-files-found: error
+          path: |
+            godot-editor-arm64.apk
+            apk-badging.txt
           retention-days: 30
 
   validate-import-only:
