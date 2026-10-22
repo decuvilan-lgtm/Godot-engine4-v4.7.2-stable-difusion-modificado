@@ -163,3 +163,23 @@ The packaging script now generates and registers five additional typed tools:
 | `create_resource` | Create a registered Resource class and save to a new safe `res://` path without overwriting | Implemented in source; parser/runtime test pending |
 
 These are **partial editor capabilities**, not full Godot control. The MCP registry still does not expose every menu, dock, viewport action, importer, inspector editor, animation/tilemap tool, debugger/profiler operation, export workflow, or third-party plugin action. Typed tools must be expanded surface by surface, with safety checks and tests. No full-coverage claim is permitted.
+
+
+## Live game runtime bridge and fullscreen — source added, not yet validated
+
+Two typed tools extend control from the edited scene into the actual running game:
+
+- `install_runtime_game_bridge` installs a project-local autoload companion at `res://addons/godot_mcp_android_runtime/game_runtime_bridge.gd`. It binds only to `127.0.0.1:37843`, refuses to overwrite an existing companion, and saves/verifies a recovery copy of `project.godot` before adding its autoload entry.
+- `control_runtime_game` sends typed JSON-line commands over loopback to request runtime status, enumerate live `Control` nodes and their global rectangles, click a control by scene-tree path, inject mouse/key input, and enter/exit/toggle fullscreen.
+
+### Boundaries and required validation
+
+- This bridge is **source-added only**. Do not treat it as working until the packaging script, GDScript parser, MCP request/response exchange, and on-device runtime are tested.
+- The project must explicitly install the companion and run a game instance that loads the autoload. The bridge is not automatically present in every existing project.
+- The listener binds to loopback, not LAN/public interfaces. The editor-side MCP server is also expected to remain loopback-only.
+- A control path must be obtained from the running game's own scene tree; paths from `inspect_scene_ui_controls` refer to the edited scene and may differ at runtime.
+- Fullscreen is requested through the running game's `DisplayServer` window mode. Android window-manager behavior and embedded-preview behavior must be checked on the target device; do not claim fullscreen succeeded until the response and actual display are confirmed.
+- Input injection can exercise ordinary Godot UI/gameplay, but cannot promise to control arbitrary native Android dialogs, OS permission prompts, or external applications.
+- The install action makes a recovery copy and refuses to overwrite the bridge script, but still needs failure-path review before being considered safe for general use.
+
+Acceptance checks still required: start a project with the bridge installed; verify the runtime handshake; inspect a known button; click it and confirm the expected game-side effect; send movement/gameplay input; toggle fullscreen and restore windowed mode; stop/restart the game; verify that an absent runtime returns a bounded error; verify loopback binding and project settings recovery. **No tests or builds have been run for these changes.**
