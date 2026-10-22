@@ -1293,6 +1293,7 @@ const AUTOLOAD_NAME := "GodotMCPRuntimeBridge"
 const BRIDGE_SOURCE := """extends Node
 
 const PORT := 37843
+const TOKEN := "__GODOT_MCP_RUNTIME_TOKEN__"
 const MAX_REQUEST_BYTES := 65536
 var _server := TCPServer.new()
 var _client: StreamPeerTCP
@@ -1348,6 +1349,8 @@ func _send_response(response: Dictionary) -> void:
 
 
 func _handle_request(request: Dictionary) -> Dictionary:
+	if String(request.get("token", "")) != TOKEN:
+		return {"ok": false, "error": "unauthorized runtime bridge request"}
 	var action := String(request.get("action", "status"))
 	match action:
 		"status":
@@ -1486,10 +1489,12 @@ func execute(arguments: Dictionary) -> Dictionary:
 	var mkdir_error := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(bridge_dir))
 	if mkdir_error != OK:
 		return tool_error("cannot create runtime bridge directory: %s" % error_string(mkdir_error))
+	var crypto := Crypto.new()
+	var runtime_token := crypto.generate_random_bytes(32).hex_encode()
 	var bridge_file := FileAccess.open(BRIDGE_PATH, FileAccess.WRITE)
 	if bridge_file == null:
 		return tool_error("cannot create runtime bridge script: %s" % error_string(FileAccess.get_open_error()))
-	bridge_file.store_string(BRIDGE_SOURCE)
+	bridge_file.store_string(BRIDGE_SOURCE.replace("__GODOT_MCP_RUNTIME_TOKEN__", runtime_token))
 	bridge_file.close()
 	var project_file := FileAccess.open("res://project.godot", FileAccess.READ)
 	if project_file == null:
@@ -1584,7 +1589,24 @@ func execute(arguments: Dictionary) -> Dictionary:
 		OS.delay_msec(10)
 	if peer.get_status() != StreamPeerTCP.STATUS_CONNECTED:
 		return tool_error("runtime bridge is not reachable; ensure the game is running with GodotMCPRuntimeBridge autoload enabled")
+	var bridge_file := FileAccess.open("res://addons/godot_mcp_android_runtime/game_runtime_bridge.gd", FileAccess.READ)
+	if bridge_file == null:
+		peer.disconnect_from_host()
+		return tool_error("runtime bridge script is missing; run install_runtime_game_bridge first")
+	var bridge_source := bridge_file.get_as_text()
+	bridge_file.close()
+	var token := ""
+	for line in bridge_source.split("\n"):
+		if line.begins_with("const TOKEN :="):
+			var token_parts := line.split("\"")
+			if token_parts.size() >= 2:
+				token = token_parts[1]
+			break
+	if token == "" or token == "__GODOT_MCP_RUNTIME_TOKEN__":
+		peer.disconnect_from_host()
+		return tool_error("could not read runtime bridge authentication token")
 	var request := arguments.duplicate()
+	request["token"] = token
 	var encoded := (JSON.stringify(request) + "\n").to_utf8_buffer()
 	if encoded.size() > 65536:
 		peer.disconnect_from_host()
@@ -1973,12 +1995,12 @@ func execute(arguments: Dictionary) -> Dictionary:
         raise RuntimeError("create_resource uses a reserved GDScript identifier")
     runtime_installer = (ADDON_OUT / "scripts/tools/editor/install_runtime_game_bridge_tool.gd").read_text(encoding="utf-8")
     runtime_controller = (ADDON_OUT / "scripts/tools/editor/control_runtime_game_tool.gd").read_text(encoding="utf-8")
-    if "BRIDGE_SOURCE" not in runtime_installer or "37843" not in runtime_installer or "project.godot" not in runtime_installer:
+    if "BRIDGE_SOURCE" not in runtime_installer or "37843" not in runtime_installer or "project.godot" not in runtime_installer or "generate_random_bytes" not in runtime_installer:
         raise RuntimeError("runtime bridge installer is missing project setup and backup handling")
     for runtime_action in ["inspect_controls", "click_control", "fullscreen", "windowed", "toggle_fullscreen"]:
         if runtime_action not in runtime_installer or runtime_action not in runtime_controller:
             raise RuntimeError(f"runtime game bridge is missing action {runtime_action}")
-    if "127.0.0.1" not in runtime_installer or "127.0.0.1" not in runtime_controller:
+    if "127.0.0.1" not in runtime_installer or "127.0.0.1" not in runtime_controller or 'request["token"] = token' not in runtime_controller:
         raise RuntimeError("runtime bridge must use loopback-only communication")
     set_node_tool = (ADDON_OUT / "scripts/tools/scene/set_node_property_tool.gd").read_text(encoding="utf-8")
     remove_node_tool = (ADDON_OUT / "scripts/tools/scene/remove_node_tool.gd").read_text(encoding="utf-8")
