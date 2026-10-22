@@ -66,6 +66,23 @@ jobs:
             exit 1
           fi
           echo "Embedded MCP addon files: $(find "$ASSET_DIR" -type f | wc -l)"
+          # Also bundle the addon as one ZIP asset. The Android editor's res:// namespace
+          # does not expose raw APK assets, so the native installer reads this via AssetManager.
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZIP_DEFLATED, ZipFile
+          root = Path("dist/addons/godot_mcp_android")
+          archive = Path("godot-source/platform/android/java/editor/src/main/assets/mcp-addon.zip")
+          with ZipFile(archive, "w", ZIP_DEFLATED) as zf:
+              for path in sorted(root.rglob("*")):
+                  if path.is_file():
+                      zf.write(path, path.relative_to(root.parent).as_posix())
+          with ZipFile(archive) as zf:
+              names = zf.namelist()
+              assert "godot_mcp_android/plugin.cfg" in names
+              assert "godot_mcp_android/scripts/protocol/mcp_tool_registry.gd" in names
+          print(f"Created verified MCP bundle: {archive} ({archive.stat().st_size} bytes)")
+          PY
 
       - name: Apply GitHub import integration
         run: python "$GITHUB_WORKSPACE/scripts/apply_github_import_patch.py"
@@ -152,6 +169,16 @@ jobs:
           echo "=== Verify hardened MCP addon is embedded in the final APK ==="
           unzip -Z1 "$APK" | grep -Fx 'assets/mcp-addon/plugin.cfg'
           unzip -Z1 "$APK" | grep -Fx 'assets/mcp-addon/scripts/protocol/mcp_tool_registry.gd'
+          unzip -Z1 "$APK" | grep -Fx 'assets/mcp-addon.zip'
+          unzip -p "$APK" assets/mcp-addon.zip > "$RUNNER_TEMP/mcp-addon.zip"
+          python - <<'PY'
+          from zipfile import ZipFile
+          with ZipFile(__import__("os").environ["RUNNER_TEMP"] + "/mcp-addon.zip") as zf:
+              names = zf.namelist()
+              assert "godot_mcp_android/plugin.cfg" in names
+              assert "godot_mcp_android/scripts/protocol/mcp_tool_registry.gd" in names
+              assert all(not n.startswith("/") and ".." not in n.split("/") for n in names)
+          PY
           EMBEDDED_REGISTRY="$(unzip -p "$APK" assets/mcp-addon/scripts/protocol/mcp_tool_registry.gd)"
           if grep -q 'ExecuteScriptTool\|delete_project' <<< "$EMBEDDED_REGISTRY"; then
             echo "ERROR: unsafe MCP tool registration found inside APK."
