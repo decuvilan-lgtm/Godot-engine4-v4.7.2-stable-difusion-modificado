@@ -94,6 +94,9 @@ jobs:
                   "addons/godot_mcp_android/scripts/tools/resource/create_resource_tool.gd": "CreateResourceTool",
                   "addons/godot_mcp_android/scripts/tools/editor/inspect_editor_ui_tool.gd": "InspectEditorUITool",
                   "addons/godot_mcp_android/scripts/tools/editor/activate_editor_ui_control_tool.gd": "ActivateEditorUIControlTool",
+                  "addons/godot_mcp_android/scripts/tools/scene/duplicate_node_tool.gd": "DuplicateNodeTool",
+                  "addons/godot_mcp_android/scripts/tools/scene/rename_node_tool.gd": "RenameNodeTool",
+                  "addons/godot_mcp_android/scripts/tools/scene/reparent_node_tool.gd": "ReparentNodeTool",
               }
               for path, registration in required_tools.items():
                   assert path in names, f"missing packaged MCP tool: {path}"
@@ -112,6 +115,11 @@ jobs:
               assert "options.select(option_index)" in activate_ui
               assert "text_value" in activate_ui and "numeric_value" in activate_ui
               assert "checked_value" in activate_ui
+              duplicate_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/duplicate_node_tool.gd").decode()
+              rename_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/rename_node_tool.gd").decode()
+              reparent_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/reparent_node_tool.gd").decode()
+              assert all("get_editor_undo_redo()" in tool and "undo_available" in tool for tool in (duplicate_node, rename_node, reparent_node))
+              assert "is_ancestor_of(new_parent)" in reparent_node
               assert "project deletion/removal is permanently blocked" in activate_ui
               assert "confirm_destructive" in activate_ui
               set_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/set_node_property_tool.gd").decode()
