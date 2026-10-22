@@ -4,9 +4,17 @@ on:
   push:
     branches:
       - feature/github-sync-and-safe-mcp
+    paths:
+      - ".github/workflows/validate-mcp-addon.yml"
+      - ".github/workflows/build-godot-android-source.yml"
+      - "scripts/**"
   pull_request:
     branches:
       - main
+    paths:
+      - ".github/workflows/validate-mcp-addon.yml"
+      - ".github/workflows/build-godot-android-source.yml"
+      - "scripts/**"
 
 permissions:
   contents: read
