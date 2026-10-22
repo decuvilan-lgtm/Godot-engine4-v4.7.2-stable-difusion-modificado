@@ -369,3 +369,11 @@ A search query calls GitHub's public repository search API, presents up to 20 ma
 The MCP package hardening script is also being expanded so `write_file` and `edit_file` save the previous contents to unique project-local recovery copies under `.godot_mcp_backups/` before changing an existing file. If a recovery copy cannot be created, the operation should abort before the original file is overwritten. The tool result reports the recovery-copy path.
 
 **Status: source changes committed; deliberately not tested yet.** To respect the requested integration order, automatic Android builds and MCP validation have been paused and changed to manual dispatch. Do not install a new APK or call these features verified until the remaining integration work is complete and the full validation/build sequence is explicitly started.
+
+
+### Latest integration changes — 2026-10-22 (not yet validated)
+
+- Added a **“Recargar siguientes 20”** button to the public GitHub repository search results. It retains the current query and advances through GitHub Search API pages rather than repeating the first 20 repositories. After the available results (up to GitHub's 100-result search cap), the button returns to the first page.
+- Reviewed Android build run [39828558952](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39828558952). The native build reached the modified Project Manager code and failed because the JSON parser passed `PackedByteArray::ptr()` as `const unsigned char *` to `String::utf8`, which expects `const char *`. The patch now casts the pointer explicitly. This correction is **not yet verified by a new full build**.
+- MCP `write_file` and `edit_file` now verify that the recovery copy matches the original text before the original file can be overwritten. If the recovery copy cannot be verified, the operation aborts.
+- These changes are source-only at this stage. No new APK has been produced from them, and the GitHub search UI, recovery behavior, final APK, and on-device MCP flow remain unverified until the planned integration is complete and validation is authorized.
