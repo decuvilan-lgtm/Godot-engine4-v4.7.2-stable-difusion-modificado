@@ -1840,7 +1840,7 @@ func execute(arguments: Dictionary) -> Dictionary:
 \t\tif recovered_text != previous_text:
 \t\t\treturn tool_error("recovery copy could not be verified; original file was not changed")
 \n\tvar file := FileAccess.open(resource_path, FileAccess.WRITE)
-\tif file == null:"""),
+\tif file == null:"""
     )
     
     # Route scene mutations through Godot's editor undo/redo manager. This keeps
