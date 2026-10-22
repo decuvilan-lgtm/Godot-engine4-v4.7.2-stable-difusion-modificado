@@ -439,3 +439,8 @@ Two tools were added to bridge the editor MCP connection to the actual running g
 - `control_runtime_game`: connects to that running companion to inspect live `Control` nodes (paths, classes, labels/values and screen rectangles), click a control by node path, send mouse/key input, and switch the game window to fullscreen/windowed or toggle fullscreen.
 
 This is the intended path for a game running as a separate process; the older `send_editor_viewport_input` remains the embedded-`SubViewport` path. The runtime companion listens on `127.0.0.1` only and checks a random token generated at installation, so another local client cannot issue commands without reading the project-local token. The bridge requires the project autoload to be installed and the game running; it does not grant universal control of arbitrary native OS dialogs or guarantee that every Android/editor launch mode exposes the game window. All of this is source-only and **not validated** yet: no packaging, parser validation, CI workflow, APK build, or device test was run. The intended registered tool count is now 36, pending actual packaging/runtime confirmation.
+
+
+### GitHub project import — selected refs
+
+The Project Manager GitHub import dialog now has an optional branch/tag/commit field. Leaving it empty downloads the repository's default branch; entering a ref builds a GitHub archive URL for that specific ref. The patcher rejects whitespace, query/fragment syntax, backslashes, path traversal-like `..` strings, and unsupported ref characters before requesting the archive. This remains source-level work until the Android editor is rebuilt and tested; no build or workflow was launched.
