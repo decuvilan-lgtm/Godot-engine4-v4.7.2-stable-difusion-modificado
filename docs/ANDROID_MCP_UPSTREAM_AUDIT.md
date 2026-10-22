@@ -2,6 +2,8 @@
 
 Date: 2026-10-22
 
+Reviewed upstream revision pinned in CI: `5df91076250ece38ab182b2ca8b8a4a5d9a2d938`.
+
 ## Scope
 
 This is a source-level initial audit of the public upstream addon `GeorgeMee/godot-mcp-android`, which the current packaging workflow checks out from its `main` branch. It is not a device test and does not imply a live MCP client is connected.
@@ -68,10 +70,10 @@ The packaging job should continue to assert all of the following:
 
 ## Next engineering steps
 
-1. Pin the upstream revision instead of blindly following `main` so builds are reproducible.
+1. Keep the reviewed upstream revision pinned; update the SHA only after reviewing the new diff.
 2. Run the packaging workflow and inspect its actual logs/artifact.
 3. Audit every registered tool and its input validation.
 4. Add typed tool families in small tested groups, prioritizing read-only inspection first.
-5. Implement mutation actions with path/type validation and undo/redo where Godot supports it.
+5. Finish safe file-write recovery and review all remaining mutations.
 6. Add a menu/action inventory and report unsupported or dynamically registered controls rather than silently omitting them.
 7. Test in the actual Godot Android editor and then test a real MCP client connection.
