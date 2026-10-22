@@ -132,29 +132,6 @@ func _control_label(control: Control) -> String:
 		for index in range(tab_bar.get_tab_count()):
 			tabs.append(tab_bar.get_tab_title(index))
 		return " | ".join(tabs)
-	if control is TabBar:
-		var tabs := control as TabBar
-		if not arguments.has("tab_index"):
-			return tool_error("tab_index is required for TabBar navigation")
-		var tab_index := int(arguments.get("tab_index", -1))
-		if tab_index < 0 or tab_index >= tabs.get_tab_count():
-			return tool_error("tab_index is outside the tab range")
-		if tabs.is_tab_disabled(tab_index):
-			return tool_error("target tab is disabled")
-		tabs.current_tab = tab_index
-		return {"ok": true, "path": path, "tab_index": tab_index, "tab_title": tabs.get_tab_title(tab_index)}
-	if control is OptionButton:
-		var options := control as OptionButton
-		if not arguments.has("option_index"):
-			return tool_error("option_index is required for OptionButton selection")
-		var option_index := int(arguments.get("option_index", -1))
-		if option_index < 0 or option_index >= options.get_item_count():
-			return tool_error("option_index is outside the option range")
-		if options.is_item_disabled(option_index) or options.is_item_separator(option_index):
-			return tool_error("option is disabled or a separator")
-		options.select(option_index)
-		options.emit_signal("item_selected", option_index)
-		return {"ok": true, "path": path, "option_index": option_index, "option_text": options.get_item_text(option_index)}
 	if control is PopupMenu:
 		var menu := control as PopupMenu
 		var entries: Array[String] = []
@@ -214,15 +191,40 @@ func execute(arguments: Dictionary) -> Dictionary:
 	var label := _control_label(control).to_lower()
 	var control_name := str(control.name).to_lower()
 	var danger_text := label + " " + control_name
-	if danger_text.contains("delete project") or danger_text.contains("remove project") or danger_text.contains("erase project"):
-		return tool_error("project deletion/removal through generic UI activation is permanently blocked")
 	var destructive := false
-	for word in ["delete", "remove", "erase", "clear", "discard", "revert", "overwrite", "uninstall"]:
-		if danger_text.contains(word):
-			destructive = true
-			break
-	if destructive and not bool(arguments.get("confirm_destructive", false)):
-		return tool_error("potentially destructive UI action requires confirm_destructive=true")
+	# Inspect the chosen PopupMenu item below, not every item in the menu.
+	if not control is PopupMenu:
+		if danger_text.contains("delete project") or danger_text.contains("remove project") or danger_text.contains("erase project"):
+			return tool_error("project deletion/removal through generic UI activation is permanently blocked")
+		for word in ["delete", "remove", "erase", "clear", "discard", "revert", "overwrite", "uninstall"]:
+			if danger_text.contains(word):
+				destructive = true
+				break
+		if destructive and not bool(arguments.get("confirm_destructive", false)):
+			return tool_error("potentially destructive UI action requires confirm_destructive=true")
+	if control is TabBar:
+		var tabs := control as TabBar
+		if not arguments.has("tab_index"):
+			return tool_error("tab_index is required for TabBar navigation")
+		var tab_index := int(arguments.get("tab_index", -1))
+		if tab_index < 0 or tab_index >= tabs.get_tab_count():
+			return tool_error("tab_index is outside the tab range")
+		if tabs.is_tab_disabled(tab_index):
+			return tool_error("target tab is disabled")
+		tabs.current_tab = tab_index
+		return {"ok": true, "path": path, "tab_index": tab_index, "tab_title": tabs.get_tab_title(tab_index)}
+	if control is OptionButton:
+		var options := control as OptionButton
+		if not arguments.has("option_index"):
+			return tool_error("option_index is required for OptionButton selection")
+		var option_index := int(arguments.get("option_index", -1))
+		if option_index < 0 or option_index >= options.get_item_count():
+			return tool_error("option_index is outside the option range")
+		if options.is_item_disabled(option_index) or options.is_item_separator(option_index):
+			return tool_error("option is disabled or a separator")
+		options.select(option_index)
+		options.emit_signal("item_selected", option_index)
+		return {"ok": true, "path": path, "option_index": option_index, "option_text": options.get_item_text(option_index)}
 	if control is PopupMenu:
 		var menu := control as PopupMenu
 		if not menu.is_visible():
@@ -264,7 +266,7 @@ func _control_label(control: Control) -> String:
 	if control is PopupMenu:
 		var menu := control as PopupMenu
 		var entries: Array[String] = []
-		for index in range(menu.item_count):
+		for index in range(menu.get_item_count()):
 			entries.append("%d:%s" % [index, menu.get_item_text(index)])
 		return " | ".join(entries)
 	return ""
