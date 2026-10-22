@@ -381,11 +381,24 @@ The MCP package hardening script is also being expanded so `write_file` and `edi
 
 ## MCP coverage expansion — 2026-10-22 (source changes, not yet validated)
 
-I expanded the Android MCP packaging script with five additional typed tools: `get_editor_state`, `open_scene`, `control_running_scene`, `get_node_properties`, and `create_resource`. The MCP validation workflow now requires these scripts and registry entries to exist in the final addon archive.
+I expanded the Android MCP packaging script with five additional typed tools: `get_editor_state`, `open_scene`, `control_running_scene`, `get_node_properties`, and `create_resource`. I have now added two generic UI tools as well: `inspect_editor_ui` and `activate_editor_ui_control`. The validation workflow is being updated to require all seven scripts and registry entries in the final addon archive.
 
 **This does not give an AI every Godot capability.** The MCP only exposes operations implemented as registered tools. It still lacks broad control of all menus, 2D/3D viewport actions, import/reimport, complete Inspector editing, animation and TileMap/TileSet editors, debugger/profilers, export presets, plugin-specific controls, and many dialogs. The full scope is tracked in [the MCP editor coverage inventory](docs/MCP_EDITOR_COVERAGE.md).
 
 The five new tools are source changes only. They have not been run through the packaging workflow, the Godot headless parser, an MCP client, or the Android device. No new build or validation was launched, per the integration pause.
 
 
-**Intended registered MCP tool count: 22** (source-derived and not yet runtime-confirmed). They cover connection/project info, editor state, scene tree and node edits, opening/running scenes, file search/read/write/edit, resource UID/validation/creation, filesystem scan, and editor logs. The unrestricted expression tool remains disabled. The number of tools is not the same as full Godot coverage: visual editor operations and many advanced workflows still require dedicated tools.
+**Intended registered MCP tool count: 24** (source-derived and not yet runtime-confirmed). They cover connection/project info, editor state, scene tree and node edits, opening/running scenes, file search/read/write/edit, resource UID/validation/creation, filesystem scan, and editor logs. The unrestricted expression tool remains disabled. The number of tools is not the same as full Godot coverage: visual editor operations and many advanced workflows still require dedicated tools.
+
+## Generic Godot editor UI bridge — source added, not yet validated
+
+The package generator now creates two additional tools:
+
+- `inspect_editor_ui`: lists live editor controls with exact paths, classes, labels, visibility, disabled state, tab titles, and entries in open popup menus.
+- `activate_editor_ui_control`: activates an exact visible button or an item in an already-open `PopupMenu`, enabling navigation through UI options where Godot has no dedicated typed MCP operation.
+
+This is a first bridge toward navigating the main toolbar, menus, docks, tabs, Output/Debugger panels, and less-used options. It does not yet prove every UI action is accessible, and complex controls (trees, inspectors, viewport tools, custom dialogs, plugin UI) will need more adapters. Project deletion/removal remains blocked; potentially destructive labels require an explicit confirmation flag. The unrestricted GDScript execution tool remains disabled.
+
+Next scope is comprehensive inventory and implementation across main menus, context menus, workspace layout, scene tree, Inspector, filesystem/import, script editor, Output and Debugger details, profiling, 2D/3D, animation, TileMap/TileSet, resources, Project/Editor Settings, export, plugins, Android-specific UI, and every remaining obscure control or option.
+
+**Status:** source changes only. No packaging workflow, parser validation, CI, Android build, or device test has been run for the two UI tools. The intended count of 24 is not a runtime-confirmed count and is not a claim of full editor coverage.
