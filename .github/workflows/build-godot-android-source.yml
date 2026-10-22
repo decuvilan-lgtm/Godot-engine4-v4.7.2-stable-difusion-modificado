@@ -144,3 +144,26 @@ jobs:
         run: python -m py_compile scripts/apply_github_import_patch.py
       - name: Run import integration patcher
         run: python scripts/apply_github_import_patch.py
+
+  package-safe-mcp-addon:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+      - name: Checkout public Android MCP addon
+        uses: actions/checkout@v4
+        with:
+          repository: GeorgeMee/godot-mcp-android
+          ref: main
+          path: godot-mcp-android-source
+      - name: Package and validate safe MCP addon
+        run: python scripts/package_safe_mcp_android.py
+      - name: Upload safe MCP addon
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-mcp-android-safe
+          path: dist/godot-mcp-android-safe.zip
+          if-no-files-found: error
+          retention-days: 30
