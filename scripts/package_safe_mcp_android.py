@@ -1229,6 +1229,8 @@ func execute(arguments: Dictionary) -> Dictionary:
         raise RuntimeError("generic UI activation must require confirmation for destructive actions")
     if "text_value" not in activate_ui or "numeric_value" not in activate_ui or "checked_value" not in activate_ui:
         raise RuntimeError("generic UI activation is missing form-control operations")
+    if "control is Range" not in activate_ui or "control is TextEdit" not in activate_ui or '"focus"' not in activate_ui:
+        raise RuntimeError("generic editor UI bridge is missing range, text-editor, or focus operations")
     for tool_name, required_text in (
         ("duplicate_node", "get_editor_undo_redo"),
         ("rename_node", "get_editor_undo_redo"),
