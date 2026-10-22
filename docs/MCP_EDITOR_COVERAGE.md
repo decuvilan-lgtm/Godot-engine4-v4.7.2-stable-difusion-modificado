@@ -98,7 +98,7 @@ Two more tools are generated and registered:
 | `inspect_scene_ui_controls` | Enumerate Control nodes in the edited scene, including path, class, visibility, geometry, text, values, checks, and option choices | Source added; parser/runtime test pending |
 | `interact_scene_ui_control` | Press buttons, set LineEdit/TextEdit content, change Range values, toggle checks, select OptionButton entries, and focus controls | Source added; parser/runtime test pending |
 
-**Important preview distinction:** these tools operate on the currently edited scene tree. They are useful to inspect and exercise UI nodes before running a preview, but they do not yet inject input into a separate running game process. The generic editor UI bridge can operate on controls that are actually exposed inside the editor's own UI tree; this must not be confused with full control of the game viewport/runtime. Actual running-preview control still requires a tested remote-runtime transport or an embedded-preview adapter.
+**Important preview distinction:** these tools operate on the currently edited scene tree. They are useful to inspect and exercise UI nodes before running a preview, but they do not yet inject input into a separate running game process. The generic editor UI bridge can operate on controls actually exposed inside the editor's own UI tree, including text controls, ranges/sliders, checkboxes, tabs, options, buttons, and open menus; this must not be confused with full control of the game viewport/runtime. Actual running-preview control still requires a tested remote-runtime transport or an embedded-preview adapter.
 
 ## Required breadth-first expansion plan
 
