@@ -1,20 +1,8 @@
 name: Validate Android MCP addon packaging
 
+# Manual-only during integration; execute after the planned feature set is complete.
 on:
-  push:
-    branches:
-      - feature/github-sync-and-safe-mcp
-    paths:
-      - ".github/workflows/validate-mcp-addon.yml"
-      - ".github/workflows/build-godot-android-source.yml"
-      - "scripts/**"
-  pull_request:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/validate-mcp-addon.yml"
-      - ".github/workflows/build-godot-android-source.yml"
-      - "scripts/**"
+  workflow_dispatch:
 
 permissions:
   contents: read
