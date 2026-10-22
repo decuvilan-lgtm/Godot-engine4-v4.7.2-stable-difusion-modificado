@@ -710,6 +710,113 @@ func execute(arguments: Dictionary) -> Dictionary:
 		_:
 			return tool_error("unsupported action")
 ''',
+        "scripts/tools/editor/send_editor_viewport_input_tool.gd": r'''@tool
+extends MCPTool
+
+
+func get_name() -> String:
+	return "send_editor_viewport_input"
+
+
+func get_description() -> String:
+	return "Send a targeted mouse or keyboard input event to a SubViewport/SubViewportContainer inside the Godot editor UI tree. This can operate an embedded game preview when its viewport is exposed; it cannot inject input into a separate external game process."
+
+
+func get_input_schema() -> Dictionary:
+	return {
+		"type": "object",
+		"properties": {
+			"viewport_path": {"type": "string", "description": "Exact path to a SubViewport or SubViewportContainer under the editor base control."},
+			"event_type": {"type": "string", "enum": ["mouse_button", "mouse_motion", "key", "text"]},
+			"x": {"type": "number", "description": "Viewport-local horizontal coordinate for mouse events."},
+			"y": {"type": "number", "description": "Viewport-local vertical coordinate for mouse events."},
+			"button_index": {"type": "integer", "description": "Mouse button: 1 left, 2 right, 3 middle."},
+			"pressed": {"type": "boolean", "description": "Pressed state for mouse button or key events."},
+			"keycode": {"type": "integer", "description": "Godot Key enum integer for key events."},
+			"shift": {"type": "boolean"},
+			"ctrl": {"type": "boolean"},
+			"alt": {"type": "boolean"},
+			"unicode": {"type": "integer", "description": "Unicode codepoint for a key event, if applicable."},
+			"text": {"type": "string", "description": "Text for an InputEventText event."},
+		},
+		"required": ["viewport_path", "event_type"],
+		"additionalProperties": false,
+	}
+
+
+func execute(arguments: Dictionary) -> Dictionary:
+	var base := editor_interface.get_base_control()
+	if base == null:
+		return tool_error("Godot editor base control is unavailable")
+	var path := String(arguments.get("viewport_path", "")).strip_edges()
+	if path == "" or path == ".":
+		return tool_error("a specific viewport path is required")
+	var target := base.get_node_or_null(NodePath(path))
+	if target == null:
+		return tool_error("viewport path not found under the editor UI")
+	var viewport: SubViewport
+	if target is SubViewport:
+		viewport = target as SubViewport
+	elif target is SubViewportContainer:
+		for child in target.get_children():
+			if child is SubViewport:
+				viewport = child as SubViewport
+				break
+	if viewport == null:
+		return tool_error("target is not a SubViewport or a SubViewportContainer containing a SubViewport")
+	if not viewport.is_inside_tree():
+		return tool_error("target viewport is not inside the editor tree")
+	var event_type := String(arguments.get("event_type", ""))
+	var event: InputEvent
+	match event_type:
+		"mouse_button":
+			if not arguments.has("x") or not arguments.has("y") or not arguments.has("button_index"):
+				return tool_error("mouse_button requires x, y, and button_index")
+			var button_index := int(arguments.get("button_index", 1))
+			if button_index < 1 or button_index > 3:
+				return tool_error("button_index must be 1 (left), 2 (right), or 3 (middle)")
+			var mouse := InputEventMouseButton.new()
+			mouse.position = Vector2(float(arguments.get("x", 0.0)), float(arguments.get("y", 0.0)))
+			mouse.global_position = mouse.position
+			mouse.button_index = button_index
+			mouse.pressed = bool(arguments.get("pressed", true))
+			event = mouse
+		"mouse_motion":
+			if not arguments.has("x") or not arguments.has("y"):
+				return tool_error("mouse_motion requires x and y")
+			var motion := InputEventMouseMotion.new()
+			motion.position = Vector2(float(arguments.get("x", 0.0)), float(arguments.get("y", 0.0)))
+			motion.global_position = motion.position
+			event = motion
+		"key":
+			if not arguments.has("keycode"):
+				return tool_error("key requires keycode")
+			var key_event := InputEventKey.new()
+			key_event.keycode = int(arguments.get("keycode", 0)) as Key
+			key_event.pressed = bool(arguments.get("pressed", true))
+			key_event.shift_pressed = bool(arguments.get("shift", false))
+			key_event.ctrl_pressed = bool(arguments.get("ctrl", false))
+			key_event.alt_pressed = bool(arguments.get("alt", false))
+			key_event.unicode = int(arguments.get("unicode", 0))
+			event = key_event
+		"text":
+			if not arguments.has("text"):
+				return tool_error("text event requires text")
+			var text_event := InputEventText.new()
+			text_event.text = String(arguments.get("text", ""))
+			event = text_event
+		_:
+			return tool_error("unsupported event_type")
+	viewport.push_input(event, true)
+	return {
+		"ok": true,
+		"viewport_path": path,
+		"event_type": event_type,
+		"viewport_size": {"width": viewport.size.x, "height": viewport.size.y},
+		"sent": true,
+		"scope": "embedded_subviewport_only",
+	}
+''',
         "scripts/tools/editor/get_editor_state_tool.gd": r'''@tool
 extends MCPTool
 
@@ -962,6 +1069,7 @@ func execute(arguments: Dictionary) -> Dictionary:
         'const ReparentNodeTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/reparent_node_tool.gd")\n'
         'const InspectSceneUIControlsTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/inspect_scene_ui_controls_tool.gd")\n'
         'const InteractSceneUIControlTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/interact_scene_ui_control_tool.gd")\n'
+        'const SendEditorViewportInputTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/send_editor_viewport_input_tool.gd")\n'
         'const GetEditorStateTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/get_editor_state_tool.gd")\n'
         'const InspectEditorUITool := preload("res://addons/godot_mcp_android/scripts/tools/editor/inspect_editor_ui_tool.gd")\n'
         'const ActivateEditorUIControlTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/activate_editor_ui_control_tool.gd")\n'
@@ -979,6 +1087,7 @@ func execute(arguments: Dictionary) -> Dictionary:
         '\tregister(ReparentNodeTool.new(editor_interface))\n'
         '\tregister(InspectSceneUIControlsTool.new(editor_interface))\n'
         '\tregister(InteractSceneUIControlTool.new(editor_interface))\n'
+        '\tregister(SendEditorViewportInputTool.new(editor_interface))\n'
         '\tregister(GetEditorStateTool.new(editor_interface))\n'
         '\tregister(InspectEditorUITool.new(editor_interface))\n'
         '\tregister(ActivateEditorUIControlTool.new(editor_interface))\n'
@@ -1205,6 +1314,7 @@ func execute(arguments: Dictionary) -> Dictionary:
         "ReparentNodeTool",
         "InspectSceneUIControlsTool",
         "InteractSceneUIControlTool",
+        "SendEditorViewportInputTool",
         "GetEditorStateTool",
         "InspectEditorUITool",
         "ActivateEditorUIControlTool",
