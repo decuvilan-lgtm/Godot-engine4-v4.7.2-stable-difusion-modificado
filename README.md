@@ -388,7 +388,7 @@ I expanded the Android MCP packaging script with five additional typed tools: `g
 The five new tools are source changes only. They have not been run through the packaging workflow, the Godot headless parser, an MCP client, or the Android device. No new build or validation was launched, per the integration pause.
 
 
-**Intended registered MCP tool count: 29** (source-derived and not yet runtime-confirmed). They cover connection/project info, editor state, scene tree and node edits, opening/running scenes, file search/read/write/edit, resource UID/validation/creation, filesystem scan, and editor logs. The unrestricted expression tool remains disabled. The number of tools is not the same as full Godot coverage: visual editor operations and many advanced workflows still require dedicated tools.
+**Intended registered MCP tool count: 30** (source-derived and not yet runtime-confirmed). They cover connection/project info, editor state, scene tree and node edits, opening/running scenes, file search/read/write/edit, resource UID/validation/creation, filesystem scan, and editor logs. The unrestricted expression tool remains disabled. The number of tools is not the same as full Godot coverage: visual editor operations and many advanced workflows still require dedicated tools.
 
 ## Generic Godot editor UI bridge — source added, not yet validated
 
@@ -414,3 +414,8 @@ The packaging script now generates three additional typed tools: `duplicate_node
 Added `inspect_scene_ui_controls` to enumerate Control nodes in the currently edited scene, including layout geometry and current widget state. Added `interact_scene_ui_control` for pressing buttons, changing text, range values and checkboxes, selecting options, and focusing controls. This enables programmatic inspection/exercising of scene UI nodes while building the interface.
 
 **Runtime preview limitation:** these two tools address the edited scene tree, not a separate running-game process. Full interaction with live controls in a running preview still needs a tested remote-runtime or embedded-preview bridge. We will not claim that feature works until that bridge is implemented and tested.
+
+
+### Embedded game preview input — source added, not yet validated
+
+Added `send_editor_viewport_input`, which targets a specific `SubViewport` or `SubViewportContainer` in the editor UI and sends mouse clicks/motion, keyboard events, or text events. This is a path toward clicking game UI in an embedded preview. It deliberately does not claim to control an external game process; that case still needs a runtime bridge or supported debugger integration. No tests or builds have been launched.
