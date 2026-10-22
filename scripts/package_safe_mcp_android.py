@@ -1372,6 +1372,39 @@ func _handle_request(request: Dictionary) -> Dictionary:
 			return _set_control_checked(String(request.get("node_path", "")), bool(request.get("checked", false)))
 		"select_option":
 			return _select_control_option(String(request.get("node_path", "")), int(request.get("index", -1)))
+		"mouse_move":
+			var move_event := InputEventMouseMotion.new()
+			move_event.position = Vector2(float(request.get("x", 0.0)), float(request.get("y", 0.0)))
+			move_event.global_position = move_event.position
+			Input.parse_input_event(move_event)
+			return {"ok": true, "action": action, "position": move_event.position}
+		"touch":
+			var touch_event := InputEventScreenTouch.new()
+			touch_event.index = clampi(int(request.get("index", 0)), 0, 9)
+			touch_event.position = Vector2(float(request.get("x", 0.0)), float(request.get("y", 0.0)))
+			touch_event.pressed = bool(request.get("pressed", true))
+			Input.parse_input_event(touch_event)
+			return {"ok": true, "action": action, "position": touch_event.position, "pressed": touch_event.pressed, "index": touch_event.index}
+		"swipe":
+			var from_position := Vector2(float(request.get("x", 0.0)), float(request.get("y", 0.0)))
+			var to_position := Vector2(float(request.get("end_x", 0.0)), float(request.get("end_y", 0.0)))
+			var touch_down := InputEventScreenTouch.new()
+			touch_down.index = clampi(int(request.get("index", 0)), 0, 9)
+			touch_down.position = from_position
+			touch_down.pressed = true
+			Input.parse_input_event(touch_down)
+			var drag_event := InputEventScreenDrag.new()
+			drag_event.index = touch_down.index
+			drag_event.position = to_position
+			drag_event.relative = to_position - from_position
+			drag_event.velocity = Vector2.ZERO
+			Input.parse_input_event(drag_event)
+			var touch_up := InputEventScreenTouch.new()
+			touch_up.index = touch_down.index
+			touch_up.position = to_position
+			touch_up.pressed = false
+			Input.parse_input_event(touch_up)
+			return {"ok": true, "action": action, "from": from_position, "to": to_position, "index": touch_down.index}
 		"mouse_click":
 			var position := Vector2(float(request.get("x", 0.0)), float(request.get("y", 0.0)))
 			var button := int(request.get("button_index", 1))
@@ -1634,7 +1667,7 @@ func get_input_schema() -> Dictionary:
 	return {
 		"type": "object",
 		"properties": {
-			"action": {"type": "string", "enum": ["status", "inspect_controls", "click_control", "set_text", "set_value", "set_checked", "select_option", "mouse_click", "key", "fullscreen", "windowed", "toggle_fullscreen"]},
+			"action": {"type": "string", "enum": ["status", "inspect_controls", "click_control", "set_text", "set_value", "set_checked", "select_option", "mouse_move", "mouse_click", "touch", "swipe", "key", "fullscreen", "windowed", "toggle_fullscreen"]},
 			"filter": {"type": "string"},
 			"max_items": {"type": "integer"},
 			"node_path": {"type": "string"},
@@ -1644,6 +1677,9 @@ func get_input_schema() -> Dictionary:
 			"index": {"type": "integer"},
 			"x": {"type": "number"},
 			"y": {"type": "number"},
+			"end_x": {"type": "number"},
+			"end_y": {"type": "number"},
+			"index": {"type": "integer"},
 			"button_index": {"type": "integer"},
 			"keycode": {"type": "integer"},
 			"pressed": {"type": "boolean"},
