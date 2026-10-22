@@ -100,6 +100,9 @@ jobs:
                   "addons/godot_mcp_android/scripts/tools/scene/reparent_node_tool.gd": "ReparentNodeTool",
                   "addons/godot_mcp_android/scripts/tools/scene/inspect_scene_ui_controls_tool.gd": "InspectSceneUIControlsTool",
                   "addons/godot_mcp_android/scripts/tools/scene/interact_scene_ui_control_tool.gd": "InteractSceneUIControlTool",
+                  "addons/godot_mcp_android/scripts/tools/scene/reorder_node_tool.gd": "ReorderNodeTool",
+                  "addons/godot_mcp_android/scripts/tools/scene/set_node_group_tool.gd": "SetNodeGroupTool",
+                  "addons/godot_mcp_android/scripts/tools/scene/manage_node_signal_tool.gd": "ManageNodeSignalTool",
               }
               for path, registration in required_tools.items():
                   assert path in names, f"missing packaged MCP tool: {path}"
@@ -135,6 +138,12 @@ jobs:
               assert '"rect"' in inspect_scene_ui
               assert all(action in interact_scene_ui for action in ('"press"', '"set_text"', '"set_value"', '"set_checked"', '"select_option"', '"focus"'))
               assert "separate running-game process" in interact_scene_ui
+              reorder_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/reorder_node_tool.gd").decode()
+              set_node_group = zf.read("addons/godot_mcp_android/scripts/tools/scene/set_node_group_tool.gd").decode()
+              manage_node_signal = zf.read("addons/godot_mcp_android/scripts/tools/scene/manage_node_signal_tool.gd").decode()
+              assert "undo_available" in reorder_node
+              assert "add_to_group" in set_node_group
+              assert "is_connected" in manage_node_signal
               assert "project deletion/removal is permanently blocked" in activate_ui
               assert "confirm_destructive" in activate_ui
               set_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/set_node_property_tool.gd").decode()
