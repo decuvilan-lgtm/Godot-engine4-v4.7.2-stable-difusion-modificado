@@ -42,6 +42,21 @@ The `full-android-build` job:
 
 The separate `validate-import-only` option checks the patcher's Python syntax and applies it to a clean upstream source checkout. It does not build an APK or test the runtime UI.
 
+## Latest automated integration result
+
+### Run 32 — [39772776142](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39772776142)
+
+- **Result: success** (completed 2026-10-22 at 12:17:45 UTC).
+- Both `build-android-editor` and `package-safe-mcp-addon` jobs completed successfully.
+- Native Android editor compilation and Gradle APK generation succeeded.
+- The APK is approximately 172 MiB; SHA-256: `3ff89bd47287e01a8801c8ffa3f5228b6e176681bb4d35afccb1352e8a34db68`.
+- APK checks passed: ZIP integrity, signature verification, ZIP alignment, and the exact `arm64-v8a` native ABI check.
+- The final APK contains `assets/mcp-addon/plugin.cfg`, the MCP tool registry and server scripts. Static checks found the expected loopback binding and rejected the generic script executor, project deletion marker and wildcard CORS.
+- The source patch containing the GitHub import and **Install MCP** Project Manager code was applied before compilation; the C++ build succeeded.
+- **Not yet proven:** Android installation on the user's phone, actual Project Manager button visibility/interaction, copying from APK assets into a real project, plugin activation/parser success, MCP client round-trip, or runtime undo/redo behavior. CI's APK content checks are static, not an on-device end-to-end test.
+
+Artifact: [`godot-4.7.2-android-editor-arm64-only`](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39772776142) (available until 2026-11-21).
+
 ## Test history (2026-10-22)
 
 ### Run 28 — [39703513753](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39703513753)
