@@ -147,6 +147,7 @@ jobs:
               assert "BRIDGE_SOURCE" in runtime_installer and "project.godot" in runtime_installer
               assert "backup_path" in runtime_installer and "confirm_install" in runtime_installer
               assert "127.0.0.1" in runtime_installer and "127.0.0.1" in runtime_controller
+              assert runtime_controller.count('"index": {"type": "integer"}') == 1, "runtime controller schema has duplicate index fields"
               for action in ('"inspect_controls"', '"click_control"', '"set_text"', '"set_value"', '"set_checked"', '"select_option"', '"mouse_move"', '"mouse_click"', '"touch"', '"swipe"', '"fullscreen"', '"windowed"', '"toggle_fullscreen"'):
                   assert action in runtime_installer and action in runtime_controller
               reorder_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/reorder_node_tool.gd").decode()
