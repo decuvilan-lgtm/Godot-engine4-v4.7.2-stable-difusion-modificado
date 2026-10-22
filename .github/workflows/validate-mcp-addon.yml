@@ -210,6 +210,11 @@ jobs:
               'config.set_value("editor_plugins", "enabled", enabled)',
               'github_search_more_btn = memnew(Button)',
               'github_search_more_btn->set_text(TTRC("Recargar siguientes 20"))',
+              'LineEdit *github_repo_ref = nullptr;',
+              'github_repo_ref = memnew(LineEdit)',
+              'requested_ref.uri_encode()',
+              'archive_url += "/"',
+
               'void ProjectManager::_github_search_next_page()',
               '&page=',
               'String::utf8((const char *)p_body.ptr(), p_body.size())',
