@@ -64,12 +64,10 @@ jobs:
       - name: Compile Android editor engine for ARM64 phones and x86_64 emulator
         if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
         working-directory: godot-source
-        env:
-          SCONS_CACHE: ${{ github.workspace }}/.scons-cache
         run: |
           for arch in arm64 x86_64; do
             echo "Compiling Android editor for $arch"
-            scons platform=android target=editor arch="$arch" production=yes dev_mode=yes module_text_server_fb_enabled=yes swappy=yes -j2
+            scons platform=android target=editor arch="$arch" production=yes dev_mode=yes module_text_server_fb_enabled=yes swappy=yes cache_path="${{ github.workspace }}/.scons-cache" -j2
           done
 
       - name: Generate Android Editor APK
