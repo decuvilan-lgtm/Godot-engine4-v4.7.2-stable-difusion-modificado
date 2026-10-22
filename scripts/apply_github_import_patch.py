@@ -222,7 +222,7 @@ void ProjectManager::_install_mcp_addon_confirmed() {
         }
     }
     zip_output.unref();
-    bundled_asset->close();
+    bundled_asset.close();
 
     Ref<ZIPReader> zip;
     zip.instantiate();
