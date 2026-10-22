@@ -315,6 +315,174 @@ func _control_label(control: Control) -> String:
 		return " | ".join(entries)
 	return ""
 ''',
+        "scripts/tools/scene/duplicate_node_tool.gd": r'''@tool
+extends MCPTool
+
+
+func get_name() -> String:
+	return "duplicate_node"
+
+
+func get_description() -> String:
+	return "Duplicate a non-root scene node as a sibling using Godot's undo/redo history."
+
+
+func get_input_schema() -> Dictionary:
+	return {
+		"type": "object",
+		"properties": {
+			"node_path": {"type": "string", "description": "Path from the edited scene root; use . for the root (root duplication is refused)."},
+		},
+		"required": ["node_path"],
+		"additionalProperties": false,
+	}
+
+
+func execute(arguments: Dictionary) -> Dictionary:
+	var node := resolve_scene_node(String(arguments.get("node_path", ".")))
+	if node == null:
+		return tool_error("node not found")
+	var root := get_edited_scene_root()
+	if node == root:
+		return tool_error("cannot duplicate the scene root as a sibling")
+	var parent := node.get_parent()
+	if parent == null:
+		return tool_error("node has no parent")
+	var copy := node.duplicate()
+	if copy == null:
+		return tool_error("Godot could not duplicate this node")
+	var original_index := node.get_index()
+	var original_owner = node.owner
+	var undo_redo := editor_interface.get_editor_undo_redo()
+	undo_redo.create_action("MCP: Duplicate Node")
+	undo_redo.add_do_method(parent, "add_child", copy)
+	undo_redo.add_do_method(parent, "move_child", copy, original_index + 1)
+	undo_redo.add_do_method(copy, "set_owner", original_owner)
+	undo_redo.add_undo_method(parent, "remove_child", copy)
+	undo_redo.commit_action()
+	return {
+		"ok": true,
+		"source_path": relative_scene_path(node),
+		"duplicate_name": str(copy.name),
+		"undo_available": true,
+	}
+''',
+        "scripts/tools/scene/rename_node_tool.gd": r'''@tool
+extends MCPTool
+
+
+func get_name() -> String:
+	return "rename_node"
+
+
+func get_description() -> String:
+	return "Rename a scene node through Godot's undo/redo history."
+
+
+func get_input_schema() -> Dictionary:
+	return {
+		"type": "object",
+		"properties": {
+			"node_path": {"type": "string", "description": "Path from the edited scene root."},
+			"new_name": {"type": "string", "description": "New node name without path separators."},
+		},
+		"required": ["node_path", "new_name"],
+		"additionalProperties": false,
+	}
+
+
+func execute(arguments: Dictionary) -> Dictionary:
+	var node := resolve_scene_node(String(arguments.get("node_path", ".")))
+	if node == null:
+		return tool_error("node not found")
+	var new_name := String(arguments.get("new_name", "")).strip_edges()
+	if new_name == "" or new_name.contains("/") or new_name.contains(":") or new_name == "." or new_name == "..":
+		return tool_error("new_name is empty or contains a reserved path character")
+	var parent := node.get_parent()
+	if parent != null:
+		var collision := parent.get_node_or_null(NodePath(new_name))
+		if collision != null and collision != node:
+			return tool_error("a sibling already uses that name")
+	var old_name := node.name
+	if String(old_name) == new_name:
+		return {"ok": true, "path": relative_scene_path(node), "name": new_name, "unchanged": true}
+	var undo_redo := editor_interface.get_editor_undo_redo()
+	undo_redo.create_action("MCP: Rename Node")
+	undo_redo.add_do_property(node, "name", StringName(new_name))
+	undo_redo.add_undo_property(node, "name", old_name)
+	undo_redo.commit_action()
+	return {
+		"ok": true,
+		"old_name": String(old_name),
+		"new_name": new_name,
+		"undo_available": true,
+	}
+''',
+        "scripts/tools/scene/reparent_node_tool.gd": r'''@tool
+extends MCPTool
+
+
+func get_name() -> String:
+	return "reparent_node"
+
+
+func get_description() -> String:
+	return "Move a node under another node in the edited scene while preserving its order and owner for undo."
+
+
+func get_input_schema() -> Dictionary:
+	return {
+		"type": "object",
+		"properties": {
+			"node_path": {"type": "string", "description": "Path of the node to move from the edited scene root."},
+			"new_parent_path": {"type": "string", "description": "Path of the destination parent; use . for the scene root."},
+			"index": {"type": "integer", "description": "Optional child index at the destination; defaults to the end."},
+		},
+		"required": ["node_path", "new_parent_path"],
+		"additionalProperties": false,
+	}
+
+
+func execute(arguments: Dictionary) -> Dictionary:
+	var node := resolve_scene_node(String(arguments.get("node_path", ".")))
+	var new_parent := resolve_scene_node(String(arguments.get("new_parent_path", ".")))
+	if node == null or new_parent == null:
+		return tool_error("node or destination parent not found")
+	var root := get_edited_scene_root()
+	if node == root:
+		return tool_error("cannot reparent the scene root")
+	if node == new_parent or node.is_ancestor_of(new_parent):
+		return tool_error("cannot move a node beneath itself or one of its descendants")
+	var old_parent := node.get_parent()
+	if old_parent == null:
+		return tool_error("node has no current parent")
+	if new_parent == old_parent:
+		return tool_error("node is already under that parent; use the scene tree reorder action instead")
+	if new_parent != root and new_parent.owner != root:
+		return tool_error("destination must belong to the currently edited scene, not an instanced subscene")
+	var old_index := node.get_index()
+	var old_owner = node.owner
+	var new_index := clampi(int(arguments.get("index", new_parent.get_child_count())), 0, new_parent.get_child_count())
+	var undo_redo := editor_interface.get_editor_undo_redo()
+	undo_redo.create_action("MCP: Reparent Node")
+	undo_redo.add_do_method(old_parent, "remove_child", node)
+	undo_redo.add_do_method(new_parent, "add_child", node)
+	undo_redo.add_do_method(new_parent, "move_child", node, new_index)
+	undo_redo.add_do_method(node, "set_owner", old_owner)
+	undo_redo.add_undo_method(node, "set_owner", old_owner)
+	undo_redo.add_undo_method(old_parent, "move_child", node, old_index)
+	undo_redo.add_undo_method(old_parent, "add_child", node)
+	undo_redo.add_undo_method(new_parent, "remove_child", node)
+	undo_redo.commit_action()
+	return {
+		"ok": true,
+		"node_name": str(node.name),
+		"old_parent": str(old_parent.name),
+		"new_parent": str(new_parent.name),
+		"new_index": new_index,
+		"undo_available": true,
+	}
+''',
         "scripts/tools/editor/get_editor_state_tool.gd": r'''@tool
 extends MCPTool
 
@@ -562,6 +730,9 @@ func execute(arguments: Dictionary) -> Dictionary:
         registry,
         'const GetProjectInfoTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/get_project_info_tool.gd")\n',
         'const GetProjectInfoTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/get_project_info_tool.gd")\n'
+        'const DuplicateNodeTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/duplicate_node_tool.gd")\n'
+        'const RenameNodeTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/rename_node_tool.gd")\n'
+        'const ReparentNodeTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/reparent_node_tool.gd")\n'
         'const GetEditorStateTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/get_editor_state_tool.gd")\n'
         'const InspectEditorUITool := preload("res://addons/godot_mcp_android/scripts/tools/editor/inspect_editor_ui_tool.gd")\n'
         'const ActivateEditorUIControlTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/activate_editor_ui_control_tool.gd")\n'
@@ -574,6 +745,9 @@ func execute(arguments: Dictionary) -> Dictionary:
         registry,
         '\tregister(GetProjectInfoTool.new(editor_interface))\n',
         '\tregister(GetProjectInfoTool.new(editor_interface))\n'
+        '\tregister(DuplicateNodeTool.new(editor_interface))\n'
+        '\tregister(RenameNodeTool.new(editor_interface))\n'
+        '\tregister(ReparentNodeTool.new(editor_interface))\n'
         '\tregister(GetEditorStateTool.new(editor_interface))\n'
         '\tregister(InspectEditorUITool.new(editor_interface))\n'
         '\tregister(ActivateEditorUIControlTool.new(editor_interface))\n'
@@ -795,6 +969,9 @@ func execute(arguments: Dictionary) -> Dictionary:
         raise RuntimeError("unsafe tool registration detected")
 
     required_tool_registrations = (
+        "DuplicateNodeTool",
+        "RenameNodeTool",
+        "ReparentNodeTool",
         "GetEditorStateTool",
         "InspectEditorUITool",
         "ActivateEditorUIControlTool",
