@@ -22,7 +22,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: GeorgeMee/godot-mcp-android
-          ref: main
+          # Pin the reviewed upstream revision for reproducible packaging.
+          ref: 5df91076250ece38ab182b2ca8b8a4a5d9a2d938
           path: godot-mcp-android-source
       - name: Validate Python syntax
         run: python -m py_compile scripts/package_safe_mcp_android.py scripts/apply_github_import_patch.py
