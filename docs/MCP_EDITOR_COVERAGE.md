@@ -176,7 +176,7 @@ Two typed tools extend control from the edited scene into the actual running gam
 
 - This bridge is **source-added only**. Do not treat it as working until the packaging script, GDScript parser, MCP request/response exchange, and on-device runtime are tested.
 - The project must explicitly install the companion and run a game instance that loads the autoload. The bridge is not automatically present in every existing project.
-- The listener binds to loopback, not LAN/public interfaces. The editor-side MCP server is also expected to remain loopback-only.
+- The listener binds to loopback, not LAN/public interfaces, and requires a random token generated during installation. The editor-side MCP server is also expected to remain loopback-only. This is defense in depth, not a substitute for runtime testing.
 - A control path must be obtained from the running game's own scene tree; paths from `inspect_scene_ui_controls` refer to the edited scene and may differ at runtime.
 - Fullscreen is requested through the running game's `DisplayServer` window mode. Android window-manager behavior and embedded-preview behavior must be checked on the target device; do not claim fullscreen succeeded until the response and actual display are confirmed.
 - Input injection can exercise ordinary Godot UI/gameplay, but cannot promise to control arbitrary native Android dialogs, OS permission prompts, or external applications.
