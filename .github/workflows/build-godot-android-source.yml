@@ -35,6 +35,31 @@ jobs:
           ref: 4.7.2-stable
           path: godot-source
 
+      - name: Checkout reviewed public MCP addon
+        uses: actions/checkout@v4
+        with:
+          repository: GeorgeMee/godot-mcp-android
+          ref: 5df91076250ece38ab182b2ca8b8a4a5d9a2d938
+          path: godot-mcp-android-source
+
+      - name: Package and harden MCP addon
+        run: python scripts/package_safe_mcp_android.py
+
+      - name: Embed MCP addon source files in Android editor assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          ASSET_DIR="$GITHUB_WORKSPACE/godot-source/platform/android/java/editor/src/main/assets/mcp-addon"
+          mkdir -p "$ASSET_DIR"
+          cp -R "$GITHUB_WORKSPACE/dist/addons/godot_mcp_android/." "$ASSET_DIR/"
+          test -s "$ASSET_DIR/plugin.cfg"
+          test -s "$ASSET_DIR/scripts/protocol/mcp_tool_registry.gd"
+          if find "$ASSET_DIR" -name 'execute_script_tool.gd' -o -iname '*delete_project*' | grep -q .; then
+            echo "Unsafe MCP files found in Android assets."
+            exit 1
+          fi
+          echo "Embedded MCP addon files: $(find "$ASSET_DIR" -type f | wc -l)"
+
       - name: Apply GitHub import integration
         run: python "$GITHUB_WORKSPACE/scripts/apply_github_import_patch.py"
 
@@ -116,6 +141,23 @@ jobs:
 
           echo "=== Verify ZIP alignment ==="
           "$ZIPALIGN" -c -v 4 "$APK"
+
+          echo "=== Verify hardened MCP addon is embedded in the final APK ==="
+          unzip -Z1 "$APK" | grep -Fx 'assets/mcp-addon/plugin.cfg'
+          unzip -Z1 "$APK" | grep -Fx 'assets/mcp-addon/scripts/protocol/mcp_tool_registry.gd'
+          EMBEDDED_REGISTRY="$(unzip -p "$APK" assets/mcp-addon/scripts/protocol/mcp_tool_registry.gd)"
+          if grep -q 'ExecuteScriptTool\|delete_project' <<< "$EMBEDDED_REGISTRY"; then
+            echo "ERROR: unsafe MCP tool registration found inside APK."
+            exit 1
+          fi
+          EMBEDDED_HTTP="$(unzip -p "$APK" assets/mcp-addon/scripts/server/mcp_http_server.gd)"
+          EMBEDDED_WS="$(unzip -p "$APK" assets/mcp-addon/scripts/server/mcp_websocket_server.gd)"
+          grep -Fq 'bind_host = "127.0.0.1"' <<< "$EMBEDDED_HTTP"
+          grep -Fq 'bind_host = "127.0.0.1"' <<< "$EMBEDDED_WS"
+          if grep -Fq 'Access-Control-Allow-Origin: *' <<< "$EMBEDDED_HTTP"; then
+            echo "ERROR: wildcard CORS found inside APK."
+            exit 1
+          fi
 
       - name: Upload ARM64-only Android editor APK
         if: always() && inputs.run_type == 'full-android-build'
