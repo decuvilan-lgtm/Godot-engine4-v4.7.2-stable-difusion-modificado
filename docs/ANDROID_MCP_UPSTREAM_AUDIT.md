@@ -115,3 +115,10 @@ The previously pending full Android build has now completed successfully: [run 3
 - Package ID: `org.godotengine.editor.v4.debug.prilcustom`.
 - The APK contains the MCP addon files and ZIP bundle, and CI checks enforce loopback listeners, no wildcard CORS, and no generic expression-execution or project-deletion tool registration.
 - These results establish a source-built, signed dual-ABI artifact—not successful installation or live MCP operation on a physical Android device. File write/edit recovery and runtime undo/redo remain open hardening tasks.
+
+
+## Source changes after the initial audit — 2026-10-22, validation pending
+
+The packaging script now creates and registers five more typed tools: `get_editor_state`, `open_scene`, `control_running_scene`, `get_node_properties`, and `create_resource`. They are designed to add editor-state inspection, scene opening/playback control, property reflection, and non-overwriting resource creation. The validation workflow now asserts that their scripts are present in the packaged ZIP and that each is registered.
+
+These changes have **not been tested by running the packaging workflow or the Godot headless parser**. The tools must not be counted as runtime-verified until those checks pass. Even if they pass, the MCP still exposes only a small subset of Godot's editor surfaces; the full coverage inventory remains the source of truth.
