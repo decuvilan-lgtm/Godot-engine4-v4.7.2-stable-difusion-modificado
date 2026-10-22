@@ -97,6 +97,11 @@ jobs:
                   assert path in names, f"missing packaged MCP tool: {path}"
                   assert registration in registry, f"tool not registered: {registration}"
               assert "execute_script_tool.gd" not in registry
+              run_scene = zf.read("addons/godot_mcp_android/scripts/tools/editor/run_scene_tool.gd").decode()
+              create_resource = zf.read("addons/godot_mcp_android/scripts/tools/resource/create_resource_tool.gd").decode()
+              assert "the project has no main scene configured" in run_scene
+              assert "FileAccess.file_exists(resource_path)" in create_resource
+              assert "ResourceSaver.save" in create_resource
               set_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/set_node_property_tool.gd").decode()
               remove_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/remove_node_tool.gd").decode()
               http = zf.read("addons/godot_mcp_android/scripts/server/mcp_http_server.gd").decode()
