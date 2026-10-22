@@ -1,4 +1,4 @@
-# Godot 4.7.2 Android Editor — GitHub import (ARM64)
+# Godot 4.7.2 Android Editor — GitHub import (ARM32 + ARM64)
 
 ## Actual objective
 
@@ -33,12 +33,12 @@ The `full-android-build` job:
 1. Checks out the repository and official Godot 4.7.2 source.
 2. Applies the GitHub import patch.
 3. Sets up Java 17, Python, SCons and the Android Swappy dependency.
-4. Compiles the Android editor native engine for `arm64` only, with `generate_android_binaries=yes` so SCons emits the native editor binaries required by the APK.
+4. Compiles the Android editor native engine for both `arm32` (`armeabi-v7a`) and `arm64` (`arm64-v8a`), passing `generate_android_binaries=yes` to the final architecture build so Godot packages both native ABIs.
 5. Runs Gradle's `generateGodotEditor` task without `clean`, preserving the binaries produced by SCons.
 6. Packages the editor APK from Godot's documented output location: `godot-source/bin/android_editor_builds/android_editor-android-debug.apk`.
 7. Refuses to publish the APK if the expected full-editor APK is missing or smaller than 50 MB. This guard exists because run 29 accidentally staged a roughly 13 MB APK from a Gradle intermediate output directory.
-8. Verifies ZIP integrity, checks `aapt dump badging` reports exactly `arm64-v8a`, verifies APK signature and ZIP alignment, and records SHA-256.
-9. Uploads `godot-editor-arm64.apk` and `apk-badging.txt` as the `godot-4.7.2-android-editor-arm64-only` artifact.
+8. Verifies ZIP integrity, checks `aapt dump badging` reports exactly both `armeabi-v7a` and `arm64-v8a`, verifies APK signature and ZIP alignment, and records SHA-256.
+9. Uploads the combined `godot-editor-arm32-arm64.apk` and `apk-badging.txt` as the `godot-4.7.2-android-editor-arm32-arm64` artifact.
 
 The separate `validate-import-only` option checks the patcher's Python syntax and applies it to a clean upstream source checkout. It does not build an APK or test the runtime UI.
 
@@ -153,15 +153,15 @@ The synchronizer should handle large change sets without treating each file as a
 - Android storage permissions and scoped-storage behavior must be verified. Let users select writable local destinations and rescue locations; do not assume every arbitrary device folder is accessible.
 - Repository identity, branch, destination path, rescue path, and manifest must be stored independently for each configured repository.
 
-## Planned Android ABI support: ARM32 and ARM64
+## Android ABI support: ARM32 and ARM64
 
-**Goal: provide compatible editor builds for both 32-bit ARM and 64-bit ARM Android devices. This is not implemented or verified yet.**
+**Required target:** one combined Android editor APK that supports both `armeabi-v7a` (ARM32) for older/32-bit devices and `arm64-v8a` (ARM64) for newer devices.
 
-- The current workflow builds an ARM64-only APK with `arm64-v8a`; it is not an ARM32 build.
-- Investigate whether the official Godot 4.7.2 Android **editor** and its native dependencies can be built and packaged for `arm32` / `armeabi-v7a`. Do not assume editor support just because exporting 32-bit Android games is supported.
-- If supported, build and validate separate ARM32 and ARM64 editor APK artifacts, or a combined APK only if Godot's packaging and dependency setup supports it reliably. Separate APKs are easier to validate and avoid unnecessary package size.
-- Validate each artifact's native ABI metadata, ZIP integrity, signature, size, and installation/launch on a matching physical device or emulator.
-- Keep ARM64 support intact while investigating ARM32. Do not label an artifact ARM32-compatible until its ABI metadata and installation have been verified.
+- The earlier workflow and Run 40 artifact were ARM64-only and did not meet this requirement.
+- The build workflow has now been changed to compile the Android editor for `arm32` first and `arm64` second, then generate the combined APK from both architecture builds.
+- The updated validation requires the APK's native ABI metadata to contain exactly both `armeabi-v7a` and `arm64-v8a`; an ARM64-only artifact must fail validation.
+- **Pending verification:** the new workflow run must complete, the APK must pass ABI/signature/integrity checks, and installation/launch must be tested on real devices. Do not call the dual-ABI build successful until those checks pass.
+- Keep both ABIs enabled in future builds. Do not silently revert to ARM64-only packaging.
 
 ## Known scope and next verification
 
