@@ -78,6 +78,35 @@ All rows start as **planned / not audited** until source inspection and tests es
 - Packaging/CI success, APK build success, addon installation, and live MCP functionality are separate test claims and must be reported separately.
 
 
+## Generic editor UI bridge — source added, not yet validated
+
+Two additional tools are now generated and registered by the packaging script:
+
+| Tool | Intended coverage | Current status |
+|---|---|---|
+| `inspect_editor_ui` | Enumerate editor controls and their paths, labels, classes, visibility, disabled state, tab titles, and open-menu entries | Source added; parser/runtime test pending |
+| `activate_editor_ui_control` | Activate an exact visible button or a specific item in an open PopupMenu, enabling UI-level navigation where no dedicated typed action exists | Source added; parser/runtime test pending |
+
+This is a **generic UI bridge**, not proof that every Godot action is accessible. It deliberately blocks project deletion/removal, requires explicit confirmation for potentially destructive labels, and currently activates buttons and open PopupMenu items only. More control types and dialogs may need dedicated adapters. It must be checked on the actual Android editor because some internal controls may be hidden, dynamically created, or inaccessible through the public editor tree.
+
+## Required breadth-first expansion plan
+
+The target is comprehensive coverage of every usable editor surface, including rare/obscure options. Work through these families rather than stopping at the current tool list:
+
+1. **Navigation and menus:** main menus, submenus, context menus, toolbar controls, command palette, keyboard shortcuts, visible dock/tab selection, modal dialogs, and focus/navigation.
+2. **Workspace/layout:** switch 2D/3D/Script/AssetLib screens where available; show/hide, select, and rearrange docks; restore/save layouts; inspect editor settings and shortcuts.
+3. **Scene structure:** create/open/save/duplicate/rename scenes; add, instance, duplicate, rename, reparent, group, reorder, and safely remove nodes; ownership, editable children, signals, groups, and undo/redo.
+4. **Inspector and resources:** read/write all supported Variant types; nested resources, arrays/dictionaries, metadata, resource creation, resource editors, property revert and context actions.
+5. **Scripts and files:** editor tab management, code navigation, search/replace, diagnostics, breakpoints, file operations, import/reimport and dependency inspection.
+6. **Bottom panels and diagnostics:** Output with detailed logs, Debugger errors/warnings/stack traces, breakpoints, remote scene/tree, monitors, profiler, audio panel, animation panel, and every other panel in the target build.
+7. **Specialized editors:** 2D/3D viewport tools, animation/timeline, TileMap/TileSet, shaders, materials, themes, audio buses, particles, navigation, physics, skeletons, terrain, multiplayer, XR, and installed plugin UIs.
+8. **Project-wide workflows:** Project/Editor Settings, input map, localization, export presets and platform options, version-control UI, Android-specific import/export and permissions.
+9. **Long-tail/obscure options:** inventory every remaining menu item, toggle, checkbox, spin box, option button, tree, list, tab, popup, dialog, context action, and shortcut. Do not dismiss an action as useless or too minor to implement.
+
+Every surface must ultimately have an explicit status and evidence. Prefer typed editor APIs; use the UI bridge for navigation and controls without a suitable API; add specialized adapters for complex editors. No arbitrary GDScript/eval escape hatch and no project-root deletion.
+
+`inspect_editor_ui` and `activate_editor_ui_control` are source-level changes only. No packaging, parser, CI, APK build, or device test has been run for this addition.
+
 ## Latest source-level MCP expansion — not yet validated
 
 The packaging script now generates and registers five additional typed tools:
