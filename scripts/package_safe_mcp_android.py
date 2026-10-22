@@ -1013,6 +1013,8 @@ func execute(arguments: Dictionary) -> Dictionary:
             raise RuntimeError(f"{tool_name} is missing undo/redo safeguards")
     if "is_ancestor_of(new_parent)" not in (ADDON_OUT / "scripts/tools/scene/reparent_node_tool.gd").read_text(encoding="utf-8"):
         raise RuntimeError("reparent_node is missing cycle prevention")
+    if "_set_owner_recursive" not in (ADDON_OUT / "scripts/tools/scene/duplicate_node_tool.gd").read_text(encoding="utf-8"):
+        raise RuntimeError("duplicate_node must preserve scene ownership in descendant nodes")
 
     open_scene = (ADDON_OUT / "scripts/tools/editor/open_scene_tool.gd").read_text(encoding="utf-8")
     run_scene = (ADDON_OUT / "scripts/tools/editor/run_scene_tool.gd").read_text(encoding="utf-8")
