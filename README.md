@@ -394,7 +394,7 @@ The five new tools are source changes only. They have not been run through the p
 
 The package generator now creates two additional tools:
 
-- `inspect_editor_ui`: lists live editor controls with exact paths, classes, labels, visibility, disabled state, tab titles, and entries in open popup menus.
+- `inspect_editor_ui`: lists live editor controls with exact paths, classes, labels, visibility, disabled state, tab titles, form values, and entries in open popup menus; long text previews are capped and secret LineEdit values are redacted.
 - `activate_editor_ui_control`: activates an exact visible button or an item in an already-open `PopupMenu`, enabling navigation through UI options where Godot has no dedicated typed MCP operation.
 
 This is a first bridge toward navigating the main toolbar, menus, docks, tabs, Output/Debugger panels, and less-used options. It does not yet prove every UI action is accessible, and complex controls (trees, inspectors, viewport tools, custom dialogs, plugin UI) will need more adapters. Project deletion/removal remains blocked; potentially destructive labels require an explicit confirmation flag. The unrestricted GDScript execution tool remains disabled.
