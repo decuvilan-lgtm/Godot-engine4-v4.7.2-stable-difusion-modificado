@@ -3,7 +3,7 @@
 ## Current verified status — 2026-10-22 (supersedes older “not yet tested” notes below)
 
 Work branch: `feature/github-sync-and-safe-mcp`  
-Latest source commit at the time of this update: `9731955a628fee0d38fee7ef8237c40549245853`.
+Feature-source commit validated by run 115: `9731955a628fee0d38fee7ef8237c40549245853`. README status update commit: `718f14862ff130b82075ff9b9ecfe7ac083a9ca6`.
 
 ### Latest automated validation
 
