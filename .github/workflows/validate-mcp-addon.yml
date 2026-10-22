@@ -123,7 +123,7 @@ jobs:
               inspect_ui = zf.read("addons/godot_mcp_android/scripts/tools/editor/inspect_editor_ui_tool.gd").decode()
               activate_ui = zf.read("addons/godot_mcp_android/scripts/tools/editor/activate_editor_ui_control_tool.gd").decode()
               assert "get_path_to(control)" in inspect_ui
-              assert "activate_item(index)" in activate_ui
+              assert "menu.activate_item(menu_index)" in activate_ui
               assert "tabs.current_tab = tab_index" in activate_ui
               assert "options.select(option_index)" in activate_ui
               assert "text_value" in activate_ui and "numeric_value" in activate_ui
