@@ -22,10 +22,10 @@ replace_once(HEADER,
     "class HFlowContainer;\nclass HTTPRequest;\nclass LineEdit;\nclass OptionButton;")
 replace_once(HEADER,
     "ProjectDialog *project_dialog = nullptr;",
-    "ProjectDialog *project_dialog = nullptr;\n\tConfirmationDialog *github_import_dialog = nullptr;\n\tLineEdit *github_repo_url = nullptr;\n\tHTTPRequest *github_http_request = nullptr;\n\tHTTPRequest *github_search_request = nullptr;\n\tConfirmationDialog *github_results_dialog = nullptr;\n\tOptionButton *github_repo_results = nullptr;\n\tString github_zip_path;\n\tString github_repo_name;\n\tConfirmationDialog *mcp_install_dialog = nullptr;")
+    "ProjectDialog *project_dialog = nullptr;\n\tConfirmationDialog *github_import_dialog = nullptr;\n\tLineEdit *github_repo_url = nullptr;\n\tHTTPRequest *github_http_request = nullptr;\n\tHTTPRequest *github_search_request = nullptr;\n\tConfirmationDialog *github_results_dialog = nullptr;\n\tOptionButton *github_repo_results = nullptr;\n\tString github_zip_path;\n\tString github_repo_name;\n\tString github_search_query;\n\tint github_search_page = 1;\n\tint github_search_total_count = 0;\n\tButton *github_search_more_btn = nullptr;\n\tConfirmationDialog *mcp_install_dialog = nullptr;")
 replace_once(HEADER,
     "\tvoid _import_project();\n\tvoid _new_project();",
-    "\tvoid _import_project();\n\tvoid _show_github_import_dialog();\n\tvoid _github_import_confirmed();\n\tvoid _github_search_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n\tvoid _github_search_result_confirmed();\n\tvoid _github_download_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n\tvoid _show_mcp_install_dialog();\n\tvoid _install_mcp_addon_confirmed();\n\tvoid _new_project();")
+    "\tvoid _import_project();\n\tvoid _show_github_import_dialog();\n\tvoid _github_import_confirmed();\n\tvoid _github_start_search(int p_page);\n\tvoid _github_search_next_page();\n\tvoid _github_search_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n\tvoid _github_search_result_confirmed();\n\tvoid _github_download_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n\tvoid _show_mcp_install_dialog();\n\tvoid _install_mcp_addon_confirmed();\n\tvoid _new_project();")
 replace_once(SOURCE,
     '#include "scene/gui/separator.h"\n#include "scene/main/scene_tree.h"',
     '#include "core/io/json.h"\n#include "scene/gui/separator.h"\n#include "scene/main/http_request.h"\n#include "scene/main/scene_tree.h"\n#include "platform/android/file_access_android.h"\n#include "modules/zip/zip_reader.h"')
@@ -73,6 +73,10 @@ void ProjectManager::_show_github_import_dialog() {
 \t\tresults_container->add_child(results_help);
 \t\tgithub_repo_results = memnew(OptionButton);
 \t\tresults_container->add_child(github_repo_results);
+\t\tgithub_search_more_btn = memnew(Button);
+\t\tgithub_search_more_btn->set_text(TTRC(\"Recargar siguientes 20\"));
+\t\tgithub_search_more_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_github_search_next_page));
+\t\tresults_container->add_child(github_search_more_btn);
 \t\tgithub_results_dialog->add_child(results_container);
 \t\tadd_child(github_results_dialog);
 \t\tgithub_results_dialog->connect("confirmed", callable_mp(this, &ProjectManager::_github_search_result_confirmed));
@@ -111,20 +115,10 @@ void ProjectManager::_github_import_confirmed() {
 			_show_error(TTR("A GitHub search is already in progress."));
 			return;
 		}
-		github_search_request = memnew(HTTPRequest);
-		github_search_request->set_timeout(30.0);
-		add_child(github_search_request);
-		github_search_request->connect("request_completed", callable_mp(this, &ProjectManager::_github_search_completed));
-		PackedStringArray search_headers;
-		search_headers.push_back("Accept: application/vnd.github+json");
-		search_headers.push_back("User-Agent: Godot-Project-Manager");
-		String search_url = "https://api.github.com/search/repositories?q=" + repository.uri_encode() + "&sort=stars&order=desc&per_page=20";
-		Error search_error = github_search_request->request(search_url, search_headers);
-		if (search_error != OK) {
-			github_search_request->queue_free();
-			github_search_request = nullptr;
-			_show_error(TTR("Could not start GitHub repository search. Check your internet connection."));
-		}
+		github_search_query = repository;
+		github_search_page = 1;
+		github_search_total_count = 0;
+		_github_start_search(1);
 		return;
 	}
 
@@ -173,21 +167,61 @@ void ProjectManager::_github_import_confirmed() {
 \t}
 }
 
+void ProjectManager::_github_start_search(int p_page) {
+	if (github_search_request) {
+		return;
+	}
+	github_search_page = CLAMP(p_page, 1, 5); // GitHub repository search exposes at most 100 results.
+	github_search_request = memnew(HTTPRequest);
+	github_search_request->set_timeout(30.0);
+	add_child(github_search_request);
+	github_search_request->connect("request_completed", callable_mp(this, &ProjectManager::_github_search_completed));
+	PackedStringArray search_headers;
+	search_headers.push_back("Accept: application/vnd.github+json");
+	search_headers.push_back("User-Agent: Godot-Project-Manager");
+	String search_url = "https://api.github.com/search/repositories?q=" + github_search_query.uri_encode() + "&sort=stars&order=desc&per_page=20&page=" + itos(github_search_page);
+	if (github_search_more_btn) {
+		github_search_more_btn->set_disabled(true);
+	}
+	Error search_error = github_search_request->request(search_url, search_headers);
+	if (search_error != OK) {
+		github_search_request->queue_free();
+		github_search_request = nullptr;
+		if (github_search_more_btn) {
+			github_search_more_btn->set_disabled(false);
+		}
+		_show_error(TTR("Could not start GitHub repository search. Check your internet connection."));
+	}
+}
+
+void ProjectManager::_github_search_next_page() {
+	if (github_search_request || github_search_query.is_empty()) {
+		return;
+	}
+	const int max_page = MIN(5, MAX(1, (github_search_total_count + 19) / 20));
+	const int next_page = github_search_page >= max_page ? 1 : github_search_page + 1;
+	_github_start_search(next_page);
+}
+
 void ProjectManager::_github_search_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body) {
 	if (github_search_request) {
 		github_search_request->queue_free();
 		github_search_request = nullptr;
 	}
+	if (github_search_more_btn) {
+		github_search_more_btn->set_disabled(false);
+	}
 	if (p_result != HTTPRequest::RESULT_SUCCESS || p_response_code != 200) {
 		_show_error(vformat(TTR("GitHub search failed (HTTP %d). Check your connection or try a more specific query."), p_response_code));
 		return;
 	}
-	Variant parsed = JSON::parse_string(String::utf8(p_body.ptr(), p_body.size()));
+	Variant parsed = JSON::parse_string(String::utf8((const char *)p_body.ptr(), p_body.size()));
 	if (parsed.get_type() != Variant::DICTIONARY) {
 		_show_error(TTR("GitHub returned an invalid search response."));
 		return;
 	}
 	Dictionary response = parsed;
+	github_search_total_count = int(response.get("total_count", 0));
 	Array items = response.get("items", Array());
 	github_repo_results->clear();
 	int added = 0;
@@ -205,8 +239,17 @@ void ProjectManager::_github_search_completed(int p_result, int p_response_code,
 		added++;
 	}
 	if (added == 0) {
+		if (github_search_page > 1 && github_search_total_count > 0) {
+			github_search_page = 1;
+			_github_start_search(1);
+			return;
+		}
 		_show_error(TTR("No public repositories matched that search. Try another name or owner."));
 		return;
+	}
+	const int max_page = MIN(5, MAX(1, (github_search_total_count + 19) / 20));
+	if (github_search_more_btn) {
+		github_search_more_btn->set_text(github_search_page >= max_page ? TTR("Volver a los primeros 20") : TTR("Recargar siguientes 20"));
 	}
 	github_results_dialog->popup_centered(Size2i(560 * EDSCALE, 0));
 }
