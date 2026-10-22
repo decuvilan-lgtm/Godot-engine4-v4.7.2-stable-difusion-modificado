@@ -1565,7 +1565,7 @@ func get_input_schema() -> Dictionary:
 			"shift": {"type": "boolean"},
 			"ctrl": {"type": "boolean"},
 			"alt": {"type": "boolean"},
-			"unicode": {"type": "integer}
+			"unicode": {"type": "integer"}
 		},
 		"required": ["action"],
 		"additionalProperties": false,
@@ -1641,6 +1641,8 @@ func execute(arguments: Dictionary) -> Dictionary:
         'const RunSceneTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/run_scene_tool.gd")\n'
         'const GetNodePropertiesTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/get_node_properties_tool.gd")\n'
         'const CreateResourceTool := preload("res://addons/godot_mcp_android/scripts/tools/resource/create_resource_tool.gd")\n',
+        'const InstallRuntimeGameBridgeTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/install_runtime_game_bridge_tool.gd")\n'
+        'const ControlRuntimeGameTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/control_runtime_game_tool.gd")\n',
     )
     replace_once(
         registry,
@@ -1663,6 +1665,8 @@ func execute(arguments: Dictionary) -> Dictionary:
         '\tregister(RunSceneTool.new(editor_interface))\n'
         '\tregister(GetNodePropertiesTool.new(editor_interface))\n'
         '\tregister(CreateResourceTool.new(editor_interface))\n',
+        '\tregister(InstallRuntimeGameBridgeTool.new(editor_interface))\n'
+        '\tregister(ControlRuntimeGameTool.new(editor_interface))\n',
     )
 
     # Before replacing an existing project file, preserve its prior UTF-8 contents.
@@ -1894,6 +1898,8 @@ func execute(arguments: Dictionary) -> Dictionary:
         "RunSceneTool",
         "GetNodePropertiesTool",
         "CreateResourceTool",
+        "InstallRuntimeGameBridgeTool",
+        "ControlRuntimeGameTool",
     )
     for registration in required_tool_registrations:
         if registration not in registry_text:
@@ -1965,6 +1971,15 @@ func execute(arguments: Dictionary) -> Dictionary:
         raise RuntimeError("create_resource must refuse overwrite and save via ResourceSaver")
     if "var class_name :=" in create_resource:
         raise RuntimeError("create_resource uses a reserved GDScript identifier")
+    runtime_installer = (ADDON_OUT / "scripts/tools/editor/install_runtime_game_bridge_tool.gd").read_text(encoding="utf-8")
+    runtime_controller = (ADDON_OUT / "scripts/tools/editor/control_runtime_game_tool.gd").read_text(encoding="utf-8")
+    if "BRIDGE_SOURCE" not in runtime_installer or "37843" not in runtime_installer or "project.godot" not in runtime_installer:
+        raise RuntimeError("runtime bridge installer is missing project setup and backup handling")
+    for runtime_action in ["inspect_controls", "click_control", "fullscreen", "windowed", "toggle_fullscreen"]:
+        if runtime_action not in runtime_installer or runtime_action not in runtime_controller:
+            raise RuntimeError(f"runtime game bridge is missing action {runtime_action}")
+    if "127.0.0.1" not in runtime_installer or "127.0.0.1" not in runtime_controller:
+        raise RuntimeError("runtime bridge must use loopback-only communication")
     set_node_tool = (ADDON_OUT / "scripts/tools/scene/set_node_property_tool.gd").read_text(encoding="utf-8")
     remove_node_tool = (ADDON_OUT / "scripts/tools/scene/remove_node_tool.gd").read_text(encoding="utf-8")
     if "get_editor_undo_redo()" not in set_node_tool or "add_undo_property" not in set_node_tool:
