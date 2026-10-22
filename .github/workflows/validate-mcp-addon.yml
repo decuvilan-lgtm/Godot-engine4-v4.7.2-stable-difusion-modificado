@@ -94,6 +94,7 @@ jobs:
                   "addons/godot_mcp_android/scripts/tools/resource/create_resource_tool.gd": "CreateResourceTool",
                   "addons/godot_mcp_android/scripts/tools/editor/inspect_editor_ui_tool.gd": "InspectEditorUITool",
                   "addons/godot_mcp_android/scripts/tools/editor/activate_editor_ui_control_tool.gd": "ActivateEditorUIControlTool",
+                  "addons/godot_mcp_android/scripts/tools/editor/send_editor_viewport_input_tool.gd": "SendEditorViewportInputTool",
                   "addons/godot_mcp_android/scripts/tools/scene/duplicate_node_tool.gd": "DuplicateNodeTool",
                   "addons/godot_mcp_android/scripts/tools/scene/rename_node_tool.gd": "RenameNodeTool",
                   "addons/godot_mcp_android/scripts/tools/scene/reparent_node_tool.gd": "ReparentNodeTool",
@@ -120,6 +121,9 @@ jobs:
               assert "control is Range" in activate_ui
               assert "control is TextEdit" in activate_ui
               assert '"focus"' in activate_ui
+              viewport_input = zf.read("addons/godot_mcp_android/scripts/tools/editor/send_editor_viewport_input_tool.gd").decode()
+              assert "SubViewportContainer" in viewport_input and "viewport.push_input(event, true)" in viewport_input
+              assert "separate external game process" in viewport_input
               duplicate_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/duplicate_node_tool.gd").decode()
               rename_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/rename_node_tool.gd").decode()
               reparent_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/reparent_node_tool.gd").decode()
