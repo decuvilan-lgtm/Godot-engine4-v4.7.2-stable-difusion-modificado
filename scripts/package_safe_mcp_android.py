@@ -1801,7 +1801,7 @@ func execute(arguments: Dictionary) -> Dictionary:
         '\tregister(OpenSceneTool.new(editor_interface))\n'
         '\tregister(RunSceneTool.new(editor_interface))\n'
         '\tregister(GetNodePropertiesTool.new(editor_interface))\n'
-        '\tregister(CreateResourceTool.new(editor_interface))\n',
+        '\tregister(CreateResourceTool.new(editor_interface))\n'
         '\tregister(InstallRuntimeGameBridgeTool.new(editor_interface))\n'
         '\tregister(ControlRuntimeGameTool.new(editor_interface))\n',
     )
