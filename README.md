@@ -320,3 +320,15 @@ The first retry of the packaging validation correctly exposed a stale assertion 
 ### Asset reader follow-up
 
 The initial `Ref<FileAccess>` retry still routed the ZIP name through Godot's normal resource-path factory, which was not appropriate for the raw APK asset namespace. The installer now explicitly uses `FileAccessAndroid::open_internal("mcp-addon.zip", FileAccess::READ)` to access Android's AssetManager. The copy loop is bounded by the asset's declared length, preventing a possible zero-byte EOF loop on an exact 16 KiB multiple and treating short reads as errors. Validation assertions were updated to cover the direct AssetManager path and bounded read loop. Latest source commit for this fix: `85ce3504316778bc7104e78f619c20a80ab99be5`; validation update commit: `7bbff02fc506dbd3755daa433ef6b5e878265cc9`. A fresh full Android build and validation are still pending.
+
+
+### Run 40 — [39805117373](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39805117373)
+
+- **Result: success** (completed 2026-10-22 at 16:02 UTC).
+- Full Android editor build and safe MCP addon packaging completed successfully.
+- Final APK size: 179,500,681 bytes (about 171.2 MiB); artifact ZIP: about 84 MiB.
+- APK checks passed: ZIP integrity, Android APK signature verification, ZIP alignment, ARM64-only ABI, and embedded MCP bundle checks.
+- The package ID is now unique to this custom build: `org.godotengine.editor.v4.debug.prilcustom`. This avoids colliding with the standard Godot 4 debug editor package; it does not by itself resolve every possible Android installer failure.
+- Signing certificate SHA-256: `217fdedb7f49b0b9018cb23de327099b38e4db319456ab6529096b224e970d5c`. Debug signing can still differ between CI runs, so do not assume an existing install can be upgraded in place.
+- **Not yet proven:** installation or launch on the user's LG K51 / Android 11, or runtime installation and activation of MCP inside a project.
+- Artifact: [godot-4.7.2-android-editor-arm64-only](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39805117373).
