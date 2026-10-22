@@ -341,3 +341,17 @@ The initial `Ref<FileAccess>` retry still routed the ZIP name through Godot's no
 - The separate safe MCP validation run [39813174855](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39813174855) completed successfully, including headless addon loading and packaging assertions.
 - **Do not treat this run as a dual-ABI APK success until the build finishes and the final APK validation step passes.** No on-device installation or live MCP transport test has been demonstrated.
 - The earlier Run 40 APK remains ARM64-only and is not the corrected deliverable.
+
+
+### Run 41 — final result verified (2026-10-22)
+
+- **Result: success.** [GitHub Actions run 39813174735](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39813174735) completed successfully.
+- Downloadable artifact: [godot-4.7.2-android-editor-arm32-arm64](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39813174735/artifacts/12444807436) (artifact ID `12444807436`, ZIP size 174,784,829 bytes; expires 2026-11-21).
+- Downloaded and inspected the actual artifact ZIP. It contains `godot-editor-arm32-arm64.apk` and `apk-badging.txt`. Artifact ZIP SHA-256: `09a298d4a86582ba4fee733ee2a3785ee5f944cfbf0ea55e3bdeec8b383a2e51`.
+- APK size: 359,323,029 bytes. APK SHA-256 from the build log: `8ab4089907fc6aaed3eb62e6794bf4287e3cc3f4ce9f50389db3fd4f8573b06f`.
+- Verified native ABIs in APK metadata and ZIP entries: `armeabi-v7a` and `arm64-v8a`. APK ZIP integrity passed.
+- Android package ID: `org.godotengine.editor.v4.debug.prilcustom`; version name: `4.7.2.stable`.
+- APK signature verification passed with APK Signature Scheme v2; ZIP alignment check passed.
+- MCP payload is present in the APK: `assets/mcp-addon/plugin.cfg`, `assets/mcp-addon/scripts/protocol/mcp_tool_registry.gd`, and `assets/mcp-addon.zip`. The build checks also confirmed loopback-only HTTP/WebSocket bind addresses and rejected wildcard CORS and the generic script-evaluation/project-deletion tool registrations.
+- Separate MCP validation [run 39813174855](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39813174855) also passed.
+- **Still unverified:** installation/launch on the LG K51 (Android 11), successful in-app MCP addon installation, undo/redo behavior on device, and a real MCP client round-trip. A successful CI build is not a device test.
