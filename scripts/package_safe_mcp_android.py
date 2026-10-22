@@ -1364,6 +1364,14 @@ func _handle_request(request: Dictionary) -> Dictionary:
 			return {"ok": true, "count": controls.size(), "controls": controls, "scene": root.scene_file_path}
 		"click_control":
 			return _click_control(String(request.get("node_path", "")))
+		"set_text":
+			return _set_control_text(String(request.get("node_path", "")), String(request.get("text", "")))
+		"set_value":
+			return _set_control_value(String(request.get("node_path", "")), float(request.get("value", 0.0)))
+		"set_checked":
+			return _set_control_checked(String(request.get("node_path", "")), bool(request.get("checked", false)))
+		"select_option":
+			return _select_control_option(String(request.get("node_path", "")), int(request.get("index", -1)))
 		"mouse_click":
 			var position := Vector2(float(request.get("x", 0.0)), float(request.get("y", 0.0)))
 			var button := int(request.get("button_index", 1))
@@ -1452,6 +1460,74 @@ func _click_control(node_path: String) -> Dictionary:
 	var center := control.get_global_rect().get_center()
 	_send_mouse_click(center, MOUSE_BUTTON_LEFT)
 	return {"ok": true, "action": "click_control", "path": node_path, "position": center}
+
+
+func _set_control_text(node_path: String, value: String) -> Dictionary:
+	var target := _get_live_control(node_path)
+	if target == null:
+		return {"ok": false, "error": "Control path not found"}
+	if target is LineEdit:
+		(target as LineEdit).text = value
+	elif target is TextEdit:
+		(target as TextEdit).text = value
+	else:
+		return {"ok": false, "error": "Control is not a LineEdit or TextEdit"}
+	return {"ok": true, "action": "set_text", "path": node_path}
+
+
+func _set_control_value(node_path: String, value: float) -> Dictionary:
+	var target := _get_live_control(node_path)
+	if target == null:
+		return {"ok": false, "error": "Control path not found"}
+	if not target is Range:
+		return {"ok": false, "error": "Control is not a Range"}
+	var range_control := target as Range
+	range_control.value = clampf(value, range_control.min_value, range_control.max_value)
+	return {"ok": true, "action": "set_value", "path": node_path, "value": range_control.value}
+
+
+func _set_control_checked(node_path: String, checked: bool) -> Dictionary:
+	var target := _get_live_control(node_path)
+	if target == null:
+		return {"ok": false, "error": "Control path not found"}
+	if not target is BaseButton:
+		return {"ok": false, "error": "Control is not a button or checkbox"}
+	var button := target as BaseButton
+	if button.disabled:
+		return {"ok": false, "error": "Control is disabled"}
+	if not button.toggle_mode and not (button is CheckBox or button is CheckButton):
+		return {"ok": false, "error": "Control is not toggleable"}
+	button.button_pressed = checked
+	return {"ok": true, "action": "set_checked", "path": node_path, "checked": button.button_pressed}
+
+
+func _select_control_option(node_path: String, index: int) -> Dictionary:
+	var target := _get_live_control(node_path)
+	if target == null:
+		return {"ok": false, "error": "Control path not found"}
+	if not target is OptionButton:
+		return {"ok": false, "error": "Control is not an OptionButton"}
+	var options := target as OptionButton
+	if index < 0 or index >= options.get_item_count():
+		return {"ok": false, "error": "option index is out of range"}
+	if not options.is_item_enabled(index):
+		return {"ok": false, "error": "option is disabled"}
+	options.select(index)
+	options.item_selected.emit(index)
+	return {"ok": true, "action": "select_option", "path": node_path, "index": index, "text": options.get_item_text(index)}
+
+
+func _get_live_control(node_path: String) -> Control:
+	var root := get_tree().current_scene
+	if root == null or node_path.strip_edges() == "":
+		return null
+	var target := root.get_node_or_null(NodePath(node_path))
+	if target == null or not target is Control:
+		return null
+	var control := target as Control
+	if not control.is_visible_in_tree():
+		return null
+	return control
 
 
 func _send_mouse_click(position: Vector2, button_index: int) -> void:
@@ -1558,10 +1634,14 @@ func get_input_schema() -> Dictionary:
 	return {
 		"type": "object",
 		"properties": {
-			"action": {"type": "string", "enum": ["status", "inspect_controls", "click_control", "mouse_click", "key", "fullscreen", "windowed", "toggle_fullscreen"]},
+			"action": {"type": "string", "enum": ["status", "inspect_controls", "click_control", "set_text", "set_value", "set_checked", "select_option", "mouse_click", "key", "fullscreen", "windowed", "toggle_fullscreen"]},
 			"filter": {"type": "string"},
 			"max_items": {"type": "integer"},
 			"node_path": {"type": "string"},
+			"text": {"type": "string"},
+			"value": {"type": "number"},
+			"checked": {"type": "boolean"},
+			"index": {"type": "integer"},
 			"x": {"type": "number"},
 			"y": {"type": "number"},
 			"button_index": {"type": "integer"},
