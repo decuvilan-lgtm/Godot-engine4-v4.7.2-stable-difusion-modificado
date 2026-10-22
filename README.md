@@ -386,3 +386,6 @@ I expanded the Android MCP packaging script with five additional typed tools: `g
 **This does not give an AI every Godot capability.** The MCP only exposes operations implemented as registered tools. It still lacks broad control of all menus, 2D/3D viewport actions, import/reimport, complete Inspector editing, animation and TileMap/TileSet editors, debugger/profilers, export presets, plugin-specific controls, and many dialogs. The full scope is tracked in [the MCP editor coverage inventory](docs/MCP_EDITOR_COVERAGE.md).
 
 The five new tools are source changes only. They have not been run through the packaging workflow, the Godot headless parser, an MCP client, or the Android device. No new build or validation was launched, per the integration pause.
+
+
+**Intended registered MCP tool count: 22** (source-derived and not yet runtime-confirmed). They cover connection/project info, editor state, scene tree and node edits, opening/running scenes, file search/read/write/edit, resource UID/validation/creation, filesystem scan, and editor logs. The unrestricted expression tool remains disabled. The number of tools is not the same as full Godot coverage: visual editor operations and many advanced workflows still require dedicated tools.
