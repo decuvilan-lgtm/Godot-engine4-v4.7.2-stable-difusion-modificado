@@ -159,6 +159,11 @@ func execute(arguments: Dictionary) -> Dictionary:
 				return tool_error("no scene is currently open")
 			editor_interface.play_current_scene()
 		"start_main":
+			var main_scene := String(ProjectSettings.get_setting("application/run/main_scene", ""))
+			if main_scene == "":
+				return tool_error("the project has no main scene configured")
+			if not FileAccess.file_exists(main_scene):
+				return tool_error("configured main scene does not exist: %s" % main_scene)
 			editor_interface.play_main_scene()
 		"stop":
 			editor_interface.stop_playing_scene()
