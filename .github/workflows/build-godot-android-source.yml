@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       run_type:
-        description: "Choose full Android build or validate the GitHub import integration only"
+        description: "Manual run: build and emulator-test the Android editor, or validate only the import patch"
         type: choice
         required: true
         default: full-android-build
@@ -13,7 +13,6 @@ on:
           - validate-import-only
   push:
     paths:
-      - ".github/workflows/build-godot-android-source.yml"
       - "patches/github-sync/**"
       - "scripts/apply_github_import_patch.py"
 
