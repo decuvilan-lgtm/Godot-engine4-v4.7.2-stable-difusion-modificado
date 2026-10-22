@@ -302,3 +302,7 @@ The first validation runs after this code change failed because a CI assertion s
 
 The updated MCP validation passed in [run 59](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39790155049) and [run 60](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39790161712). These runs verify the addon loads in Godot's Linux headless editor, the APK workflow contains the ZIP asset and safety checks, and the installer patch no longer relies on the invalid `res://mcp-addon` path. The full Android build is queued/running separately; C++ compilation and the final APK still need to pass before this change is considered build-verified.
 
+### Compile-risk correction before final Android build
+
+Commit `f54f1c3cd73eee346949a549d45c92035bb1b3a0` replaces an unsupported `FileAccess::open_absolute` call with Godot's supported `FileAccess::open` API for absolute filesystem paths. This was caught while cross-checking the patch against the upstream 4.7.2 headers. The new source commit triggers another full Android build; the earlier build may be superseded, so final C++/APK status remains pending.
+
