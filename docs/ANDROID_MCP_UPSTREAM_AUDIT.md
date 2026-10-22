@@ -68,6 +68,20 @@ The packaging job should continue to assert all of the following:
 - The resulting ZIP contains a valid addon root and `plugin.cfg`.
 - Every destructive operation is inspected individually; absence of a project-delete tool alone does not prove that file or scene operations are safe.
 
+## Validation matrix
+
+| Check | Automated coverage | What it proves | What it does not prove |
+|---|---|---|---|
+| Python syntax | `py_compile` in Actions | Packaging and import-patch scripts parse | Patch anchors match the upstream tree |
+| Pinned upstream source | Actions checkout by immutable SHA | The same upstream source is used on each run | The upstream revision is bug-free |
+| Patch anchors | Packaging script requires each source snippet exactly once | Unexpected upstream drift fails loudly | GDScript compiles in Godot |
+| Archive integrity | Actions opens ZIP and checks required plugin files | A non-empty addon archive was produced | Plugin can be enabled on Android |
+| Safety assertions | Actions inspects registry and packaged scripts | Generic evaluator and project-delete tool are absent; loopback/CORS and undo patches are present | Other editor features are fully safe |
+| Editor runtime | Not yet automated | Must load addon and exercise tool calls in target Godot build | Requires Godot runtime/device |
+| Undo/redo | Not yet automated | Must mutate and restore a test node/property in the actual editor | Static string checks alone are insufficient |
+| MCP end-to-end | Not yet automated | Must connect a real MCP client, list tools, call read-only and mutation tools, and verify errors | Packaging alone does not prove connectivity |
+| Android install | Not yet automated | Must install/enable on the user's target phone | CI Linux cannot reproduce device installer constraints |
+
 ## Next engineering steps
 
 1. Keep the reviewed upstream revision pinned; update the SHA only after reviewing the new diff.
