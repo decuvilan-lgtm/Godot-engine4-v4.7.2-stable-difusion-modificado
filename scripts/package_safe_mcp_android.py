@@ -792,7 +792,7 @@ func execute(arguments: Dictionary) -> Dictionary:
 			if not arguments.has("keycode"):
 				return tool_error("key requires keycode")
 			var key_event := InputEventKey.new()
-			key_event.keycode = int(arguments.get("keycode", 0)) as Key
+			key_event.keycode = int(arguments.get("keycode", 0))
 			key_event.pressed = bool(arguments.get("pressed", true))
 			key_event.shift_pressed = bool(arguments.get("shift", false))
 			key_event.ctrl_pressed = bool(arguments.get("ctrl", false))
@@ -1341,6 +1341,11 @@ func execute(arguments: Dictionary) -> Dictionary:
         raise RuntimeError("generic UI activation is missing form-control operations")
     if "control is Range" not in activate_ui or "control is TextEdit" not in activate_ui or '"focus"' not in activate_ui:
         raise RuntimeError("generic editor UI bridge is missing range, text-editor, or focus operations")
+    viewport_input = (ADDON_OUT / "scripts/tools/editor/send_editor_viewport_input_tool.gd").read_text(encoding="utf-8")
+    if "SubViewportContainer" not in viewport_input or "viewport.push_input(event, true)" not in viewport_input:
+        raise RuntimeError("embedded preview input tool is missing viewport targeting")
+    if "separate external game process" not in viewport_input:
+        raise RuntimeError("embedded preview input tool must document its scope")
     for tool_name, required_text in (
         ("duplicate_node", "get_editor_undo_redo"),
         ("rename_node", "get_editor_undo_redo"),
