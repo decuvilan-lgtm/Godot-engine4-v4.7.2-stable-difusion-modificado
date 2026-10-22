@@ -196,27 +196,27 @@ void ProjectManager::_install_mcp_addon_confirmed() {
 
     // Android APK assets are not the same namespace as res:// in the editor build.
     // Read the single bundled ZIP directly through Android's AssetManager.
-    FileAccessAndroid bundled_asset;
-    if (bundled_asset.open("mcp-addon.zip", FileAccess::READ) != OK) {
+    Ref<FileAccess> bundled_asset = FileAccess::open("res://mcp-addon.zip", FileAccess::READ);
+    if (bundled_asset.is_null()) {
         _show_error(TTR("The MCP ZIP is missing from this APK. Rebuild the editor before installing MCP."));
         return;
     }
     const String zip_path = OS::get_singleton()->get_cache_path().path_join("godot_mcp_android_bundle.zip");
     Ref<FileAccess> zip_output = FileAccess::open(zip_path, FileAccess::WRITE);
     if (zip_output.is_null()) {
-        bundled_asset.close();
+        bundled_asset->close();
         _show_error(TTR("Could not prepare the MCP bundle in app cache."));
         return;
     }
     uint8_t buffer[16384];
-    while (!bundled_asset.eof_reached()) {
-        uint64_t bytes_read = bundled_asset.get_buffer(buffer, sizeof(buffer));
+    while (!bundled_asset->eof_reached()) {
+        uint64_t bytes_read = bundled_asset->get_buffer(buffer, sizeof(buffer));
         if (bytes_read == 0) {
             break;
         }
         if (!zip_output->store_buffer(buffer, bytes_read)) {
             zip_output.unref();
-            bundled_asset.close();
+            bundled_asset->close();
             _show_error(TTR("Could not copy the MCP bundle into app cache."));
             return;
         }
