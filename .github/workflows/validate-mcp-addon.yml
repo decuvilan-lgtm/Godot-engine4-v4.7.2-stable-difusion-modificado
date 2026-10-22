@@ -216,7 +216,7 @@ jobs:
               'DirAccess::dir_exists_absolute(addon_target)',
               'config.set_value("editor_plugins", "enabled", enabled)',
               'github_search_more_btn = memnew(Button)',
-              'github_search_more_btn->set_text(TTRC("Recargar siguientes 20"))',
+              'github_search_more_btn->set_text(TTRC(\\\"Recargar siguientes 20\\\"))',
               'LineEdit *github_repo_ref = nullptr;',
               'github_repo_ref = memnew(LineEdit)',
               'requested_ref.uri_encode()',
