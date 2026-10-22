@@ -28,7 +28,7 @@ replace_once(HEADER,
     "\tvoid _import_project();\n\tvoid _show_github_import_dialog();\n\tvoid _github_import_confirmed();\n\tvoid _github_download_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n\tvoid _show_mcp_install_dialog();\n\tvoid _install_mcp_addon_confirmed();\n\tvoid _new_project();")
 replace_once(SOURCE,
     '#include "scene/gui/separator.h"\n#include "scene/main/scene_tree.h"',
-    '#include "scene/gui/separator.h"\n#include "scene/main/http_request.h"\n#include "scene/main/scene_tree.h"\n#include "platform/android/file_access_android.h"\n#include "modules/zip/zip_reader.h"')
+    '#include "scene/gui/separator.h"\n#include "scene/main/http_request.h"\n#include "scene/main/scene_tree.h"\n#include "modules/zip/zip_reader.h"')
 replace_once(SOURCE,
     """void ProjectManager::_import_project() {
 \tproject_dialog->set_mode(ProjectDialog::MODE_IMPORT);
@@ -222,7 +222,7 @@ void ProjectManager::_install_mcp_addon_confirmed() {
         }
     }
     zip_output.unref();
-    bundled_asset.close();
+    bundled_asset->close();
 
     Ref<ZIPReader> zip;
     zip.instantiate();
