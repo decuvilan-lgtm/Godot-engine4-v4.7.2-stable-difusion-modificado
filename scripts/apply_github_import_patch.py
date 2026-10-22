@@ -202,7 +202,7 @@ void ProjectManager::_install_mcp_addon_confirmed() {
         return;
     }
     const String zip_path = OS::get_singleton()->get_cache_path().path_join("godot_mcp_android_bundle.zip");
-    Ref<FileAccess> zip_output = FileAccess::open_absolute(zip_path, FileAccess::WRITE);
+    Ref<FileAccess> zip_output = FileAccess::open(zip_path, FileAccess::WRITE);
     if (zip_output.is_null()) {
         bundled_asset.close();
         _show_error(TTR("Could not prepare the MCP bundle in app cache."));
@@ -263,7 +263,7 @@ void ProjectManager::_install_mcp_addon_confirmed() {
             extraction_failed = true;
             break;
         }
-        Ref<FileAccess> output = FileAccess::open_absolute(destination, FileAccess::WRITE);
+        Ref<FileAccess> output = FileAccess::open(destination, FileAccess::WRITE);
         if (output.is_null()) {
             extraction_failed = true;
             break;
