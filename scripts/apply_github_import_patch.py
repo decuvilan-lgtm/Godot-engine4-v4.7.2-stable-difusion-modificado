@@ -22,7 +22,7 @@ replace_once(HEADER,
     "class Button;\nclass HFlowContainer;\nclass HTTPRequest;\nclass LineEdit;\nclass OptionButton;")
 replace_once(HEADER,
     "ProjectDialog *project_dialog = nullptr;",
-    "ProjectDialog *project_dialog = nullptr;\n\tConfirmationDialog *github_import_dialog = nullptr;\n\tLineEdit *github_repo_url = nullptr;\n\tHTTPRequest *github_http_request = nullptr;\n\tHTTPRequest *github_search_request = nullptr;\n\tConfirmationDialog *github_results_dialog = nullptr;\n\tOptionButton *github_repo_results = nullptr;\n\tString github_zip_path;\n\tString github_repo_name;\n\tString github_search_query;\n\tint github_search_page = 1;\n\tint github_search_total_count = 0;\n\tButton *github_search_more_btn = nullptr;\n\tConfirmationDialog *mcp_install_dialog = nullptr;")
+    "ProjectDialog *project_dialog = nullptr;\n\tConfirmationDialog *github_import_dialog = nullptr;\n\tLineEdit *github_repo_url = nullptr;\n\tLineEdit *github_repo_ref = nullptr;\n\tHTTPRequest *github_http_request = nullptr;\n\tHTTPRequest *github_search_request = nullptr;\n\tConfirmationDialog *github_results_dialog = nullptr;\n\tOptionButton *github_repo_results = nullptr;\n\tString github_zip_path;\n\tString github_repo_name;\n\tString github_search_query;\n\tint github_search_page = 1;\n\tint github_search_total_count = 0;\n\tButton *github_search_more_btn = nullptr;\n\tConfirmationDialog *mcp_install_dialog = nullptr;")
 replace_once(HEADER,
     "\tvoid _import_project();\n\tvoid _new_project();",
     "\tvoid _import_project();\n\tvoid _show_github_import_dialog();\n\tvoid _github_import_confirmed();\n\tvoid _github_start_search(int p_page);\n\tvoid _github_search_next_page();\n\tvoid _github_search_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n\tvoid _github_search_result_confirmed();\n\tvoid _github_download_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n\tvoid _show_mcp_install_dialog();\n\tvoid _install_mcp_addon_confirmed();\n\tvoid _new_project();")
@@ -60,6 +60,11 @@ void ProjectManager::_show_github_import_dialog() {
 \t\tgithub_repo_url->set_placeholder(TTRC("e.g. godot mcp, owner/repo, or GitHub URL"));
 \t\tgithub_repo_url->set_clear_button_enabled(true);
 \t\tcontainer->add_child(github_repo_url);
+
+\t\tgithub_repo_ref = memnew(LineEdit);
+\t\tgithub_repo_ref->set_placeholder(TTRC("Optional branch, tag, or commit SHA (default branch if empty)"));
+\t\tgithub_repo_ref->set_clear_button_enabled(true);
+\t\tcontainer->add_child(github_repo_ref);
 
 \t\tadd_child(github_import_dialog);
 \t\tgithub_import_dialog->connect("confirmed", callable_mp(this, &ProjectManager::_github_import_confirmed));
@@ -146,6 +151,21 @@ void ProjectManager::_github_import_confirmed() {
 		return;
 	}
 
+\tString requested_ref = github_repo_ref ? github_repo_ref->get_text().strip_edges() : String();
+\tif (!requested_ref.is_empty()) {
+\t\tif (requested_ref.begins_with("/") || requested_ref.contains("\\\\") || requested_ref.contains("..") || requested_ref.contains(" ") || requested_ref.contains("?") || requested_ref.contains("#")) {
+\t\t\t_show_error(TTR("The branch, tag, or commit reference contains unsupported characters."));
+\t\t\treturn;
+\t\t}
+\t\tfor (int i = 0; i < requested_ref.length(); i++) {
+\t\t\tconst char32_t c = requested_ref[i];
+\t\t\tconst bool allowed = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '/';
+\t\t\tif (!allowed) {
+\t\t\t\t_show_error(TTR("Use only letters, numbers, slash, dot, underscore, and hyphen in the branch or tag."));
+\t\t\t\treturn;
+\t\t\t}
+\t\t}
+\t}
 \tgithub_repo_name = parts[1];
 \tgithub_zip_path = OS::get_singleton()->get_cache_path().path_join("godot_github_import.zip");
 \tDirAccess::remove_absolute(github_zip_path);
@@ -159,7 +179,11 @@ void ProjectManager::_github_import_confirmed() {
 \tPackedStringArray headers;
 \theaders.push_back("Accept: application/vnd.github+json");
 \theaders.push_back("User-Agent: Godot-Project-Manager");
-\tError err = github_http_request->request("https://api.github.com/repos/" + parts[0] + "/" + parts[1] + "/zipball", headers);
+\tString archive_url = "https://api.github.com/repos/" + parts[0] + "/" + parts[1] + "/zipball";
+\tif (!requested_ref.is_empty()) {
+\t\tarchive_url += "/" + requested_ref.uri_encode();
+\t}
+\tError err = github_http_request->request(archive_url, headers);
 \tif (err != OK) {
 \t\tgithub_http_request->queue_free();
 \t\tgithub_http_request = nullptr;
