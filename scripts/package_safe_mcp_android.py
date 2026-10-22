@@ -53,6 +53,195 @@ def main() -> int:
     # Expand the editor-facing MCP surface beyond basic scene mutation.
     # These tools use typed, explicit operations; arbitrary execute_script remains disabled.
     extra_tools = {
+        "scripts/tools/editor/inspect_editor_ui_tool.gd": r'''@tool
+extends MCPTool
+
+
+func get_name() -> String:
+	return "inspect_editor_ui"
+
+
+func get_description() -> String:
+	return "Inspect the live Godot editor UI tree, including visible menus, docks, tabs, buttons, labels, and their paths."
+
+
+func get_input_schema() -> Dictionary:
+	return {
+		"type": "object",
+		"properties": {
+			"filter": {"type": "string", "description": "Optional case-insensitive text filter for names, labels, or paths."},
+			"max_items": {"type": "integer", "description": "Maximum results, clamped to 1..500."},
+			"visible_only": {"type": "boolean", "description": "Only return controls currently visible in the editor."},
+		},
+		"additionalProperties": false,
+	}
+
+
+func execute(arguments: Dictionary) -> Dictionary:
+	var base := editor_interface.get_base_control()
+	if base == null:
+		return tool_error("Godot editor base control is unavailable")
+	var filter_text := String(arguments.get("filter", "")).strip_edges().to_lower()
+	var max_items := clampi(int(arguments.get("max_items", 200)), 1, 500)
+	var visible_only := bool(arguments.get("visible_only", true))
+	var items: Array[Dictionary] = []
+	_walk_ui(base, base, filter_text, visible_only, max_items, items)
+	return {
+		"ok": true,
+		"count": items.size(),
+		"truncated": items.size() >= max_items,
+		"controls": items,
+	}
+
+
+func _walk_ui(node: Node, base: Node, filter_text: String, visible_only: bool, max_items: int, output: Array[Dictionary]) -> void:
+	if output.size() >= max_items:
+		return
+	if node is Control:
+		var control := node as Control
+		if (not visible_only or control.is_visible_in_tree()):
+			var label := _control_label(control)
+			var path := str(base.get_path_to(control))
+			var haystack := (str(control.name) + " " + label + " " + path + " " + control.get_class()).to_lower()
+			if filter_text == "" or haystack.contains(filter_text):
+				output.append({
+					"path": path,
+					"name": str(control.name),
+					"class": control.get_class(),
+					"label": label,
+					"visible": control.is_visible_in_tree(),
+					"disabled": _is_disabled_control(control),
+					"child_count": control.get_child_count(),
+				})
+	for child in node.get_children():
+		if output.size() >= max_items:
+			return
+		_walk_ui(child, base, filter_text, visible_only, max_items, output)
+
+
+func _control_label(control: Control) -> String:
+	if control is Button:
+		return (control as Button).text
+	if control is Label:
+		return (control as Label).text
+	if control is LineEdit:
+		return (control as LineEdit).placeholder_text
+	if control is TabBar:
+		var tab_bar := control as TabBar
+		var tabs: Array[String] = []
+		for index in range(tab_bar.get_tab_count()):
+			tabs.append(tab_bar.get_tab_title(index))
+		return " | ".join(tabs)
+	if control is PopupMenu:
+		var menu := control as PopupMenu
+		var entries: Array[String] = []
+		for index in range(menu.item_count):
+			entries.append("%d:%s" % [index, menu.get_item_text(index)])
+		return " | ".join(entries)
+	return ""
+
+
+func _is_disabled_control(control: Control) -> bool:
+	if control is BaseButton:
+		return (control as BaseButton).disabled
+	if control is PopupMenu:
+		return not (control as PopupMenu).is_visible_in_tree()
+	return false
+''',
+        "scripts/tools/editor/activate_editor_ui_control_tool.gd": r'''@tool
+extends MCPTool
+
+
+func get_name() -> String:
+	return "activate_editor_ui_control"
+
+
+func get_description() -> String:
+	return "Activate a specific visible Godot editor button or currently open PopupMenu item by exact UI path. Project deletion controls are always blocked."
+
+
+func get_input_schema() -> Dictionary:
+	return {
+		"type": "object",
+		"properties": {
+			"path": {"type": "string", "description": "Exact path returned by inspect_editor_ui."},
+			"menu_index": {"type": "integer", "description": "For an open PopupMenu only, the zero-based item index."},
+			"confirm_destructive": {"type": "boolean", "description": "Must be true for controls whose label suggests a destructive action."},
+		},
+		"required": ["path"],
+		"additionalProperties": false,
+	}
+
+
+func execute(arguments: Dictionary) -> Dictionary:
+	var base := editor_interface.get_base_control()
+	if base == null:
+		return tool_error("Godot editor base control is unavailable")
+	var path := String(arguments.get("path", "")).strip_edges()
+	if path == "" or path == ".":
+		return tool_error("a specific control path is required")
+	var target := base.get_node_or_null(NodePath(path))
+	if target == null or not target is Control:
+		return tool_error("UI control path not found")
+	var control := target as Control
+	if not control.is_visible_in_tree():
+		return tool_error("control is not currently visible; inspect the UI again after opening its menu or panel")
+	var label := _control_label(control).to_lower()
+	var control_name := str(control.name).to_lower()
+	var danger_text := label + " " + control_name
+	if danger_text.contains("delete project") or danger_text.contains("remove project") or danger_text.contains("erase project"):
+		return tool_error("project deletion/removal through generic UI activation is permanently blocked")
+	var destructive := false
+	for word in ["delete", "remove", "erase", "clear", "discard", "revert", "overwrite", "uninstall"]:
+		if danger_text.contains(word):
+			destructive = true
+			break
+	if destructive and not bool(arguments.get("confirm_destructive", false)):
+		return tool_error("potentially destructive UI action requires confirm_destructive=true")
+	if control is PopupMenu:
+		var menu := control as PopupMenu
+		if not menu.is_visible():
+			return tool_error("PopupMenu is not open")
+		if not arguments.has("menu_index"):
+			return tool_error("menu_index is required for PopupMenu activation")
+		var index := int(arguments.get("menu_index", -1))
+		if index < 0 or index >= menu.item_count:
+			return tool_error("menu_index is outside the menu item range")
+		if menu.is_item_disabled(index) or menu.is_item_separator(index):
+			return tool_error("menu item is disabled or a separator")
+		var item_text := menu.get_item_text(index).to_lower()
+		if item_text.contains("delete project") or item_text.contains("remove project") or item_text.contains("erase project"):
+			return tool_error("project deletion/removal is permanently blocked")
+		for word in ["delete", "remove", "erase", "clear", "discard", "revert", "overwrite", "uninstall"]:
+			if item_text.contains(word):
+				destructive = true
+				break
+		if destructive and not bool(arguments.get("confirm_destructive", false)):
+			return tool_error("potentially destructive menu action requires confirm_destructive=true")
+		menu.activate_item(index)
+		return {"ok": true, "path": path, "menu_index": index, "menu_item": menu.get_item_text(index)}
+	if control is BaseButton:
+		var button := control as BaseButton
+		if button.disabled:
+			return tool_error("button is disabled")
+		button.emit_signal("pressed")
+		return {"ok": true, "path": path, "label": _control_label(control), "activated": true}
+	return tool_error("unsupported control type; only buttons and open PopupMenu items can be activated")
+
+
+func _control_label(control: Control) -> String:
+	if control is Button:
+		return (control as Button).text
+	if control is Label:
+		return (control as Label).text
+	if control is PopupMenu:
+		var menu := control as PopupMenu
+		var entries: Array[String] = []
+		for index in range(menu.item_count):
+			entries.append("%d:%s" % [index, menu.get_item_text(index)])
+		return " | ".join(entries)
+	return ""
+''',
         "scripts/tools/editor/get_editor_state_tool.gd": r'''@tool
 extends MCPTool
 
@@ -301,6 +490,8 @@ func execute(arguments: Dictionary) -> Dictionary:
         'const GetProjectInfoTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/get_project_info_tool.gd")\n',
         'const GetProjectInfoTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/get_project_info_tool.gd")\n'
         'const GetEditorStateTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/get_editor_state_tool.gd")\n'
+        'const InspectEditorUITool := preload("res://addons/godot_mcp_android/scripts/tools/editor/inspect_editor_ui_tool.gd")\n'
+        'const ActivateEditorUIControlTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/activate_editor_ui_control_tool.gd")\n'
         'const OpenSceneTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/open_scene_tool.gd")\n'
         'const RunSceneTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/run_scene_tool.gd")\n'
         'const GetNodePropertiesTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/get_node_properties_tool.gd")\n'
@@ -311,6 +502,8 @@ func execute(arguments: Dictionary) -> Dictionary:
         '\tregister(GetProjectInfoTool.new(editor_interface))\n',
         '\tregister(GetProjectInfoTool.new(editor_interface))\n'
         '\tregister(GetEditorStateTool.new(editor_interface))\n'
+        '\tregister(InspectEditorUITool.new(editor_interface))\n'
+        '\tregister(ActivateEditorUIControlTool.new(editor_interface))\n'
         '\tregister(OpenSceneTool.new(editor_interface))\n'
         '\tregister(RunSceneTool.new(editor_interface))\n'
         '\tregister(GetNodePropertiesTool.new(editor_interface))\n'
@@ -530,6 +723,8 @@ func execute(arguments: Dictionary) -> Dictionary:
 
     required_tool_registrations = (
         "GetEditorStateTool",
+        "InspectEditorUITool",
+        "ActivateEditorUIControlTool",
         "OpenSceneTool",
         "RunSceneTool",
         "GetNodePropertiesTool",
