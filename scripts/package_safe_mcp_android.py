@@ -125,7 +125,23 @@ func _control_label(control: Control) -> String:
 	if control is Label:
 		return (control as Label).text
 	if control is LineEdit:
-		return (control as LineEdit).placeholder_text
+		var line_edit := control as LineEdit
+		return "placeholder=%s; text=%s" % [line_edit.placeholder_text, line_edit.text.left(500)]
+	if control is TextEdit:
+		return (control as TextEdit).text.left(1500)
+	if control is RichTextLabel:
+		return (control as RichTextLabel).get_parsed_text().left(1500)
+	if control is CheckBox or control is CheckButton:
+		var check := control as BaseButton
+		return "text=%s; checked=%s" % [(control as Button).text, str(check.button_pressed)]
+	if control is OptionButton:
+		var option_button := control as OptionButton
+		var options: Array[String] = []
+		for index in range(option_button.get_item_count()):
+			options.append("%d:%s%s" % [index, option_button.get_item_text(index), " [selected]" if index == option_button.selected else ""])
+		return " | ".join(options)
+	if control is SpinBox:
+		return "value=%s; min=%s; max=%s; step=%s" % [str((control as SpinBox).value), str((control as SpinBox).min_value), str((control as SpinBox).max_value), str((control as SpinBox).step)]
 	if control is TabBar:
 		var tab_bar := control as TabBar
 		var tabs: Array[String] = []
@@ -157,7 +173,7 @@ func get_name() -> String:
 
 
 func get_description() -> String:
-	return "Activate a specific visible Godot editor button or currently open PopupMenu item by exact UI path. Project deletion controls are always blocked."
+	return "Navigate the live Godot editor by activating visible buttons, switching tabs/options, or choosing an item from an open PopupMenu. Project deletion controls are always blocked."
 
 
 func get_input_schema() -> Dictionary:
