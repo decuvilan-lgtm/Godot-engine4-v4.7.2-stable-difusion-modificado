@@ -106,6 +106,16 @@ The `send_editor_viewport_input` tool targets a specific `SubViewport` or `SubVi
 
 The tool does **not** claim to control a game launched in a separate external process. If the target Godot Android editor runs the game externally, a separate authenticated loopback runtime bridge or supported debugger integration is still required. Coordinates are viewport-local and must be obtained from a live preview inspection; source is not yet validated on the target Android device.
 
+## Additional scene-tree organization — source added, not yet validated
+
+Three further tools have been added:
+
+- `reorder_node`: change sibling order through undo/redo.
+- `set_node_group`: add or remove a named group.
+- `manage_node_signal`: connect or disconnect a signal between two nodes in the edited scene, with undo/redo and checks for signal/method existence.
+
+These cover some of the Scene dock operations that otherwise require manual Inspector/context-menu work. Ownership, signal argument compatibility, saved-scene serialization, and undo/redo still require runtime validation.
+
 ## Required breadth-first expansion plan
 
 The target is comprehensive coverage of every usable editor surface, including rare/obscure options. Work through these families rather than stopping at the current tool list:
