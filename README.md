@@ -75,7 +75,7 @@ The separate `validate-import-only` option checks the patcher's Python syntax an
 
 ### Current corrective change
 
-Commit `894b99d89c5659f00a6b0a64a4b52517c5c6166e` adds `generate_android_binaries=yes` and removes Gradle `clean` before generating the editor. The workflow still selects `godot-source/bin/android_editor_builds/android_editor-android-debug.apk` and refuses to publish if it is missing or smaller than 50 MB. This correction has **not yet been validated by a new run**; inspect the next run and actual APK artifact before claiming success.
+Commit `894b99d89c5659f00a6b0a64a4b52517c5c6166e` adds `generate_android_binaries=yes` and removes Gradle `clean` before generating the editor. The workflow still selects `godot-source/bin/android_editor_builds/android_editor-android-debug.apk` and refuses to publish if it is missing or smaller than 50 MB. Run 31 subsequently validated this correction at the build/artifact level: the full-sized ARM64-only APK was produced and passed static package checks. This still does not establish installation or runtime behavior on the user's physical phone.
 
 ## Planned feature: multi-repository GitHub synchronization
 
