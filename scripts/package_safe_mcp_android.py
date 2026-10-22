@@ -47,6 +47,9 @@ def main() -> int:
         "",
     )
 
+    # Remove the unused implementation too, so it cannot be re-registered accidentally.
+    (ADDON_OUT / "scripts/tools/system/execute_script_tool.gd").unlink(missing_ok=True)
+
     for rel in (
         "scripts/server/mcp_http_server.gd",
         "scripts/server/mcp_websocket_server.gd",
