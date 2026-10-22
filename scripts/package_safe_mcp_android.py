@@ -174,7 +174,7 @@ func get_name() -> String:
 
 
 func get_description() -> String:
-	return "Navigate the live Godot editor by activating visible buttons, switching tabs/options, or choosing an item from an open PopupMenu. Project deletion controls are always blocked."
+	return "Navigate and operate visible Godot editor controls: buttons, tabs, options, text fields, sliders/ranges, checkboxes, focus, and open PopupMenus. Project deletion controls are always blocked."
 
 
 func get_input_schema() -> Dictionary:
@@ -189,6 +189,7 @@ func get_input_schema() -> Dictionary:
 			"numeric_value": {"type": "number", "description": "New value for a SpinBox control."},
 			"checked_value": {"type": "boolean", "description": "Desired state for a CheckBox or CheckButton."},
 			"submit_text": {"type": "boolean", "description": "If true after setting text, emit the LineEdit text_submitted signal."},
+			"focus": {"type": "boolean", "description": "Focus a control without changing its value."},
 			"confirm_destructive": {"type": "boolean", "description": "Must be true for controls whose label suggests a destructive action."},
 		},
 		"required": ["path"],
@@ -223,6 +224,25 @@ func execute(arguments: Dictionary) -> Dictionary:
 				break
 		if destructive and not bool(arguments.get("confirm_destructive", false)):
 			return tool_error("potentially destructive UI action requires confirm_destructive=true")
+	if bool(arguments.get("focus", false)):
+		control.grab_focus()
+		if not arguments.has("text_value") and not arguments.has("numeric_value") and not arguments.has("checked_value") and not arguments.has("tab_index") and not arguments.has("option_index") and not arguments.has("menu_index"):
+			return {"ok": true, "path": path, "focused": control.has_focus()}
+	if control is TextEdit:
+		if not arguments.has("text_value"):
+			return tool_error("text_value is required for TextEdit input")
+		var text_edit := control as TextEdit
+		text_edit.text = String(arguments.get("text_value", ""))
+		return {"ok": true, "path": path, "text_length": text_edit.text.length()}
+	if control is Range:
+		if not arguments.has("numeric_value"):
+			return tool_error("numeric_value is required for Range input")
+		var range_control := control as Range
+		var range_value := float(arguments.get("numeric_value", range_control.value))
+		if range_value < range_control.min_value or range_value > range_control.max_value:
+			return tool_error("numeric_value is outside the control's range")
+		range_control.value = range_value
+		return {"ok": true, "path": path, "value": range_control.value}
 	if control is LineEdit:
 		if not arguments.has("text_value"):
 			return tool_error("text_value is required for LineEdit input")
