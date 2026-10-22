@@ -444,3 +444,6 @@ This is the intended path for a game running as a separate process; the older `s
 ### GitHub project import — selected refs
 
 The Project Manager GitHub import dialog now has an optional branch/tag/commit field. Leaving it empty downloads the repository's default branch; entering a ref builds a GitHub archive URL for that specific ref. The patcher rejects whitespace, query/fragment syntax, backslashes, path traversal-like `..` strings, and unsupported ref characters before requesting the archive. This remains source-level work until the Android editor is rebuilt and tested; no build or workflow was launched.
+
+
+The runtime controller also exposes touchscreen tap/release and swipe events, plus mouse movement, so Android gameplay that uses Godot screen-touch events can be exercised. Coordinate scaling, orientation, and the target game's input handling still need device verification.
