@@ -132,6 +132,29 @@ func _control_label(control: Control) -> String:
 		for index in range(tab_bar.get_tab_count()):
 			tabs.append(tab_bar.get_tab_title(index))
 		return " | ".join(tabs)
+	if control is TabBar:
+		var tabs := control as TabBar
+		if not arguments.has("tab_index"):
+			return tool_error("tab_index is required for TabBar navigation")
+		var tab_index := int(arguments.get("tab_index", -1))
+		if tab_index < 0 or tab_index >= tabs.get_tab_count():
+			return tool_error("tab_index is outside the tab range")
+		if tabs.is_tab_disabled(tab_index):
+			return tool_error("target tab is disabled")
+		tabs.current_tab = tab_index
+		return {"ok": true, "path": path, "tab_index": tab_index, "tab_title": tabs.get_tab_title(tab_index)}
+	if control is OptionButton:
+		var options := control as OptionButton
+		if not arguments.has("option_index"):
+			return tool_error("option_index is required for OptionButton selection")
+		var option_index := int(arguments.get("option_index", -1))
+		if option_index < 0 or option_index >= options.item_count:
+			return tool_error("option_index is outside the option range")
+		if options.is_item_disabled(option_index) or options.is_item_separator(option_index):
+			return tool_error("option is disabled or a separator")
+		options.select(option_index)
+		options.emit_signal("item_selected", option_index)
+		return {"ok": true, "path": path, "option_index": option_index, "option_text": options.get_item_text(option_index)}
 	if control is PopupMenu:
 		var menu := control as PopupMenu
 		var entries: Array[String] = []
@@ -166,6 +189,8 @@ func get_input_schema() -> Dictionary:
 		"properties": {
 			"path": {"type": "string", "description": "Exact path returned by inspect_editor_ui."},
 			"menu_index": {"type": "integer", "description": "For an open PopupMenu only, the zero-based item index."},
+			"tab_index": {"type": "integer", "description": "For a TabBar only, the zero-based tab index."},
+			"option_index": {"type": "integer", "description": "For an OptionButton only, the zero-based option index."},
 			"confirm_destructive": {"type": "boolean", "description": "Must be true for controls whose label suggests a destructive action."},
 		},
 		"required": ["path"],
@@ -224,8 +249,10 @@ func execute(arguments: Dictionary) -> Dictionary:
 		var button := control as BaseButton
 		if button.disabled:
 			return tool_error("button is disabled")
+		if control is CheckBox or control is CheckButton:
+			button.button_pressed = not button.button_pressed
 		button.emit_signal("pressed")
-		return {"ok": true, "path": path, "label": _control_label(control), "activated": true}
+		return {"ok": true, "path": path, "label": _control_label(control), "activated": true, "pressed": button.button_pressed}
 	return tool_error("unsupported control type; only buttons and open PopupMenu items can be activated")
 
 
