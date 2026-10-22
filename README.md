@@ -70,12 +70,83 @@ The separate `validate-import-only` option checks the patcher's Python syntax an
 
 Commit `894b99d89c5659f00a6b0a64a4b52517c5c6166e` adds `generate_android_binaries=yes` and removes Gradle `clean` before generating the editor. The workflow still selects `godot-source/bin/android_editor_builds/android_editor-android-debug.apk` and refuses to publish if it is missing or smaller than 50 MB. This correction has **not yet been validated by a new run**; inspect the next run and actual APK artifact before claiming success.
 
+## Planned feature: multi-repository GitHub synchronization
+
+**Status: design documented; not implemented yet.** The current GitHub button only imports a public repository ZIP. It does not yet provide the synchronization system described below.
+
+### User-facing workflow
+
+- Provide one main **Synchronize** entry point in both the Project Manager and the editor.
+- The entry point lists connected GitHub accounts and their accessible repositories, grouped by account (for example, `gavilandavid/pril`, `gavilandavid/prop-hunt`, and repositories under a second account).
+- Each repository has its own **Analyze** and **Synchronize** actions.
+- The user chooses a separate local project folder for every repository. Two different repositories must not silently share or overwrite the same destination.
+- Each repository also has its own rescue folder, located outside both the project directory and the repository. Rescue files are local-only: they are never uploaded to GitHub and are not shown as project files in Godot.
+- Synchronization is manual only. No background polling, automatic sync, or automatic upload from Godot to GitHub.
+- GitHub is the remote source of truth for synchronized files. The intended flow is **ChatGPT/developer changes → GitHub → manual sync → local project → Godot**.
+
+### Analyze: incremental by default
+
+Analyze should not rescan or download the entire repository on every run.
+
+- Store a per-repository baseline after the first successful sync: repository identity, selected branch, last successfully applied commit SHA, tracked paths, and file hashes or equivalent reliable metadata.
+- Ask GitHub for changes between the baseline commit and the current branch commit. Build the pending change set from that comparison.
+- Compare local files against the saved baseline, concentrating hash checks on affected paths and relevant directories.
+- Detect additions, modifications, deletions, renames, and moves. GitHub can report likely renames on the remote side; local rename/move detection must compare the previous path/hash manifest with current local paths and hashes.
+- Prepare a reusable plan containing old and new paths, remote downloads, local rescue operations, deletions, conflicts, and the exact remote commit SHA analyzed.
+- Analyze must not change project files or move files to rescue. Only Synchronize applies the plan.
+- If the remote branch advances after analysis, refresh/revalidate the plan before applying it. If the baseline is missing or inconsistent, perform a controlled recovery scan rather than blindly applying a stale plan.
+- If there are no pending changes, report that the project is already synchronized.
+
+### Synchronize: safe, incremental, and one-way
+
+- First sync: download and install the full repository contents, then write the baseline only after validation succeeds.
+- Later syncs: download only newly added or modified file contents required by the change set. Do not download a full ZIP for every sync.
+- Apply remote deletions, renames, and moves to restore the remote directory structure.
+- Before replacing, moving, or removing a local file that differs from the saved baseline, automatically copy/move its local version into the repository's separate rescue area. Rescue must use collision-safe unique names so an earlier rescue is never overwritten.
+- Local-only files are moved to rescue, not uploaded. Locally renamed/moved files are rescued and the official remote paths are restored.
+- A local file deleted by the user is restored if it still exists remotely.
+- Files deleted remotely are removed locally only after any uncommitted local content has been rescued.
+- If a rename/move cannot be identified confidently, protect the local file and record the ambiguity rather than guessing destructively.
+- Exclude known generated/cache paths such as Godot's `.godot/` from ordinary project-change handling where appropriate; define exclusions carefully so real source assets are not skipped.
+- Use a staging area and validate downloads before applying changes. Failed downloads or invalid archives must not modify the working project.
+- Update the baseline commit and manifest only after the entire sync has completed successfully. A partial failure must be recoverable and must not advance the baseline prematurely.
+- Never push, commit, or upload local project/rescue changes to GitHub automatically.
+
+### Performance and scale goals
+
+The synchronizer should handle large change sets without treating each file as a separate sync operation. Example workload for testing (not a hard limit): 40 renames, 50 moves, 70 deletions, and 20 new files in one update.
+
+- Batch API metadata requests where possible and obey GitHub rate limits.
+- Use hashes and the saved manifest to avoid re-reading or re-downloading unchanged content.
+- Bound parallel downloads to avoid overwhelming the phone or network.
+- Apply file operations in a planned order, accounting for directory moves, path collisions, case sensitivity, and rename cycles.
+- Show a summary of the pending operations and any ambiguous cases before applying the plan. Routine rescue is automatic once sync begins; users should not need to approve every rescued file individually.
+- Measure performance on actual Android devices before promising specific speed.
+
+### Accounts, permissions, and local storage
+
+- Public repositories can be accessed without login, but listing a user's repositories and accessing private repositories requires GitHub authentication and appropriately scoped permissions.
+- Store credentials securely; never put access tokens in project files, rescue folders, logs, or the repository.
+- Support multiple connected accounts and keep each account/repository configuration isolated.
+- Android storage permissions and scoped-storage behavior must be verified. Let users select writable local destinations and rescue locations; do not assume every arbitrary device folder is accessible.
+- Repository identity, branch, destination path, rescue path, and manifest must be stored independently for each configured repository.
+
+## Planned Android ABI support: ARM32 and ARM64
+
+**Goal: provide compatible editor builds for both 32-bit ARM and 64-bit ARM Android devices. This is not implemented or verified yet.**
+
+- The current workflow builds an ARM64-only APK with `arm64-v8a`; it is not an ARM32 build.
+- Investigate whether the official Godot 4.7.2 Android **editor** and its native dependencies can be built and packaged for `arm32` / `armeabi-v7a`. Do not assume editor support just because exporting 32-bit Android games is supported.
+- If supported, build and validate separate ARM32 and ARM64 editor APK artifacts, or a combined APK only if Godot's packaging and dependency setup supports it reliably. Separate APKs are easier to validate and avoid unnecessary package size.
+- Validate each artifact's native ABI metadata, ZIP integrity, signature, size, and installation/launch on a matching physical device or emulator.
+- Keep ARM64 support intact while investigating ARM32. Do not label an artifact ARM32-compatible until its ABI metadata and installation have been verified.
+
 ## Known scope and next verification
 
-- The target APK is ARM64 / `arm64-v8a` only; do not add `x86_64` to the phone APK just to reuse an x86_64 emulator.
-- The GitHub import feature currently supports public repositories only.
-- Build success and static APK checks do not prove the GitHub button works at runtime.
-- After the corrected build, verify the artifact contains the complete editor APK, install it on an ARM64 Android device, open Project Manager, test a public repository import, and record the exact result. If install fails, capture the Android installer error or `adb install` output.
+- The current target APK is ARM64 / `arm64-v8a` only; ARM32 support remains a goal requiring research and validation.
+- The current GitHub button supports public repository import only; multi-account browsing, authentication, Analyze, incremental synchronization, and rescue handling are future work.
+- Build success and static APK checks do not prove that the APK installs or that the GitHub button works at runtime.
+- After the corrected build, verify the artifact contains the complete editor APK, install it on a compatible Android device, open Project Manager, test a public repository import, and record the exact result. If install fails, capture the Android installer error or `adb install` output.
 
 ## Rules for future changes
 
