@@ -1,5 +1,28 @@
 # Godot 4.7.2 Android Editor — GitHub import (ARM32 + ARM64)
 
+## Current verified status — 2026-10-22 (supersedes older “not yet tested” notes below)
+
+Work branch: `feature/github-sync-and-safe-mcp`  
+Latest source commit at the time of this update: `9731955a628fee0d38fee7ef8237c40549245853`.
+
+### Latest automated validation
+
+- **PASS — [MCP addon validation run 115](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39846632210).** Python syntax validation, application of the Project Manager patches to a clean Godot 4.7.2 source checkout, addon packaging, headless Godot parser/load, archive-content checks, and checks that the Android APK workflow embeds the hardened addon all passed.
+- The run exposed stale test assertions during earlier attempts; those assertions were updated to match the safer `PopupMenu` activation and escaped C++ source text. The successful run above is the current result.
+- **IN PROGRESS — [Android build run 66](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39846632240).** The addon package job passed, the GitHub import patch applied, and the workflow has reached native Android editor compilation for **ARM32 (`armeabi-v7a`) and ARM64 (`arm64-v8a`)**. At the time of this update, compilation is still running; no APK artifact has yet been verified from this run.
+- Older build run 65 was cancelled when the newer commit triggered a replacement run. Do not treat that cancellation as a build failure or as a successful APK.
+
+### What is and is not proven
+
+**Proven in CI:** source patch applies to the selected Godot 4.7.2 source; addon package can be generated; Godot headless can parse/load the generated addon; static archive/workflow safety checks pass; the current build has entered compilation for both requested Android ABIs.
+
+**Not yet proven:** the current run finishes compiling; a full editor APK is generated and verified to contain both ABIs; installation and launch on the user's LG K51 running Android 11; GitHub import button behavior on-device (default branch, explicit branch/tag/commit, pagination and failures); or end-to-end MCP operation against a real editor/game. No current APK download link should be offered until the build succeeds and the uploaded artifact is checked.
+
+The core priority remains proving GitHub import and the ARM32+ARM64 APK before adding more MCP/AI features or merging the branch. A green addon validation is not a substitute for an APK build or a physical-device test.
+
+---
+
+
 ## Actual objective
 
 Keep the existing **Godot Android editor** and make the smallest targeted change needed to let the Project Manager import a project from a public GitHub repository. Do not redesign or recreate Godot, and do not replace its Android editor with a different application.
