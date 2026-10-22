@@ -95,6 +95,7 @@ jobs:
                   "addons/godot_mcp_android/scripts/tools/editor/inspect_editor_ui_tool.gd": "InspectEditorUITool",
                   "addons/godot_mcp_android/scripts/tools/editor/activate_editor_ui_control_tool.gd": "ActivateEditorUIControlTool",
                   "addons/godot_mcp_android/scripts/tools/editor/send_editor_viewport_input_tool.gd": "SendEditorViewportInputTool",
+                  "addons/godot_mcp_android/scripts/tools/editor/read_editor_diagnostics_tool.gd": "ReadEditorDiagnosticsTool",
                   "addons/godot_mcp_android/scripts/tools/scene/duplicate_node_tool.gd": "DuplicateNodeTool",
                   "addons/godot_mcp_android/scripts/tools/scene/rename_node_tool.gd": "RenameNodeTool",
                   "addons/godot_mcp_android/scripts/tools/scene/reparent_node_tool.gd": "ReparentNodeTool",
@@ -127,6 +128,9 @@ jobs:
               viewport_input = zf.read("addons/godot_mcp_android/scripts/tools/editor/send_editor_viewport_input_tool.gd").decode()
               assert "SubViewportContainer" in viewport_input and "viewport.push_input(event, true)" in viewport_input
               assert "separate external game process" in viewport_input
+              diagnostics = zf.read("addons/godot_mcp_android/scripts/tools/editor/read_editor_diagnostics_tool.gd").decode()
+              assert "RichTextLabel" in diagnostics and "TextEdit" in diagnostics
+              assert "max_chars_per_control" in diagnostics
               duplicate_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/duplicate_node_tool.gd").decode()
               rename_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/rename_node_tool.gd").decode()
               reparent_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/reparent_node_tool.gd").decode()
