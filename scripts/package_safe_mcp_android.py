@@ -50,6 +50,105 @@ def main() -> int:
     # Remove the unused implementation too, so it cannot be re-registered accidentally.
     (ADDON_OUT / "scripts/tools/system/execute_script_tool.gd").unlink(missing_ok=True)
 
+    # Route scene mutations through Godot's editor undo/redo manager. This keeps
+    # the operations reversible and avoids manually invoking lifecycle methods.
+    replace_once(
+        ADDON_OUT / "scripts/tools/scene/set_node_property_tool.gd",
+        """func execute(arguments: Dictionary) -> Dictionary:
+	var node := resolve_scene_node(String(arguments.get("node_path", ".")))
+	if node == null:
+		return tool_error("node not found")
+
+	var property_name := String(arguments.get("property", ""))
+	node.set(property_name, arguments.get("value"))
+
+	if property_name == "script" and node.is_inside_tree() and node.has_method("_ready"):
+		node._ready()
+
+	return {
+		"ok": true,
+		"path": relative_scene_path(node),
+		"property": property_name,
+	}""",
+        """func execute(arguments: Dictionary) -> Dictionary:
+	var node := resolve_scene_node(String(arguments.get("node_path", ".")))
+	if node == null:
+		return tool_error("node not found")
+
+	var property_name := String(arguments.get("property", ""))
+	var property_exists := false
+	for property_info in node.get_property_list():
+		if String(property_info.get("name", "")) == property_name:
+			property_exists = true
+			break
+	if not property_exists:
+		return tool_error("property not found: %s" % property_name)
+
+	var previous_value = node.get(property_name)
+	var new_value = arguments.get("value")
+	var undo_redo := editor_interface.get_editor_undo_redo()
+	undo_redo.create_action("MCP: Set Node Property")
+	undo_redo.add_do_property(node, property_name, new_value)
+	undo_redo.add_undo_property(node, property_name, previous_value)
+	undo_redo.commit_action()
+
+	return {
+		"ok": true,
+		"path": relative_scene_path(node),
+		"property": property_name,
+		"undo_available": true,
+	}""",
+    )
+
+    replace_once(
+        ADDON_OUT / "scripts/tools/scene/remove_node_tool.gd",
+        """func execute(arguments: Dictionary) -> Dictionary:
+	var node := resolve_scene_node(String(arguments.get("node_path", ".")))
+	if node == null:
+		return tool_error("node not found")
+
+	var root := get_edited_scene_root()
+	if node == root:
+		return tool_error("cannot remove the scene root node")
+
+	var path := relative_scene_path(node)
+	node.queue_free()
+	return {
+		"ok": true,
+		"path": path,
+	}""",
+        """func execute(arguments: Dictionary) -> Dictionary:
+	var node := resolve_scene_node(String(arguments.get("node_path", ".")))
+	if node == null:
+		return tool_error("node not found")
+
+	var root := get_edited_scene_root()
+	if node == root:
+		return tool_error("cannot remove the scene root node")
+
+	var parent := node.get_parent()
+	if parent == null:
+		return tool_error("cannot remove a node without a parent")
+
+	var path := relative_scene_path(node)
+	var original_index := node.get_index()
+	var original_owner = node.owner
+	var undo_redo := editor_interface.get_editor_undo_redo()
+	undo_redo.create_action("MCP: Remove Node")
+	undo_redo.add_do_method(parent, "remove_child", node)
+	# Undo methods are registered in reverse execution order.
+	undo_redo.add_undo_method(node, "set_owner", original_owner)
+	undo_redo.add_undo_method(parent, "move_child", node, original_index)
+	undo_redo.add_undo_method(parent, "add_child", node)
+	undo_redo.commit_action()
+
+	return {
+		"ok": true,
+		"path": path,
+		"undo_available": true,
+	}""",
+    )
+
     for rel in (
         "scripts/server/mcp_http_server.gd",
         "scripts/server/mcp_websocket_server.gd",
@@ -72,6 +171,12 @@ def main() -> int:
     registry_text = registry.read_text(encoding="utf-8")
     if "ExecuteScriptTool" in registry_text or "delete_project" in registry_text:
         raise RuntimeError("unsafe tool registration detected")
+    set_node_tool = (ADDON_OUT / "scripts/tools/scene/set_node_property_tool.gd").read_text(encoding="utf-8")
+    remove_node_tool = (ADDON_OUT / "scripts/tools/scene/remove_node_tool.gd").read_text(encoding="utf-8")
+    if "get_editor_undo_redo()" not in set_node_tool or "add_undo_property" not in set_node_tool:
+        raise RuntimeError("set_node_property is missing editor undo/redo integration")
+    if "get_editor_undo_redo()" not in remove_node_tool or "queue_free()" in remove_node_tool:
+        raise RuntimeError("remove_node is missing reversible removal safeguards")
     for rel in ("scripts/server/mcp_http_server.gd", "scripts/server/mcp_websocket_server.gd"):
         server_text = (ADDON_OUT / rel).read_text(encoding="utf-8")
         if 'bind_host = "127.0.0.1"' not in server_text:
