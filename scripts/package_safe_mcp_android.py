@@ -817,6 +817,8 @@ func execute(arguments: Dictionary) -> Dictionary:
         raise RuntimeError("generic UI activation must permanently block project deletion")
     if "confirm_destructive" not in activate_ui:
         raise RuntimeError("generic UI activation must require confirmation for destructive actions")
+    if "text_value" not in activate_ui or "numeric_value" not in activate_ui or "checked_value" not in activate_ui:
+        raise RuntimeError("generic UI activation is missing form-control operations")
 
     open_scene = (ADDON_OUT / "scripts/tools/editor/open_scene_tool.gd").read_text(encoding="utf-8")
     run_scene = (ADDON_OUT / "scripts/tools/editor/run_scene_tool.gd").read_text(encoding="utf-8")
