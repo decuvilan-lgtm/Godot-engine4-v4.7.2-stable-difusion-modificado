@@ -298,3 +298,7 @@ The installer no longer assumes raw Android APK assets are available at `res://m
 
 The first validation runs after this code change failed because a CI assertion still expected the old `copy_dir` implementation; that assertion has now been updated to check the ZIP/AssetManager path instead. **The updated validation and full Android compile are still pending**; do not treat the installer as proven until the new run passes and device testing is done.
 
+### Updated result — asset installer checks passed
+
+The updated MCP validation passed in [run 59](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39790155049) and [run 60](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39790161712). These runs verify the addon loads in Godot's Linux headless editor, the APK workflow contains the ZIP asset and safety checks, and the installer patch no longer relies on the invalid `res://mcp-addon` path. The full Android build is queued/running separately; C++ compilation and the final APK still need to pass before this change is considered build-verified.
+
