@@ -1285,6 +1285,335 @@ func execute(arguments: Dictionary) -> Dictionary:
 		"path": resource_path,
 	}
 ''',
+        "scripts/tools/editor/install_runtime_game_bridge_tool.gd": r'''@tool
+extends MCPTool
+
+const BRIDGE_PATH := "res://addons/godot_mcp_android_runtime/game_runtime_bridge.gd"
+const AUTOLOAD_NAME := "GodotMCPRuntimeBridge"
+const BRIDGE_SOURCE := r"""extends Node
+
+const PORT := 37843
+const MAX_REQUEST_BYTES := 65536
+var _server := TCPServer.new()
+var _client: StreamPeerTCP
+var _buffer := PackedByteArray()
+var _previous_window_mode := DisplayServer.WINDOW_MODE_WINDOWED
+
+
+func _ready() -> void:
+	var error := _server.listen(PORT, "127.0.0.1")
+	if error != OK:
+		push_error("Godot MCP runtime bridge could not listen on loopback port %d: %s" % [PORT, error_string(error)])
+
+
+func _process(_delta: float) -> void:
+	if _client == null and _server.is_connection_available():
+		_client = _server.take_connection()
+		_buffer.clear()
+	if _client == null:
+		return
+	_client.poll()
+	if _client.get_status() != StreamPeerTCP.STATUS_CONNECTED:
+		_client = null
+		_buffer.clear()
+		return
+	var available := _client.get_available_bytes()
+	if available > 0:
+		if _buffer.size() + available > MAX_REQUEST_BYTES:
+			_send_response({"ok": false, "error": "request too large"})
+			return
+		var packet := _client.get_data(available)
+		if packet[0] != OK:
+			_client = null
+			_buffer.clear()
+			return
+		_buffer.append_array(packet[1])
+		var newline := _buffer.find(10)
+		if newline >= 0:
+			var request_text := _buffer.slice(0, newline).get_string_from_utf8()
+			var parsed = JSON.parse_string(request_text)
+			var response: Dictionary
+			if parsed is Dictionary:
+				response = _handle_request(parsed)
+			else:
+				response = {"ok": false, "error": "invalid JSON request"}
+			_send_response(response)
+
+
+func _send_response(response: Dictionary) -> void:
+	if _client != null and _client.get_status() == StreamPeerTCP.STATUS_CONNECTED:
+		_client.put_data((JSON.stringify(response) + "\n").to_utf8_buffer())
+	_client = null
+	_buffer.clear()
+
+
+func _handle_request(request: Dictionary) -> Dictionary:
+	var action := String(request.get("action", "status"))
+	match action:
+		"status":
+			return {"ok": true, "running": true, "port": PORT, "scene": get_tree().current_scene.scene_file_path if get_tree().current_scene != null else "", "window_mode": DisplayServer.window_get_mode()}
+		"inspect_controls":
+			var root := get_tree().current_scene
+			if root == null:
+				return {"ok": true, "controls": [], "note": "No current scene"}
+			var controls: Array[Dictionary] = []
+			_walk_controls(root, root, String(request.get("filter", "")).to_lower(), clampi(int(request.get("max_items", 200)), 1, 500), controls)
+			return {"ok": true, "count": controls.size(), "controls": controls, "scene": root.scene_file_path}
+		"click_control":
+			return _click_control(String(request.get("node_path", "")))
+		"mouse_click":
+			var position := Vector2(float(request.get("x", 0.0)), float(request.get("y", 0.0)))
+			var button := int(request.get("button_index", 1))
+			if button < 1 or button > 3:
+				return {"ok": false, "error": "button_index must be 1, 2, or 3"}
+			_send_mouse_click(position, button)
+			return {"ok": true, "action": action, "position": position}
+		"key":
+			var key_event := InputEventKey.new()
+			key_event.keycode = int(request.get("keycode", 0))
+			key_event.pressed = bool(request.get("pressed", true))
+			key_event.shift_pressed = bool(request.get("shift", false))
+			key_event.ctrl_pressed = bool(request.get("ctrl", false))
+			key_event.alt_pressed = bool(request.get("alt", false))
+			key_event.unicode = int(request.get("unicode", 0))
+			Input.parse_input_event(key_event)
+			return {"ok": true, "action": action, "keycode": key_event.keycode, "pressed": key_event.pressed}
+		"fullscreen":
+			_previous_window_mode = DisplayServer.window_get_mode()
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+			return {"ok": true, "window_mode": DisplayServer.window_get_mode()}
+		"windowed":
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+			return {"ok": true, "window_mode": DisplayServer.window_get_mode()}
+		"toggle_fullscreen":
+			if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN:
+				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+			else:
+				_previous_window_mode = DisplayServer.window_get_mode()
+				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+			return {"ok": true, "window_mode": DisplayServer.window_get_mode()}
+		_:
+			return {"ok": false, "error": "unsupported action"}
+
+
+func _walk_controls(node: Node, root: Node, filter_text: String, max_items: int, output: Array[Dictionary]) -> void:
+	if output.size() >= max_items:
+		return
+	if node is Control:
+		var control := node as Control
+		var path := str(root.get_path_to(control))
+		var details := ""
+		if control is Button:
+			details = (control as Button).text
+		elif control is Label:
+			details = (control as Label).text.left(300)
+		elif control is LineEdit:
+			var line_edit := control as LineEdit
+			details = "placeholder=%s; text=%s" % [line_edit.placeholder_text, "[redacted]" if line_edit.secret else line_edit.text.left(200)]
+		elif control is Range:
+			var range_control := control as Range
+			details = "value=%s; min=%s; max=%s" % [range_control.value, range_control.min_value, range_control.max_value]
+		elif control is OptionButton:
+			var option_button := control as OptionButton
+			var options: Array[String] = []
+			for i in range(option_button.get_item_count()):
+				options.append("%d:%s" % [i, option_button.get_item_text(i)])
+			details = "selected=%d; options=%s" % [option_button.selected, " | ".join(options)]
+		var haystack := (path + " " + str(control.name) + " " + control.get_class() + " " + details).to_lower()
+		if filter_text == "" or haystack.contains(filter_text):
+			output.append({"path": path, "name": str(control.name), "class": control.get_class(), "visible": control.is_visible_in_tree(), "disabled": control is BaseButton and (control as BaseButton).disabled, "rect": {"x": control.get_global_rect().position.x, "y": control.get_global_rect().position.y, "width": control.get_global_rect().size.x, "height": control.get_global_rect().size.y}, "details": details})
+	for child in node.get_children():
+		_walk_controls(child, root, filter_text, max_items, output)
+
+
+func _click_control(node_path: String) -> Dictionary:
+	var root := get_tree().current_scene
+	if root == null or node_path.strip_edges() == "":
+		return {"ok": false, "error": "current scene or node_path is missing"}
+	var target := root.get_node_or_null(NodePath(node_path))
+	if target == null or not target is Control:
+		return {"ok": false, "error": "Control path not found in running scene"}
+	var control := target as Control
+	if not control.is_visible_in_tree():
+		return {"ok": false, "error": "Control is not visible"}
+	if control is BaseButton:
+		var button := control as BaseButton
+		if button.disabled:
+			return {"ok": false, "error": "Control is disabled"}
+		var center := control.get_global_rect().get_center()
+		_send_mouse_click(center, MOUSE_BUTTON_LEFT)
+		return {"ok": true, "action": "click_control", "path": node_path, "position": center}
+	if control is LineEdit or control is TextEdit:
+		control.grab_focus()
+		return {"ok": true, "action": "focus_control", "path": node_path, "note": "Text input is focused; send key/text input separately"}
+	var center := control.get_global_rect().get_center()
+	_send_mouse_click(center, MOUSE_BUTTON_LEFT)
+	return {"ok": true, "action": "click_control", "path": node_path, "position": center}
+
+
+func _send_mouse_click(position: Vector2, button_index: int) -> void:
+	var down := InputEventMouseButton.new()
+	down.position = position
+	down.global_position = position
+	down.button_index = button_index
+	down.pressed = true
+	Input.parse_input_event(down)
+	var up := down.duplicate() as InputEventMouseButton
+	up.pressed = false
+	Input.parse_input_event(up)
+"""
+
+func get_name() -> String:
+	return "install_runtime_game_bridge"
+
+
+func get_description() -> String:
+	return "Install a project-local runtime companion that lets the MCP tools inspect live Control nodes, click them, send keyboard/mouse input, and toggle the running game's fullscreen mode. Makes a verified backup of project.godot before adding an autoload; refuses to overwrite an existing bridge."
+
+
+func get_input_schema() -> Dictionary:
+	return {"type": "object", "properties": {"confirm_install": {"type": "boolean", "description": "Must be true because this adds a project-local script and an autoload entry."}}, "required": ["confirm_install"], "additionalProperties": false}
+
+
+func execute(arguments: Dictionary) -> Dictionary:
+	if not bool(arguments.get("confirm_install", false)):
+		return tool_error("confirm_install=true is required to add the runtime bridge autoload")
+	if not FileAccess.file_exists("res://project.godot"):
+		return tool_error("project.godot not found; open a Godot project first")
+	if FileAccess.file_exists(BRIDGE_PATH):
+		return tool_error("runtime bridge already exists; refusing to overwrite")
+	var bridge_dir := BRIDGE_PATH.get_base_dir()
+	var mkdir_error := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(bridge_dir))
+	if mkdir_error != OK:
+		return tool_error("cannot create runtime bridge directory: %s" % error_string(mkdir_error))
+	var bridge_file := FileAccess.open(BRIDGE_PATH, FileAccess.WRITE)
+	if bridge_file == null:
+		return tool_error("cannot create runtime bridge script: %s" % error_string(FileAccess.get_open_error()))
+	bridge_file.store_string(BRIDGE_SOURCE)
+	bridge_file.close()
+	var project_file := FileAccess.open("res://project.godot", FileAccess.READ)
+	if project_file == null:
+		return tool_error("cannot read project.godot")
+	var original := project_file.get_as_text()
+	project_file.close()
+	var backup_dir := "res://.godot_mcp_backups"
+	var backup_error := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(backup_dir))
+	if backup_error != OK:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(BRIDGE_PATH))
+		return tool_error("cannot create project settings backup directory")
+	var backup_path := "%s/project.godot.%d.bak" % [backup_dir, Time.get_ticks_usec()]
+	var backup := FileAccess.open(backup_path, FileAccess.WRITE)
+	if backup == null:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(BRIDGE_PATH))
+		return tool_error("cannot create project.godot backup")
+	backup.store_string(original)
+	backup.close()
+	var verify := FileAccess.open(backup_path, FileAccess.READ)
+	if verify == null:
+		return tool_error("project.godot backup cannot be verified; settings were not changed")
+	var backup_text := verify.get_as_text()
+	verify.close()
+	if backup_text != original:
+		return tool_error("project.godot backup verification failed; settings were not changed")
+	var entry := AUTOLOAD_NAME + '="*' + BRIDGE_PATH + '"'
+	if original.contains(entry) or original.contains(AUTOLOAD_NAME + "="):
+		return tool_error("an autoload with this name already exists; no project.godot changes were made")
+	var updated := original
+	if not updated.contains("[autoload]"):
+		updated += "\n\n[autoload]\n" + entry + "\n"
+	else:
+		var section_start := updated.find("[autoload]")
+		var next_section := updated.find("\n[", section_start + 1)
+		if next_section == -1:
+			updated = updated + "\n" + entry + "\n"
+		else:
+			updated = updated.insert(next_section + 1, entry + "\n")
+	var output := FileAccess.open("res://project.godot", FileAccess.WRITE)
+	if output == null:
+		return tool_error("cannot write project.godot; backup saved at " + backup_path)
+	output.store_string(updated)
+	output.close()
+	return {"ok": true, "script_path": BRIDGE_PATH, "autoload": AUTOLOAD_NAME, "backup_path": backup_path, "port": 37843, "next_step": "Run the game, then use control_runtime_game with action=status or inspect_controls."}
+''',
+        "scripts/tools/editor/control_runtime_game_tool.gd": r'''@tool
+extends MCPTool
+
+const PORT := 37843
+
+
+func get_name() -> String:
+	return "control_runtime_game"
+
+
+func get_description() -> String:
+	return "Control a running Godot game through the project-local loopback runtime bridge: inspect live UI controls, click controls, send key/mouse input, and enter/exit fullscreen. Requires install_runtime_game_bridge and the game running."
+
+
+func get_input_schema() -> Dictionary:
+	return {
+		"type": "object",
+		"properties": {
+			"action": {"type": "string", "enum": ["status", "inspect_controls", "click_control", "mouse_click", "key", "fullscreen", "windowed", "toggle_fullscreen"]},
+			"filter": {"type": "string"},
+			"max_items": {"type": "integer"},
+			"node_path": {"type": "string"},
+			"x": {"type": "number"},
+			"y": {"type": "number"},
+			"button_index": {"type": "integer"},
+			"keycode": {"type": "integer"},
+			"pressed": {"type": "boolean"},
+			"shift": {"type": "boolean"},
+			"ctrl": {"type": "boolean"},
+			"alt": {"type": "boolean"},
+			"unicode": {"type": "integer}
+		},
+		"required": ["action"],
+		"additionalProperties": false,
+	}
+
+
+func execute(arguments: Dictionary) -> Dictionary:
+	var peer := StreamPeerTCP.new()
+	var error := peer.connect_to_host("127.0.0.1", PORT)
+	if error != OK:
+		return tool_error("could not connect to running-game bridge on loopback port %d: %s; install the bridge and start the game first" % [PORT, error_string(error)])
+	for attempt in range(20):
+		peer.poll()
+		if peer.get_status() == StreamPeerTCP.STATUS_CONNECTED:
+			break
+		OS.delay_msec(10)
+	if peer.get_status() != StreamPeerTCP.STATUS_CONNECTED:
+		return tool_error("runtime bridge is not reachable; ensure the game is running with GodotMCPRuntimeBridge autoload enabled")
+	var request := arguments.duplicate()
+	var encoded := (JSON.stringify(request) + "\n").to_utf8_buffer()
+	if encoded.size() > 65536:
+		peer.disconnect_from_host()
+		return tool_error("request exceeds maximum size")
+	var write_error := peer.put_data(encoded)
+	if write_error != OK:
+		peer.disconnect_from_host()
+		return tool_error("failed to send runtime command: %s" % error_string(write_error))
+	var response_bytes := PackedByteArray()
+	for attempt in range(100):
+		peer.poll()
+		var available := peer.get_available_bytes()
+		if available > 0:
+			var packet := peer.get_data(available)
+			if packet[0] == OK:
+				response_bytes.append_array(packet[1])
+				if response_bytes.find(10) >= 0:
+					break
+		OS.delay_msec(10)
+	peer.disconnect_from_host()
+	if response_bytes.is_empty():
+		return tool_error("runtime bridge did not respond before timeout")
+	var newline := response_bytes.find(10)
+	var response_text := response_bytes.slice(0, newline if newline >= 0 else response_bytes.size()).get_string_from_utf8()
+	var parsed = JSON.parse_string(response_text)
+	if not parsed is Dictionary:
+		return tool_error("runtime bridge returned invalid JSON")
+	return parsed
+''',
     }
     for relative_path, source in extra_tools.items():
         target = ADDON_OUT / relative_path
