@@ -447,3 +447,8 @@ The Project Manager GitHub import dialog now has an optional branch/tag/commit f
 
 
 The runtime controller also exposes touchscreen tap/release and swipe events, plus mouse movement, so Android gameplay that uses Godot screen-touch events can be exercised. Coordinate scaling, orientation, and the target game's input handling still need device verification.
+
+
+### Required verification gate
+
+Before expanding MCP capabilities or merging this branch, validate the GitHub import flow (default branch, explicit branch/tag/commit, pagination, download failures, and malformed refs), parse/load the packaged addon in Godot 4.7.2, and build an Android editor APK containing both `armeabi-v7a` and `arm64-v8a`. A green packaging workflow alone does not prove GitHub import works inside the Android UI or that the APK installs and launches on a device. Record these as separate results; do not describe source-only changes as tested.
