@@ -1290,7 +1290,7 @@ extends MCPTool
 
 const BRIDGE_PATH := "res://addons/godot_mcp_android_runtime/game_runtime_bridge.gd"
 const AUTOLOAD_NAME := "GodotMCPRuntimeBridge"
-const BRIDGE_SOURCE := r"""extends Node
+const BRIDGE_SOURCE := """extends Node
 
 const PORT := 37843
 const MAX_REQUEST_BYTES := 65536
@@ -1342,7 +1342,7 @@ func _process(_delta: float) -> void:
 
 func _send_response(response: Dictionary) -> void:
 	if _client != null and _client.get_status() == StreamPeerTCP.STATUS_CONNECTED:
-		_client.put_data((JSON.stringify(response) + "\n").to_utf8_buffer())
+		_client.put_data((JSON.stringify(response) + "\\n").to_utf8_buffer())
 	_client = null
 	_buffer.clear()
 
