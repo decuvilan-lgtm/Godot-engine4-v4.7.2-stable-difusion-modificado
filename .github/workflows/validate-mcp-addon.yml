@@ -1,0 +1,53 @@
+name: Validate Android MCP addon packaging
+
+on:
+  push:
+    branches:
+      - feature/github-sync-and-safe-mcp
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  package-safe-mcp-addon:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+      - name: Checkout public Android MCP addon
+        uses: actions/checkout@v4
+        with:
+          repository: GeorgeMee/godot-mcp-android
+          ref: main
+          path: godot-mcp-android-source
+      - name: Validate Python syntax
+        run: python -m py_compile scripts/package_safe_mcp_android.py scripts/apply_github_import_patch.py
+      - name: Package and validate safe MCP addon
+        run: python scripts/package_safe_mcp_android.py
+      - name: Verify archive contents
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          archive = Path("dist/godot-mcp-android-safe.zip")
+          assert archive.is_file() and archive.stat().st_size > 0
+          with ZipFile(archive) as zf:
+              names = zf.namelist()
+              assert "addons/godot_mcp_android/plugin.cfg" in names
+              assert not any("execute_script_tool.gd" in name for name in names)
+              registry = zf.read("addons/godot_mcp_android/scripts/protocol/mcp_tool_registry.gd").decode()
+              assert "ExecuteScriptTool" not in registry
+              assert "delete_project" not in registry
+          print(f"Verified {len(names)} files in {archive}")
+          PY
+      - name: Upload safe MCP addon
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-mcp-android-safe
+          path: dist/godot-mcp-android-safe.zip
+          if-no-files-found: error
+          retention-days: 30
