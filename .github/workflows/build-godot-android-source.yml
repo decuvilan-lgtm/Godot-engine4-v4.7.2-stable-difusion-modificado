@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       run_type:
-        description: "Manual run: build and validate the ARM64-only Android editor, or validate only the import patch"
+        description: "Manual run: build and validate the ARM32+ARM64 Android editor, or validate only the import patch"
         type: choice
         required: true
         default: full-android-build
@@ -123,17 +123,19 @@ jobs:
         working-directory: godot-source
         run: python misc/scripts/install_swappy_android.py
 
-      - name: Compile Android editor engine for ARM64 only
+      - name: Compile Android editor engine for ARM32 and ARM64
         working-directory: godot-source
         run: |
           set -euo pipefail
+          # Build both native ABIs before packaging the combined editor APK.
+          scons platform=android target=editor arch=arm32 production=yes dev_mode=yes module_text_server_fb_enabled=yes swappy=yes cache_path="${{ github.workspace }}/.scons-cache" -j2
           scons platform=android target=editor arch=arm64 production=yes dev_mode=yes module_text_server_fb_enabled=yes swappy=yes generate_android_binaries=yes cache_path="${{ github.workspace }}/.scons-cache" -j2
 
       - name: Generate Android Editor APK
         working-directory: godot-source/platform/android/java
         run: ./gradlew --no-daemon generateGodotEditor
 
-      - name: Locate, stage, and validate ARM64-only APK
+      - name: Locate, stage, and validate ARM32+ARM64 APK
         shell: bash
         run: |
           set -euo pipefail
@@ -156,8 +158,8 @@ jobs:
             exit 1
           fi
 
-          cp "$APK" "$GITHUB_WORKSPACE/godot-editor-arm64.apk"
-          APK="$GITHUB_WORKSPACE/godot-editor-arm64.apk"
+          cp "$APK" "$GITHUB_WORKSPACE/godot-editor-arm32-arm64.apk"
+          APK="$GITHUB_WORKSPACE/godot-editor-arm32-arm64.apk"
 
           BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
           AAPT="$BUILD_TOOLS/aapt"
@@ -170,13 +172,19 @@ jobs:
           unzip -t "$APK"
           "$AAPT" dump badging "$APK" | tee apk-badging.txt
 
-          echo "=== Enforce ARM64-only native code ==="
+          echo "=== Enforce ARM32 and ARM64 native code ==="
           NATIVE_LINE="$(grep '^native-code:' apk-badging.txt || true)"
           echo "$NATIVE_LINE"
-          if [ "$NATIVE_LINE" != "native-code: 'arm64-v8a'" ]; then
-            echo "ERROR: APK must contain only arm64-v8a; found: $NATIVE_LINE"
-            exit 1
-          fi
+          python - <<'PY'
+          from pathlib import Path
+          text = Path("apk-badging.txt").read_text(encoding="utf-8")
+          line = next((item for item in text.splitlines() if item.startswith("native-code:")), "")
+          found = set(line.replace("native-code:", "").replace("'", "").split())
+          expected = {"armeabi-v7a", "arm64-v8a"}
+          if found != expected:
+              raise SystemExit(f"Expected exactly {sorted(expected)}; found {sorted(found)} in {line!r}")
+          print("Verified native ABIs:", ", ".join(sorted(found)))
+          PY
 
           echo "=== Verify APK signature ==="
           "$APKSIGNER" verify --verbose --print-certs "$APK"
@@ -211,14 +219,14 @@ jobs:
             exit 1
           fi
 
-      - name: Upload ARM64-only Android editor APK
+      - name: Upload ARM32+ARM64 Android editor APK
         if: always() && (github.event_name == 'push' || inputs.run_type == 'full-android-build')
         uses: actions/upload-artifact@v4
         with:
-          name: godot-4.7.2-android-editor-arm64-only
+          name: godot-4.7.2-android-editor-arm32-arm64
           if-no-files-found: error
           path: |
-            godot-editor-arm64.apk
+            godot-editor-arm32-arm64.apk
             apk-badging.txt
           retention-days: 30
 
