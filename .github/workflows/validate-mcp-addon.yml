@@ -133,9 +133,9 @@ jobs:
           assert not missing, f"Android APK workflow is missing MCP integration guards: {missing}"
           assert 'unzip -p "$APK" assets/mcp-addon/' in workflow, "final APK addon files are not inspected"
           assert 'unzip -p "$APK" assets/mcp-addon.zip' in workflow, "final APK installer bundle is not inspected"
-          assert 'res://mcp-addon' not in patcher if 'patcher' in locals() else True
 
           patcher = Path("scripts/apply_github_import_patch.py").read_text(encoding="utf-8")
+          assert 'res://mcp-addon' not in patcher, "installer must not treat raw APK assets as res:// resources"
           for item in (
               'Button *mcp_install_btn',
               '_show_mcp_install_dialog',
