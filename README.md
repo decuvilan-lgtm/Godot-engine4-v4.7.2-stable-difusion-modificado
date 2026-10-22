@@ -33,8 +33,8 @@ The `full-android-build` job:
 1. Checks out the repository and official Godot 4.7.2 source.
 2. Applies the GitHub import patch.
 3. Sets up Java 17, Python, SCons and the Android Swappy dependency.
-4. Compiles the Android editor native engine for `arm64` only.
-5. runs Gradle's `generateGodotEditor` task.
+4. Compiles the Android editor native engine for `arm64` only, with `generate_android_binaries=yes` so SCons emits the native editor binaries required by the APK.
+5. Runs Gradle's `generateGodotEditor` task without `clean`, preserving the binaries produced by SCons.
 6. Packages the editor APK from Godot's documented output location: `godot-source/bin/android_editor_builds/android_editor-android-debug.apk`.
 7. Refuses to publish the APK if the expected full-editor APK is missing or smaller than 50 MB. This guard exists because run 29 accidentally staged a roughly 13 MB APK from a Gradle intermediate output directory.
 8. Verifies ZIP integrity, checks `aapt dump badging` reports exactly `arm64-v8a`, verifies APK signature and ZIP alignment, and records SHA-256.
@@ -60,9 +60,15 @@ The separate `validate-import-only` option checks the patcher's Python syntax an
 - Artifact ZIP size was about 8.9 MB; that small artifact was not proof of a complete editor package.
 - No ARM64 device/emulator installation test was run in run 29.
 
+### Run 30 — [39719700905](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39719700905)
+
+- SCons compilation and Gradle `generateGodotEditor` both completed successfully, but the expected output APK was only 12,823,634 bytes (about 12.8 MB).
+- The size guard correctly refused to publish it; no artifact was created. This is not a successful deliverable.
+- Comparing the workflow with the official Godot Android build documentation exposed a missing `generate_android_binaries=yes` flag in the SCons editor build. The workflow also ran Gradle `clean` immediately before `generateGodotEditor`, unlike the official Godot workflow.
+
 ### Current corrective change
 
-The workflow now selects `godot-source/bin/android_editor_builds/android_editor-android-debug.apk` and fails rather than publishing if that file is missing or smaller than 50 MB. This is a corrective guard, not yet proof of a successful new build. Run the workflow again and inspect the actual artifact and logs.
+Commit `894b99d89c5659f00a6b0a64a4b52517c5c6166e` adds `generate_android_binaries=yes` and removes Gradle `clean` before generating the editor. The workflow still selects `godot-source/bin/android_editor_builds/android_editor-android-debug.apk` and refuses to publish if it is missing or smaller than 50 MB. This correction has **not yet been validated by a new run**; inspect the next run and actual APK artifact before claiming success.
 
 ## Known scope and next verification
 
