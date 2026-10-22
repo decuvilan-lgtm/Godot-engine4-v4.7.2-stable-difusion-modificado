@@ -306,3 +306,9 @@ The updated MCP validation passed in [run 59](https://github.com/decuvilan-lgtm/
 
 Commit `f54f1c3cd73eee346949a549d45c92035bb1b3a0` replaces an unsupported `FileAccess::open_absolute` call with Godot's supported `FileAccess::open` API for absolute filesystem paths. This was caught while cross-checking the patch against the upstream 4.7.2 headers. The new source commit triggers another full Android build; the earlier build may be superseded, so final C++/APK status remains pending.
 
+
+### Android build run 39 — compiler failure and corrective retry
+
+- [Run 39](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39790981418) reached native C++ compilation but failed in `editor/project_manager/project_manager.cpp`: `FileAccessAndroid::open()` is not an `Error`-returning instance API; it inherited the static `FileAccess::open()` factory, which returns `Ref<FileAccess>`. No APK artifact was produced.
+- Commit `996a6df2e481b54e88d793700f5f23946f7cf592` changed the installer to hold the asset reader as `Ref<FileAccess>` and check `is_null()`. A follow-up cleanup in `ae360ab2c56a8677fa3b04679d607aea577de71e` removes the now-unneeded direct Android header include and consistently closes the reference.
+- The replacement Android build workflow was queued at [run 39793879648](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39793879648) when this note was written. Its compiler result and final APK checks are still pending. The successful MCP packaging validation does not by itself prove the native editor build or on-device install.
