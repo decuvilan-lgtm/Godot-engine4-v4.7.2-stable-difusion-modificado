@@ -193,9 +193,12 @@ Coverage should include:
 
 Do not claim literal 100% coverage until an automated inventory and device-side tests verify it. The goal is to expose the broadest feasible set of editor options and report honest gaps. This is an editor plugin and a tool server, not proof that ChatGPT can connect directly to the live editor; the actual client/transport connection must be configured and tested separately.
 
-## MCP coverage and safety documents
+## MCP coverage, hardening and remaining tests
 
 - [Godot editor MCP coverage inventory](docs/MCP_EDITOR_COVERAGE.md) — exhaustive editor surfaces to audit, coverage states, acceptance criteria and safety boundaries.
-- [Android MCP upstream capability audit](docs/ANDROID_MCP_UPSTREAM_AUDIT.md) — current upstream tool surface, gaps and next engineering steps.
+- [Android MCP upstream capability audit](docs/ANDROID_MCP_UPSTREAM_AUDIT.md) — registered tool surface, concrete gaps and next engineering steps.
+- CI pins the reviewed public upstream addon revision `5df91076250ece38ab182b2ca8b8a4a5d9a2d938` so packaging is reproducible.
+- The packaging script removes generic expression execution, forces HTTP/WebSocket listeners to loopback, removes wildcard CORS, and patches scene-property changes and node removal to use Godot's editor undo/redo manager.
+- File writes/edits still need a recovery strategy; the scene undo patches are source-level changes and are not yet verified by a successful package run or an on-device undo/redo test.
 
-These documents are inventories/plans, not claims of complete implementation. The addon packaging workflow still needs a successful run and the installed plugin still needs real device and MCP-client testing.
+These are hardening changes and an audit baseline, not claims of complete editor coverage. The addon still needs successful CI packaging, installation in the actual Godot Android editor, and end-to-end testing with a compatible MCP client.
