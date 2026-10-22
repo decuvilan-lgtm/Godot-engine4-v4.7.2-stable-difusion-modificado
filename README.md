@@ -388,7 +388,7 @@ I expanded the Android MCP packaging script with five additional typed tools: `g
 The five new tools are source changes only. They have not been run through the packaging workflow, the Godot headless parser, an MCP client, or the Android device. No new build or validation was launched, per the integration pause.
 
 
-**Intended registered MCP tool count: 30** (source-derived and not yet runtime-confirmed). They cover connection/project info, editor state, scene tree and node edits, opening/running scenes, file search/read/write/edit, resource UID/validation/creation, filesystem scan, and editor logs. The unrestricted expression tool remains disabled. The number of tools is not the same as full Godot coverage: visual editor operations and many advanced workflows still require dedicated tools.
+**Intended registered MCP tool count: 33** (source-derived and not yet runtime-confirmed). They cover connection/project info, editor state, scene tree and node edits, opening/running scenes, file search/read/write/edit, resource UID/validation/creation, filesystem scan, and editor logs. The unrestricted expression tool remains disabled. The number of tools is not the same as full Godot coverage: visual editor operations and many advanced workflows still require dedicated tools.
 
 ## Generic Godot editor UI bridge — source added, not yet validated
 
@@ -419,3 +419,8 @@ Added `inspect_scene_ui_controls` to enumerate Control nodes in the currently ed
 ### Embedded game preview input — source added, not yet validated
 
 Added `send_editor_viewport_input`, which targets a specific `SubViewport` or `SubViewportContainer` in the editor UI and sends mouse clicks/motion, keyboard events, or text events. This is a path toward clicking game UI in an embedded preview. It deliberately does not claim to control an external game process; that case still needs a runtime bridge or supported debugger integration. No tests or builds have been launched.
+
+
+### Additional scene organization — source added, not yet validated
+
+Added `reorder_node` for sibling order, `set_node_group` for node groups, and `manage_node_signal` for connecting/disconnecting signals between scene nodes. The actions include undo/redo support where applicable and validate that the signal and target method exist. Runtime compatibility, ownership, and serialization remain unverified; no tests or builds were launched.
