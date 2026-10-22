@@ -388,7 +388,7 @@ I expanded the Android MCP packaging script with five additional typed tools: `g
 The five new tools are source changes only. They have not been run through the packaging workflow, the Godot headless parser, an MCP client, or the Android device. No new build or validation was launched, per the integration pause.
 
 
-**Intended registered MCP tool count: 34** (source-derived and not yet runtime-confirmed). They cover connection/project info, editor state, scene tree and node edits, opening/running scenes, file search/read/write/edit, resource UID/validation/creation, filesystem scan, and editor logs. The unrestricted expression tool remains disabled. The number of tools is not the same as full Godot coverage: visual editor operations and many advanced workflows still require dedicated tools.
+**Intended registered MCP tool count: 36** (source-derived and not yet runtime-confirmed). They cover connection/project info, editor state, scene tree and node edits, opening/running scenes, file search/read/write/edit, resource UID/validation/creation, filesystem scan, and editor logs. The unrestricted expression tool remains disabled. The number of tools is not the same as full Godot coverage: visual editor operations and many advanced workflows still require dedicated tools.
 
 ## Generic Godot editor UI bridge — source added, not yet validated
 
@@ -401,7 +401,7 @@ This is a first bridge toward navigating the main toolbar, menus, docks, tabs, O
 
 Next scope is comprehensive inventory and implementation across main menus, context menus, workspace layout, scene tree, Inspector, filesystem/import, script editor, Output and Debugger details, profiling, 2D/3D, animation, TileMap/TileSet, resources, Project/Editor Settings, export, plugins, Android-specific UI, and every remaining obscure control or option.
 
-**Status:** source changes only. No packaging workflow, parser validation, CI, Android build, or device test has been run for the two UI tools. The intended count of 24 is not a runtime-confirmed count and is not a claim of full editor coverage.
+**Status:** source changes only. No packaging workflow, parser validation, CI, Android build, or device test has been run for the two UI tools. The tool count is source-derived, not runtime-confirmed, and is not a claim of full editor coverage.
 
 
 ### Scene-tree organization — source added, not yet validated
@@ -429,3 +429,13 @@ Added `reorder_node` for sibling order, `set_node_group` for node groups, and `m
 ### Output and diagnostics — source added, not yet validated
 
 Added `read_editor_diagnostics` to collect bounded text from visible editor labels, text editors, and rich-text controls. This is intended to read Output/Debugger text when the target editor exposes it in its UI tree. It does not yet cover structured debugger APIs or logs owned by a separate process. No tests or builds were launched.
+
+
+### Live running-game control and fullscreen — source added, not yet validated
+
+Two tools were added to bridge the editor MCP connection to the actual running game:
+
+- `install_runtime_game_bridge`: with explicit `confirm_install=true`, installs a project-local autoload companion on loopback port `37843`. It refuses to overwrite an existing bridge and creates/verifies a backup of `project.godot` before editing its autoload section.
+- `control_runtime_game`: connects to that running companion to inspect live `Control` nodes (paths, classes, labels/values and screen rectangles), click a control by node path, send mouse/key input, and switch the game window to fullscreen/windowed or toggle fullscreen.
+
+This is the intended path for a game running as a separate process; the older `send_editor_viewport_input` remains the embedded-`SubViewport` path. The runtime companion listens on `127.0.0.1` only. The bridge requires the project autoload to be installed and the game running; it does not grant universal control of arbitrary native OS dialogs or guarantee that every Android/editor launch mode exposes the game window. All of this is source-only and **not validated** yet: no packaging, parser validation, CI workflow, APK build, or device test was run. The intended registered tool count is now 36, pending actual packaging/runtime confirmation.
