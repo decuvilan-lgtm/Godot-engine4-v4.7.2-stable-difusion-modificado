@@ -126,7 +126,8 @@ func _control_label(control: Control) -> String:
 		return (control as Label).text
 	if control is LineEdit:
 		var line_edit := control as LineEdit
-		return "placeholder=%s; text=%s" % [line_edit.placeholder_text, line_edit.text.left(500)]
+		var current_text := "[redacted secret input]" if line_edit.secret else line_edit.text.left(500)
+		return "placeholder=%s; text=%s" % [line_edit.placeholder_text, current_text]
 	if control is TextEdit:
 		return (control as TextEdit).text.left(1500)
 	if control is RichTextLabel:
@@ -184,6 +185,10 @@ func get_input_schema() -> Dictionary:
 			"menu_index": {"type": "integer", "description": "For an open PopupMenu only, the zero-based item index."},
 			"tab_index": {"type": "integer", "description": "For a TabBar only, the zero-based tab index."},
 			"option_index": {"type": "integer", "description": "For an OptionButton only, the zero-based option index."},
+			"text_value": {"type": "string", "description": "New text for a LineEdit control."},
+			"numeric_value": {"type": "number", "description": "New value for a SpinBox control."},
+			"checked_value": {"type": "boolean", "description": "Desired state for a CheckBox or CheckButton."},
+			"submit_text": {"type": "boolean", "description": "If true after setting text, emit the LineEdit text_submitted signal."},
 			"confirm_destructive": {"type": "boolean", "description": "Must be true for controls whose label suggests a destructive action."},
 		},
 		"required": ["path"],
@@ -218,6 +223,29 @@ func execute(arguments: Dictionary) -> Dictionary:
 				break
 		if destructive and not bool(arguments.get("confirm_destructive", false)):
 			return tool_error("potentially destructive UI action requires confirm_destructive=true")
+	if control is LineEdit:
+		if not arguments.has("text_value"):
+			return tool_error("text_value is required for LineEdit input")
+		var line_edit := control as LineEdit
+		line_edit.text = String(arguments.get("text_value", ""))
+		if bool(arguments.get("submit_text", false)):
+			line_edit.emit_signal("text_submitted", line_edit.text)
+		return {"ok": true, "path": path, "text_length": line_edit.text.length(), "submitted": bool(arguments.get("submit_text", false))}
+	if control is SpinBox:
+		if not arguments.has("numeric_value"):
+			return tool_error("numeric_value is required for SpinBox input")
+		var spin_box := control as SpinBox
+		var numeric_value := float(arguments.get("numeric_value", spin_box.value))
+		if numeric_value < spin_box.min_value or numeric_value > spin_box.max_value:
+			return tool_error("numeric_value is outside the SpinBox range")
+		spin_box.value = numeric_value
+		return {"ok": true, "path": path, "value": spin_box.value}
+	if control is CheckBox or control is CheckButton:
+		if not arguments.has("checked_value"):
+			return tool_error("checked_value is required for CheckBox or CheckButton")
+		var check_button := control as BaseButton
+		check_button.button_pressed = bool(arguments.get("checked_value", false))
+		return {"ok": true, "path": path, "checked": check_button.button_pressed}
 	if control is TabBar:
 		var tabs := control as TabBar
 		if not arguments.has("tab_index"):
