@@ -272,3 +272,12 @@ The next implementation should provide a deliberate **Install MCP into this proj
 - File writes/edits still need a recovery strategy; the scene undo patches are source-level changes and are not yet verified by a successful package run or an on-device undo/redo test.
 
 These are hardening changes and an audit baseline, not claims of complete editor coverage. The addon still needs successful CI packaging, installation in the actual Godot Android editor, and end-to-end testing with a compatible MCP client.
+
+## New validation added — Godot headless parser/load check
+
+Commit: `fc07465581a77c64fe1fe9799cc4a1c167b0d15f`
+
+The MCP validation workflow now downloads the official Godot 4.7.2 Linux editor in CI, creates a temporary test project, enables the packaged addon, and starts the headless editor. The job fails if the editor exits unsuccessfully or logs script/parser/load errors. This is stronger than checking file names and text patterns, but it is **not** a substitute for running the Android APK on a physical phone or testing an MCP client roundtrip.
+
+**Important unresolved Android installer risk:** the addon is currently embedded under the APK's raw Android `assets/mcp-addon/` directory, while the native Project Manager installer tries to read `res://mcp-addon`. Those are different resource namespaces unless the build explicitly mounts/copies the assets into Godot's virtual filesystem. The APK packaging checks alone do not prove that this path works. The new headless validation checks the addon itself, not this Android asset-copy path. The installer must remain marked as unverified until this mismatch is resolved and tested.
+
