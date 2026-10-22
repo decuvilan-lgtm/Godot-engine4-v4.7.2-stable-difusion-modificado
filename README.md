@@ -287,3 +287,14 @@ The MCP validation workflow now downloads the official Godot 4.7.2 Linux editor 
 
 The MCP validation workflow now runs on changes to its workflow files or scripts, rather than every README-only change.
 
+## Android MCP installer asset-path fix — validation pending
+
+Commits:
+- Installer implementation: `8bd72e245a1b4b3e8c87eee01a63a97a5344344a`
+- APK ZIP bundle: `a0654420c8763d49c90ea850db3594150b30eaac`
+- Validation assertions updated: `4633269ebd66d216f91a0e6384a3704250f92f8e`
+
+The installer no longer assumes raw Android APK assets are available at `res://mcp-addon`. The Android build now creates `assets/mcp-addon.zip`; the Project Manager patch reads that ZIP through Android's `AssetManager`, extracts only entries under `godot_mcp_android/`, rejects absolute/traversal paths, stages files under the project's `addons` directory, checks for `plugin.cfg`, and only then renames the staging folder and enables the plugin. It does not overwrite an existing addon folder or automatically delete a stale staging folder.
+
+The first validation runs after this code change failed because a CI assertion still expected the old `copy_dir` implementation; that assertion has now been updated to check the ZIP/AssetManager path instead. **The updated validation and full Android compile are still pending**; do not treat the installer as proven until the new run passes and device testing is done.
+
