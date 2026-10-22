@@ -170,7 +170,7 @@ These are **partial editor capabilities**, not full Godot control. The MCP regis
 Two typed tools extend control from the edited scene into the actual running game:
 
 - `install_runtime_game_bridge` installs a project-local autoload companion at `res://addons/godot_mcp_android_runtime/game_runtime_bridge.gd`. It binds only to `127.0.0.1:37843`, refuses to overwrite an existing companion, and saves/verifies a recovery copy of `project.godot` before adding its autoload entry.
-- `control_runtime_game` sends typed JSON-line commands over loopback to request runtime status, enumerate live `Control` nodes and their global rectangles, click a control by scene-tree path, inject mouse/key input, and enter/exit/toggle fullscreen.
+- `control_runtime_game` sends typed JSON-line commands over loopback to request runtime status, enumerate live `Control` nodes and their global rectangles, click a control by scene-tree path, edit text fields, set Range values, toggle checkboxes, select OptionButton entries, inject mouse/key input, and enter/exit/toggle fullscreen.
 
 ### Boundaries and required validation
 
