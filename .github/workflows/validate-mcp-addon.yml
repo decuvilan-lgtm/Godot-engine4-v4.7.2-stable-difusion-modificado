@@ -117,6 +117,9 @@ jobs:
               assert "options.select(option_index)" in activate_ui
               assert "text_value" in activate_ui and "numeric_value" in activate_ui
               assert "checked_value" in activate_ui
+              assert "control is Range" in activate_ui
+              assert "control is TextEdit" in activate_ui
+              assert '"focus"' in activate_ui
               duplicate_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/duplicate_node_tool.gd").decode()
               rename_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/rename_node_tool.gd").decode()
               reparent_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/reparent_node_tool.gd").decode()
