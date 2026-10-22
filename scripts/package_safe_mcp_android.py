@@ -201,19 +201,19 @@ def main() -> int:
     # Keep the exact pre-edit contents available for the recovery copy.
     replace_once(
         ADDON_OUT / "scripts/tools/filesystem/edit_file_tool.gd",
-        "\\tvar content := file.get_as_text()",
-        "\\tvar content := file.get_as_text()\\n\\tvar original_content := content",
+        "\tvar content := file.get_as_text()",
+        "\tvar content := file.get_as_text()\n\tvar original_content := content",
     )
 
     replace_once(
         ADDON_OUT / "scripts/tools/filesystem/write_file_tool.gd",
-        '\\t"bytes_written": text.to_utf8_buffer().size(),',
-        '\\t"bytes_written": text.to_utf8_buffer().size(),\\n\\t"recovery_copy": recovery_path,',
+        '\t"bytes_written": text.to_utf8_buffer().size(),',
+        '\t"bytes_written": text.to_utf8_buffer().size(),\n\t"recovery_copy": recovery_path,',
     )
     replace_once(
         ADDON_OUT / "scripts/tools/filesystem/edit_file_tool.gd",
-        '\\t"replacements": count,',
-        '\\t"replacements": count,\\n\\t"recovery_copy": recovery_path,',
+        '\t"replacements": count,',
+        '\t"replacements": count,\n\t"recovery_copy": recovery_path,',
     )
 
     # Editing a file also requires a recovery copy before the write begins.
