@@ -110,6 +110,8 @@ jobs:
               assert "activate_item(index)" in activate_ui
               assert "tabs.current_tab = tab_index" in activate_ui
               assert "options.select(option_index)" in activate_ui
+              assert "text_value" in activate_ui and "numeric_value" in activate_ui
+              assert "checked_value" in activate_ui
               assert "project deletion/removal is permanently blocked" in activate_ui
               assert "confirm_destructive" in activate_ui
               set_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/set_node_property_tool.gd").decode()
