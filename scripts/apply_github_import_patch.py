@@ -22,10 +22,10 @@ replace_once(HEADER,
     "class HFlowContainer;\nclass HTTPRequest;\nclass LineEdit;")
 replace_once(HEADER,
     "ProjectDialog *project_dialog = nullptr;",
-    "ProjectDialog *project_dialog = nullptr;\n\tConfirmationDialog *github_import_dialog = nullptr;\n\tLineEdit *github_repo_url = nullptr;\n\tHTTPRequest *github_http_request = nullptr;\n\tString github_zip_path;\n\tString github_repo_name;")
+    "ProjectDialog *project_dialog = nullptr;\n\tConfirmationDialog *github_import_dialog = nullptr;\n\tLineEdit *github_repo_url = nullptr;\n\tHTTPRequest *github_http_request = nullptr;\n\tString github_zip_path;\n\tString github_repo_name;\n\tConfirmationDialog *mcp_install_dialog = nullptr;")
 replace_once(HEADER,
     "\tvoid _import_project();\n\tvoid _new_project();",
-    "\tvoid _import_project();\n\tvoid _show_github_import_dialog();\n\tvoid _github_import_confirmed();\n\tvoid _github_download_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n\tvoid _new_project();")
+    "\tvoid _import_project();\n\tvoid _show_github_import_dialog();\n\tvoid _github_import_confirmed();\n\tvoid _github_download_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n\tvoid _show_mcp_install_dialog();\n\tvoid _install_mcp_addon_confirmed();\n\tvoid _new_project();")
 replace_once(SOURCE,
     '#include "scene/gui/separator.h"\n#include "scene/main/scene_tree.h"',
     '#include "scene/gui/separator.h"\n#include "scene/main/http_request.h"\n#include "scene/main/scene_tree.h"')
@@ -117,6 +117,92 @@ void ProjectManager::_github_download_completed(int p_result, int p_response_cod
 \t_install_project(github_zip_path, github_repo_name);
 }
 
+
+void ProjectManager::_show_mcp_install_dialog() {
+    Vector<ProjectList::Item> selected = project_list->get_selected_projects();
+    if (selected.size() != 1) {
+        _show_error(TTR("Select exactly one existing project before installing MCP."));
+        return;
+    }
+    const String project_path = selected[0].path;
+    if (!FileAccess::exists(project_path.path_join("project.godot"))) {
+        _show_error(TTR("The selected folder is not a valid Godot project."));
+        return;
+    }
+    if (DirAccess::dir_exists_absolute(project_path.path_join("addons/godot_mcp_android"))) {
+        _show_error(TTR("This project already has addons/godot_mcp_android. It was left untouched; move or back it up before reinstalling."));
+        return;
+    }
+    if (!mcp_install_dialog) {
+        mcp_install_dialog = memnew(ConfirmationDialog);
+        mcp_install_dialog->set_title(TTRC("Install Godot MCP"));
+        mcp_install_dialog->set_text(TTR("Copy the bundled MCP addon into the selected project and enable it in project.godot? Existing addon folders will never be overwritten. The server is configured to listen on this device only."));
+        mcp_install_dialog->set_ok_button_text(TTRC("Install and Enable"));
+        add_child(mcp_install_dialog);
+        mcp_install_dialog->connect("confirmed", callable_mp(this, &ProjectManager::_install_mcp_addon_confirmed));
+    }
+    mcp_install_dialog->popup_centered(Size2i(560 * EDSCALE, 0));
+}
+
+void ProjectManager::_install_mcp_addon_confirmed() {
+    Vector<ProjectList::Item> selected = project_list->get_selected_projects();
+    if (selected.size() != 1) {
+        _show_error(TTR("Select exactly one project and try again."));
+        return;
+    }
+    const String project_path = selected[0].path;
+    const String project_file = project_path.path_join("project.godot");
+    const String addon_target = project_path.path_join("addons/godot_mcp_android");
+    if (!FileAccess::exists(project_file)) {
+        _show_error(TTR("The selected folder is not a valid Godot project."));
+        return;
+    }
+    if (DirAccess::dir_exists_absolute(addon_target)) {
+        _show_error(TTR("The MCP addon folder already exists. No files were overwritten."));
+        return;
+    }
+
+    ConfigFile config;
+    if (config.load(project_file) != OK) {
+        _show_error(TTR("Could not read project.godot; no MCP files were copied."));
+        return;
+    }
+    PackedStringArray enabled;
+    Variant enabled_value = config.get_value("editor_plugins", "enabled", PackedStringArray());
+    if (enabled_value.get_type() == Variant::PACKED_STRING_ARRAY) {
+        enabled = enabled_value;
+    } else if (enabled_value.get_type() == Variant::ARRAY) {
+        Array enabled_array = enabled_value;
+        for (const Variant &entry : enabled_array) {
+            enabled.push_back(String(entry));
+        }
+    }
+    const String plugin_path = "res://addons/godot_mcp_android/plugin.cfg";
+    if (!enabled.has(plugin_path)) {
+        enabled.push_back(plugin_path);
+    }
+
+    Ref<DirAccess> addon_source = DirAccess::open("res://mcp-addon");
+    if (addon_source.is_null()) {
+        _show_error(TTR("The MCP addon bundle is missing from this APK. Rebuild the editor before installing MCP."));
+        return;
+    }
+    Error copy_error = addon_source->copy_dir(".", addon_target);
+    if (copy_error != OK || !FileAccess::exists(addon_target.path_join("plugin.cfg"))) {
+        _show_error(TTR("Could not copy the MCP addon into the selected project. The project was not enabled for MCP."));
+        return;
+    }
+
+    config.set_value("editor_plugins", "enabled", enabled);
+    Error save_error = config.save(project_file);
+    if (save_error != OK) {
+        _show_error(TTR("The MCP addon files were copied, but project.godot could not be saved. The plugin remains disabled; check project permissions."));
+        return;
+    }
+    project_list->refresh_project(project_path);
+    _show_error(TTR("MCP addon installed and enabled for the selected project. Open the project to start the plugin."));
+}
+
 void ProjectManager::_new_project() {""")
 replace_once(SOURCE,
     "\t\t\thb->add_child(import_btn);\n\n\t\t\tscan_btn = memnew(Button);",
@@ -127,6 +213,12 @@ replace_once(SOURCE,
 \t\t\tgithub_import_btn->set_tooltip_text(TTRC("Download a project from a public GitHub repository."));
 \t\t\tgithub_import_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_show_github_import_dialog));
 \t\t\thb->add_child(github_import_btn);
+
+\t\t\tButton *mcp_install_btn = memnew(Button);
+\t\t\tmcp_install_btn->set_text(TTRC(\"Install MCP\"));
+\t\t\tmcp_install_btn->set_tooltip_text(TTRC(\"Install and enable the bundled safe MCP addon in the selected project.\"));
+\t\t\tmcp_install_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_show_mcp_install_dialog));
+\t\t\thb->add_child(mcp_install_btn);
 
 \t\t\tscan_btn = memnew(Button);""")
 print("GitHub import patch applied successfully to project_manager.h and project_manager.cpp.")
