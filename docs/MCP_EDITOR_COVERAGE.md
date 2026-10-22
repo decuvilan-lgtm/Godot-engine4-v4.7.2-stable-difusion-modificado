@@ -116,6 +116,10 @@ Three further tools have been added:
 
 These cover some of the Scene dock operations that otherwise require manual Inspector/context-menu work. Ownership, signal argument compatibility, saved-scene serialization, and undo/redo still require runtime validation.
 
+## Output and diagnostic text reader — source added, not yet validated
+
+Added `read_editor_diagnostics` to collect bounded text from visible editor `RichTextLabel`, `TextEdit`, and `Label` controls, with filters and truncation metadata. It can help read Output/Debugger/log text when Godot exposes it in the editor UI tree. It does not claim to read hidden panels, structured debugger internals, or logs from a separate process.
+
 ## Required breadth-first expansion plan
 
 The target is comprehensive coverage of every usable editor surface, including rare/obscure options. Work through these families rather than stopping at the current tool list:
