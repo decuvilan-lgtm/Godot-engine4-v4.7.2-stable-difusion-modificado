@@ -522,6 +522,29 @@ func execute(arguments: Dictionary) -> Dictionary:
     registry_text = registry.read_text(encoding="utf-8")
     if "ExecuteScriptTool" in registry_text or "delete_project" in registry_text:
         raise RuntimeError("unsafe tool registration detected")
+
+    required_tool_registrations = (
+        "GetEditorStateTool",
+        "OpenSceneTool",
+        "RunSceneTool",
+        "GetNodePropertiesTool",
+        "CreateResourceTool",
+    )
+    for registration in required_tool_registrations:
+        if registration not in registry_text:
+            raise RuntimeError(f"new typed MCP tool is not registered: {registration}")
+
+    open_scene = (ADDON_OUT / "scripts/tools/editor/open_scene_tool.gd").read_text(encoding="utf-8")
+    run_scene = (ADDON_OUT / "scripts/tools/editor/run_scene_tool.gd").read_text(encoding="utf-8")
+    create_resource = (ADDON_OUT / "scripts/tools/resource/create_resource_tool.gd").read_text(encoding="utf-8")
+    if "open_scene_from_path" not in open_scene or "is_safe_project_path" not in open_scene:
+        raise RuntimeError("open_scene is missing scene-path validation")
+    if "play_current_scene" not in run_scene or "stop_playing_scene" not in run_scene:
+        raise RuntimeError("scene playback tool is missing required editor actions")
+    if "FileAccess.file_exists(resource_path)" not in create_resource or "ResourceSaver.save" not in create_resource:
+        raise RuntimeError("create_resource must refuse overwrite and save via ResourceSaver")
+    if "var class_name :=" in create_resource:
+        raise RuntimeError("create_resource uses a reserved GDScript identifier")
     set_node_tool = (ADDON_OUT / "scripts/tools/scene/set_node_property_tool.gd").read_text(encoding="utf-8")
     remove_node_tool = (ADDON_OUT / "scripts/tools/scene/remove_node_tool.gd").read_text(encoding="utf-8")
     if "get_editor_undo_redo()" not in set_node_tool or "add_undo_property" not in set_node_tool:
