@@ -1,6 +1,13 @@
 name: Build Godot Android Editor (source pipeline)
 
 on:
+  push:
+    branches:
+      - feature/github-sync-and-safe-mcp
+    paths:
+      - ".github/workflows/build-godot-android-source.yml"
+      - ".github/workflows/validate-mcp-addon.yml"
+      - "scripts/**"
   workflow_dispatch:
     inputs:
       run_type:
@@ -21,7 +28,7 @@ concurrency:
 
 jobs:
   build-android-editor:
-    if: ${{ inputs.run_type == 'full-android-build' }}
+    if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -160,7 +167,7 @@ jobs:
           fi
 
       - name: Upload ARM64-only Android editor APK
-        if: always() && inputs.run_type == 'full-android-build'
+        if: always() && (github.event_name == 'push' || inputs.run_type == 'full-android-build')
         uses: actions/upload-artifact@v4
         with:
           name: godot-4.7.2-android-editor-arm64-only
@@ -188,7 +195,7 @@ jobs:
         run: python scripts/apply_github_import_patch.py
 
   package-safe-mcp-addon:
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
