@@ -101,13 +101,13 @@ void ProjectManager::_github_import_confirmed() {
 	const String owner_allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-";
 	const String repo_allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.";
 	for (int i = 0; i < parts[0].length(); i++) {
-		if (owner_allowed.find(parts[0][i]) < 0) {
+		if (!owner_allowed.contains_char(parts[0][i])) {
 			_show_error(TTR("The GitHub account name contains unsupported characters."));
 			return;
 		}
 	}
 	for (int i = 0; i < parts[1].length(); i++) {
-		if (repo_allowed.find(parts[1][i]) < 0) {
+		if (!repo_allowed.contains_char(parts[1][i])) {
 			_show_error(TTR("The repository name contains unsupported characters."));
 			return;
 		}
