@@ -11,17 +11,19 @@ on:
         options:
           - full-android-build
           - validate-import-only
-  push:
-    paths:
-      - "patches/github-sync/**"
-      - "scripts/apply_github_import_patch.py"
 
 permissions:
   contents: read
 
+# Keep only one build/test run alive for this branch. A newer manual run
+# supersedes an older one so multiple 90-minute Android builds do not pile up.
+concurrency:
+  group: godot-android-editor-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-android-editor:
-    if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
+    if: ${{ inputs.run_type == 'full-android-build' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -75,7 +77,7 @@ jobs:
         run: ./gradlew generateGodotEditor
 
       - name: Upload APK and build outputs
-        if: always() && (github.event_name == 'push' || inputs.run_type == 'full-android-build')
+        if: always() && inputs.run_type == 'full-android-build'
         uses: actions/upload-artifact@v4
         with:
           name: godot-4.7.2-android-editor-build
