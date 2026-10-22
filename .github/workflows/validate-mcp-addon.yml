@@ -72,12 +72,12 @@ jobs:
               "src/main/assets/mcp-addon",
               "assets/mcp-addon/plugin.cfg",
               "assets/mcp-addon/scripts/protocol/mcp_tool_registry.gd",
-              "bind_host = \\"127.0.0.1\\"",
+              'bind_host = "127.0.0.1"',
               "Access-Control-Allow-Origin: *",
           )
           missing = [item for item in required if item not in workflow]
           assert not missing, f"Android APK workflow is missing MCP integration guards: {missing}"
-          assert "unzip -p \\"$APK\\" assets/mcp-addon/" in workflow, "final APK content is not inspected"
+          assert 'unzip -p "$APK" assets/mcp-addon/' in workflow, "final APK content is not inspected"
           print("Android build workflow contains pinned addon, APK embedding, and final-package safety checks.")
           PY
       - name: Upload safe MCP addon
