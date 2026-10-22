@@ -28,7 +28,7 @@ replace_once(HEADER,
     "\tvoid _import_project();\n\tvoid _show_github_import_dialog();\n\tvoid _github_import_confirmed();\n\tvoid _github_download_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n\tvoid _show_mcp_install_dialog();\n\tvoid _install_mcp_addon_confirmed();\n\tvoid _new_project();")
 replace_once(SOURCE,
     '#include "scene/gui/separator.h"\n#include "scene/main/scene_tree.h"',
-    '#include "scene/gui/separator.h"\n#include "scene/main/http_request.h"\n#include "scene/main/scene_tree.h"')
+    '#include "scene/gui/separator.h"\n#include "scene/main/http_request.h"\n#include "scene/main/scene_tree.h"\n#include "platform/android/file_access_android.h"\n#include "modules/zip/zip_reader.h"')
 replace_once(SOURCE,
     """void ProjectManager::_import_project() {
 \tproject_dialog->set_mode(ProjectDialog::MODE_IMPORT);
@@ -182,14 +182,111 @@ void ProjectManager::_install_mcp_addon_confirmed() {
         enabled.push_back(plugin_path);
     }
 
-    Ref<DirAccess> addon_source = DirAccess::open("res://mcp-addon");
-    if (addon_source.is_null()) {
-        _show_error(TTR("The MCP addon bundle is missing from this APK. Rebuild the editor before installing MCP."));
+    const String addons_dir = project_path.path_join("addons");
+    const String addon_staging = addons_dir.path_join(".godot_mcp_android_install_tmp");
+    if (DirAccess::dir_exists_absolute(addon_staging)) {
+        _show_error(TTR("A previous MCP install staging folder exists. Inspect it manually before retrying; nothing was deleted."));
         return;
     }
-    Error copy_error = addon_source->copy_dir(".", addon_target);
-    if (copy_error != OK || !FileAccess::exists(addon_target.path_join("plugin.cfg"))) {
-        _show_error(TTR("Could not copy the MCP addon into the selected project. The project was not enabled for MCP."));
+    Error mkdir_error = DirAccess::make_dir_recursive_absolute(addons_dir);
+    if (mkdir_error != OK) {
+        _show_error(TTR("Could not create the project's addons folder."));
+        return;
+    }
+
+    // Android APK assets are not the same namespace as res:// in the editor build.
+    // Read the single bundled ZIP directly through Android's AssetManager.
+    FileAccessAndroid bundled_asset;
+    if (bundled_asset.open("mcp-addon.zip", FileAccess::READ) != OK) {
+        _show_error(TTR("The MCP ZIP is missing from this APK. Rebuild the editor before installing MCP."));
+        return;
+    }
+    const String zip_path = OS::get_singleton()->get_cache_path().path_join("godot_mcp_android_bundle.zip");
+    Ref<FileAccess> zip_output = FileAccess::open_absolute(zip_path, FileAccess::WRITE);
+    if (zip_output.is_null()) {
+        bundled_asset.close();
+        _show_error(TTR("Could not prepare the MCP bundle in app cache."));
+        return;
+    }
+    uint8_t buffer[16384];
+    while (!bundled_asset.eof_reached()) {
+        uint64_t bytes_read = bundled_asset.get_buffer(buffer, sizeof(buffer));
+        if (bytes_read == 0) {
+            break;
+        }
+        if (!zip_output->store_buffer(buffer, bytes_read)) {
+            zip_output.unref();
+            bundled_asset.close();
+            _show_error(TTR("Could not copy the MCP bundle into app cache."));
+            return;
+        }
+    }
+    zip_output.unref();
+    bundled_asset.close();
+
+    Ref<ZIPReader> zip;
+    zip.instantiate();
+    if (zip->open(zip_path) != OK) {
+        _show_error(TTR("The bundled MCP ZIP could not be opened."));
+        return;
+    }
+    PackedStringArray archive_files = zip->get_files();
+    bool plugin_cfg_written = false;
+    bool extraction_failed = false;
+    for (int i = 0; i < archive_files.size(); i++) {
+        String archive_path = archive_files[i];
+        if (archive_path.ends_with("/")) {
+            continue;
+        }
+        if (!archive_path.begins_with("godot_mcp_android/") || archive_path.begins_with("/") || archive_path.contains_char('\\\\')) {
+            extraction_failed = true;
+            break;
+        }
+        PackedStringArray segments = archive_path.split("/", true);
+        for (int j = 0; j < segments.size(); j++) {
+            if (segments[j] == "." || segments[j] == "..") {
+                extraction_failed = true;
+                break;
+            }
+        }
+        if (extraction_failed) {
+            break;
+        }
+        String relative_path = archive_path.trim_prefix("godot_mcp_android/");
+        if (relative_path.is_empty()) {
+            extraction_failed = true;
+            break;
+        }
+        String destination = addon_staging.path_join(relative_path);
+        Error parent_error = DirAccess::make_dir_recursive_absolute(destination.get_base_dir());
+        if (parent_error != OK) {
+            extraction_failed = true;
+            break;
+        }
+        Ref<FileAccess> output = FileAccess::open_absolute(destination, FileAccess::WRITE);
+        if (output.is_null()) {
+            extraction_failed = true;
+            break;
+        }
+        PackedByteArray contents = zip->read_file(archive_path, true);
+        if (contents.is_empty() || !output->store_buffer(contents.ptr(), contents.size())) {
+            output.unref();
+            extraction_failed = true;
+            break;
+        }
+        output.unref();
+        if (relative_path == "plugin.cfg") {
+            plugin_cfg_written = true;
+        }
+    }
+    zip->close();
+    if (extraction_failed || !plugin_cfg_written || !FileAccess::exists(addon_staging.path_join("plugin.cfg"))) {
+        _show_error(TTR("MCP extraction failed validation. No plugin was enabled; inspect the temporary staging folder before retrying."));
+        return;
+    }
+    Error rename_error = DirAccess::rename_absolute(addon_staging, addon_target);
+    if (rename_error != OK) {
+        _show_error(TTR("MCP files were staged but could not be moved into place. No plugin was enabled; inspect the temporary staging folder."));
         return;
     }
 
