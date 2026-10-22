@@ -50,6 +50,36 @@ def main() -> int:
     # Remove the unused implementation too, so it cannot be re-registered accidentally.
     (ADDON_OUT / "scripts/tools/system/execute_script_tool.gd").unlink(missing_ok=True)
 
+    # Before replacing an existing project file, preserve its prior UTF-8 contents.
+    # Backups are project-local, hash-named, and unique per write so repeated edits do not
+    # overwrite earlier recovery points. If the backup cannot be written, abort the mutation.
+    replace_once(
+        ADDON_OUT / "scripts/tools/filesystem/write_file_tool.gd",
+        """\tvar file := FileAccess.open(resource_path, FileAccess.WRITE)
+\tif file == null:""",
+        """\tvar recovery_path := ""
+\tif FileAccess.file_exists(resource_path):
+\t\tvar previous_file := FileAccess.open(resource_path, FileAccess.READ)
+\t\tif previous_file == null:
+\t\t\treturn tool_error("cannot read existing file for recovery: %s" % error_string(FileAccess.get_open_error()))
+\t\tvar previous_text := previous_file.get_as_text()
+\t\tprevious_file.close()
+\t\tvar recovery_dir := ".godot_mcp_backups"
+\t\tvar recovery_error := DirAccess.make_dir_recursive_absolute(globalize_project_path(recovery_dir))
+\t\tif recovery_error != OK:
+\t\t\treturn tool_error("cannot create recovery directory: %s" % error_string(recovery_error))
+\t\trecovery_path = "res://%s/%s.%d.bak" % [recovery_dir, resource_path.sha256_text(), Time.get_ticks_usec()]
+\t\tvar recovery_file := FileAccess.open(recovery_path, FileAccess.WRITE)
+\t\tif recovery_file == null:
+\t\t\treturn tool_error("cannot create recovery copy: %s" % error_string(FileAccess.get_open_error()))
+\t\trecovery_file.store_string(previous_text)
+\t\trecovery_file.close()
+\t\tif not FileAccess.file_exists(recovery_path):
+\t\t\treturn tool_error("recovery copy was not created; original file was not changed")
+\n\tvar file := FileAccess.open(resource_path, FileAccess.WRITE)
+\tif file == null:"""),
+    )
+    
     # Route scene mutations through Godot's editor undo/redo manager. This keeps
     # the operations reversible and avoids manually invoking lifecycle methods.
     replace_once(
@@ -167,6 +197,33 @@ def main() -> int:
         '\tresponse += "Access-Control-Allow-Origin: *\\r\\n"\n',
         "",
     )
+
+    # Editing a file also requires a recovery copy before the write begins.
+    replace_once(
+        ADDON_OUT / "scripts/tools/filesystem/edit_file_tool.gd",
+        """\tvar write_file := FileAccess.open(resource_path, FileAccess.WRITE)
+\tif write_file == null:""",
+        """\tvar recovery_dir := ".godot_mcp_backups"
+\tvar recovery_error := DirAccess.make_dir_recursive_absolute(globalize_project_path(recovery_dir))
+\tif recovery_error != OK:
+\t\treturn tool_error("cannot create recovery directory: %s" % error_string(recovery_error))
+\tvar recovery_path := "res://%s/%s.%d.bak" % [recovery_dir, resource_path.sha256_text(), Time.get_ticks_usec()]
+\tvar recovery_file := FileAccess.open(recovery_path, FileAccess.WRITE)
+\tif recovery_file == null:
+\t\treturn tool_error("cannot create recovery copy: %s" % error_string(FileAccess.get_open_error()))
+\trecovery_file.store_string(FileAccess.open(resource_path, FileAccess.READ).get_as_text())
+\trecovery_file.close()
+\tif not FileAccess.file_exists(recovery_path):
+\t\treturn tool_error("recovery copy was not created; original file was not changed")
+\n\tvar write_file := FileAccess.open(resource_path, FileAccess.WRITE)
+\tif write_file == null:"""),
+    )
+
+    write_tool = (ADDON_OUT / "scripts/tools/filesystem/write_file_tool.gd").read_text(encoding="utf-8")
+    edit_tool = (ADDON_OUT / "scripts/tools/filesystem/edit_file_tool.gd").read_text(encoding="utf-8")
+    for label, tool_text in (("write_file", write_tool), ("edit_file", edit_tool)):
+        if ".godot_mcp_backups" not in tool_text or "recovery copy" not in tool_text:
+            raise RuntimeError(f"{label} is missing recovery-copy protection")
 
     registry_text = registry.read_text(encoding="utf-8")
     if "ExecuteScriptTool" in registry_text or "delete_project" in registry_text:
