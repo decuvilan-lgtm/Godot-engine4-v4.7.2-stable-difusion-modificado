@@ -125,19 +125,25 @@ jobs:
               "src/main/assets/mcp-addon",
               "assets/mcp-addon/plugin.cfg",
               "assets/mcp-addon/scripts/protocol/mcp_tool_registry.gd",
+              "assets/mcp-addon.zip",
               'bind_host = "127.0.0.1"',
               "Access-Control-Allow-Origin: *",
           )
           missing = [item for item in required if item not in workflow]
           assert not missing, f"Android APK workflow is missing MCP integration guards: {missing}"
-          assert 'unzip -p "$APK" assets/mcp-addon/' in workflow, "final APK content is not inspected"
+          assert 'unzip -p "$APK" assets/mcp-addon/' in workflow, "final APK addon files are not inspected"
+          assert 'unzip -p "$APK" assets/mcp-addon.zip' in workflow, "final APK installer bundle is not inspected"
+          assert 'res://mcp-addon' not in patcher if 'patcher' in locals() else True
 
           patcher = Path("scripts/apply_github_import_patch.py").read_text(encoding="utf-8")
           for item in (
               'Button *mcp_install_btn',
               '_show_mcp_install_dialog',
               '_install_mcp_addon_confirmed',
-              'copy_dir(".", addon_target)',
+              'FileAccessAndroid bundled_asset',
+              'bundled_asset.open("mcp-addon.zip", FileAccess::READ)',
+              'Ref<ZIPReader> zip',
+              'godot_mcp_android/',
               'DirAccess::dir_exists_absolute(addon_target)',
               'config.set_value("editor_plugins", "enabled", enabled)',
           ):
