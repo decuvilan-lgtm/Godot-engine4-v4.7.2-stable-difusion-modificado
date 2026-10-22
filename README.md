@@ -228,6 +228,12 @@ Commit `c3bfe45acd0a9d3c9567c61cca5befbd3a7b230b` extends `scripts/apply_github_
 
 **Status: source-patch validation passed; native compilation and runtime validation pending.** The MCP validation workflow checked out official Godot 4.7.2 and successfully applied the patcher against the real upstream files in [validation run 36](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39772632209) and [run 35](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39772626551). It also passed the addon packaging and static installer assertions. This proves the patch anchors match and source edits are applied; it does **not** compile the C++ changes or test directory access to APK assets on Android. A full Android build and runtime test are still required.
 
+### Build verification triggered for the integration branch
+
+Commit `c88f18aa3e8fec316d8b378f47ff79a8ddbefbb6` makes relevant source/workflow changes on `feature/github-sync-and-safe-mcp` trigger the complete Android build automatically (README-only edits do not trigger it). This avoids relying only on the separate MCP ZIP validation workflow.
+
+Current full Android build: [run 32](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39772776142). It is in progress as of this README update. Its result must confirm native C++ compilation, Gradle packaging of the bundled addon assets, ARM64-only ABI checks, APK integrity/signature/alignment, and the new final-APK MCP content assertions. Do not report success until that run finishes successfully.
+
 ### Source audit note (2026-10-22)
 
 The upstream Android editor's `platform/android/java/editor/build.gradle` does not define a ready-made MCP addon installation hook. The current Android editor is built from the Godot native editor and its Android wrapper; the addon is a project-level `EditorPlugin`, not a native engine module. Therefore a Gradle-only copy of the ZIP would be packaging evidence, not a usable integration.
