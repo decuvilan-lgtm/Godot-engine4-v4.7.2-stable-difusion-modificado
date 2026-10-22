@@ -183,3 +183,8 @@ Two typed tools extend control from the edited scene into the actual running gam
 - The install action makes a recovery copy and refuses to overwrite the bridge script, but still needs failure-path review before being considered safe for general use.
 
 Acceptance checks still required: start a project with the bridge installed; verify the runtime handshake; inspect a known button; click it and confirm the expected game-side effect; send movement/gameplay input; toggle fullscreen and restore windowed mode; stop/restart the game; verify that an absent runtime returns a bounded error; verify loopback binding and project settings recovery. **No tests or builds have been run for these changes.**
+
+
+## GitHub repository import: branch, tag, or commit
+
+The Project Manager import dialog now includes an optional ref field. A blank value uses the repository's default branch; a supplied branch, tag, or commit SHA is appended to the GitHub archive endpoint after input validation and URI encoding. The existing repository owner/name validation and public-repository-only flow remain in place. This has not been compiled or exercised on Android; the branch/tag/commit flow is not yet verified.
