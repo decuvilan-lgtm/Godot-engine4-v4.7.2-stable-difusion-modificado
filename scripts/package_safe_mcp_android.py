@@ -149,20 +149,12 @@ func _control_label(control: Control) -> String:
 		for index in range(tab_bar.get_tab_count()):
 			tabs.append(tab_bar.get_tab_title(index))
 		return " | ".join(tabs)
-	if control is PopupMenu:
-		var menu := control as PopupMenu
-		var entries: Array[String] = []
-		for index in range(menu.get_item_count()):
-			entries.append("%d:%s" % [index, menu.get_item_text(index)])
-		return " | ".join(entries)
 	return ""
 
 
 func _is_disabled_control(control: Control) -> bool:
 	if control is BaseButton:
 		return (control as BaseButton).disabled
-	if control is PopupMenu:
-		return not (control as PopupMenu).is_visible_in_tree()
 	return false
 ''',
         "scripts/tools/editor/activate_editor_ui_control_tool.gd": r'''@tool
@@ -205,7 +197,28 @@ func execute(arguments: Dictionary) -> Dictionary:
 	if path == "" or path == ".":
 		return tool_error("a specific control path is required")
 	var target := base.get_node_or_null(NodePath(path))
-	if target == null or not target is Control:
+	if target == null:
+		return tool_error("UI control path not found")
+	if target is PopupMenu:
+		var menu := target as PopupMenu
+		if not menu.is_visible():
+			return tool_error("PopupMenu is not open")
+		if not arguments.has("menu_index"):
+			return tool_error("menu_index is required for PopupMenu activation")
+		var menu_index := int(arguments.get("menu_index", -1))
+		if menu_index < 0 or menu_index >= menu.get_item_count():
+			return tool_error("menu_index is outside the menu item range")
+		if menu.is_item_disabled(menu_index) or menu.is_item_separator(menu_index):
+			return tool_error("menu item is disabled or a separator")
+		var item_text := menu.get_item_text(menu_index).to_lower()
+		if item_text.contains("delete project") or item_text.contains("remove project") or item_text.contains("erase project"):
+			return tool_error("project deletion/removal is permanently blocked")
+		for word in ["delete", "remove", "erase", "clear", "discard", "revert", "overwrite", "uninstall"]:
+			if item_text.contains(word) and not bool(arguments.get("confirm_destructive", false)):
+				return tool_error("potentially destructive menu action requires confirm_destructive=true")
+		menu.activate_item(menu_index)
+		return {"ok": true, "path": path, "menu_index": menu_index, "menu_item": menu.get_item_text(menu_index)}
+	if not target is Control:
 		return tool_error("UI control path not found")
 	var control := target as Control
 	if not control.is_visible_in_tree():
@@ -215,7 +228,7 @@ func execute(arguments: Dictionary) -> Dictionary:
 	var danger_text := label + " " + control_name
 	var destructive := false
 	# Inspect the chosen PopupMenu item below, not every item in the menu.
-	if not control is PopupMenu:
+	if true:
 		if danger_text.contains("delete project") or danger_text.contains("remove project") or danger_text.contains("erase project"):
 			return tool_error("project deletion/removal through generic UI activation is permanently blocked")
 		for word in ["delete", "remove", "erase", "clear", "discard", "revert", "overwrite", "uninstall"]:
@@ -289,28 +302,6 @@ func execute(arguments: Dictionary) -> Dictionary:
 		options.select(option_index)
 		options.emit_signal("item_selected", option_index)
 		return {"ok": true, "path": path, "option_index": option_index, "option_text": options.get_item_text(option_index)}
-	if control is PopupMenu:
-		var menu := control as PopupMenu
-		if not menu.is_visible():
-			return tool_error("PopupMenu is not open")
-		if not arguments.has("menu_index"):
-			return tool_error("menu_index is required for PopupMenu activation")
-		var index := int(arguments.get("menu_index", -1))
-		if index < 0 or index >= menu.get_item_count():
-			return tool_error("menu_index is outside the menu item range")
-		if menu.is_item_disabled(index) or menu.is_item_separator(index):
-			return tool_error("menu item is disabled or a separator")
-		var item_text := menu.get_item_text(index).to_lower()
-		if item_text.contains("delete project") or item_text.contains("remove project") or item_text.contains("erase project"):
-			return tool_error("project deletion/removal is permanently blocked")
-		for word in ["delete", "remove", "erase", "clear", "discard", "revert", "overwrite", "uninstall"]:
-			if item_text.contains(word):
-				destructive = true
-				break
-		if destructive and not bool(arguments.get("confirm_destructive", false)):
-			return tool_error("potentially destructive menu action requires confirm_destructive=true")
-		menu.activate_item(index)
-		return {"ok": true, "path": path, "menu_index": index, "menu_item": menu.get_item_text(index)}
 	if control is BaseButton:
 		var button := control as BaseButton
 		if button.disabled:
@@ -327,12 +318,6 @@ func _control_label(control: Control) -> String:
 		return (control as Button).text
 	if control is Label:
 		return (control as Label).text
-	if control is PopupMenu:
-		var menu := control as PopupMenu
-		var entries: Array[String] = []
-		for index in range(menu.get_item_count()):
-			entries.append("%d:%s" % [index, menu.get_item_text(index)])
-		return " | ".join(entries)
 	return ""
 ''',
         "scripts/tools/scene/duplicate_node_tool.gd": r'''@tool
@@ -802,9 +787,13 @@ func execute(arguments: Dictionary) -> Dictionary:
 		"text":
 			if not arguments.has("text"):
 				return tool_error("text event requires text")
-			var text_event := InputEventText.new()
-			text_event.text = String(arguments.get("text", ""))
-			event = text_event
+			var text_value := String(arguments.get("text", ""))
+			for codepoint in text_value.to_utf32_buffer():
+				var text_event := InputEventKey.new()
+				text_event.unicode = int(codepoint)
+				text_event.pressed = true
+				viewport.push_input(text_event, true)
+			return {"ok": true, "viewport_path": path, "event_type": event_type, "sent": true, "scope": "embedded_subviewport_only"}
 		_:
 			return tool_error("unsupported event_type")
 	viewport.push_input(event, true)
