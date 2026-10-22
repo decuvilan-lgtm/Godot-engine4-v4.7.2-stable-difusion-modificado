@@ -91,3 +91,15 @@ The packaging job should continue to assert all of the following:
 5. Finish safe file-write recovery and review all remaining mutations.
 6. Add a menu/action inventory and report unsupported or dynamically registered controls rather than silently omitting them.
 7. Test in the actual Godot Android editor and then test a real MCP client connection.
+
+
+## Current build checkpoint — ARM32 + ARM64
+
+- The Android editor workflow was changed to follow Godot's documented multi-architecture sequence: build `arm32` first, then `arm64` with `generate_android_binaries=yes` on the final build.
+- Full Android build run [39813174735](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39813174735) is currently compiling both ABIs. It is not yet an APK success claim.
+- MCP addon validation run [39813174855](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39813174855) passed, including the upstream patch anchors, packaging checks, and headless addon load.
+- After the APK job completes, inspect the actual archive for both `lib/armeabi-v7a/libgodot_android.so` and `lib/arm64-v8a/libgodot_android.so`, verify the package metadata/signature, and only then publish the dual-ABI artifact as the current test candidate. Physical-device installation remains a separate test.
+
+## Next MCP hardening task
+
+The pinned upstream `write_file` and `edit_file` tools still overwrite project files directly. Before expanding mutation coverage, add collision-safe recovery copies for existing files, reject directory targets and empty/invalid paths, and test both successful writes and failure paths. Keep recovery data outside the project tree and never upload it. This work remains unimplemented until code and automated tests land.
