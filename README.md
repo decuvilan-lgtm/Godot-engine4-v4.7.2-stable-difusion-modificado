@@ -179,3 +179,17 @@ The active implementation branch is `feature/github-sync-and-safe-mcp`.
 - Keep the existing Android APK build path intact while changing the patcher or packaging.
 - Verify source changes with automated checks before attempting a full APK build. A successful build or artifact upload is not proof of installation or runtime behavior on the user's phone.
 
+### MCP coverage requirement: full editor surface, including obscure panels
+
+The MCP goal is not a short list of convenience tools. Aim for broad, systematic coverage of the Godot editor UI and APIs, including obscure, advanced, infrequently used, and seemingly unnecessary sections and options.
+
+Coverage should include:
+- Editor main menus, submenus, contextual/right-click menus, toolbar buttons, docks, inspectors, bottom panels, dialogs, popups, project settings, editor settings, export settings, import/resource settings, and relevant keyboard commands.
+- Scene tree and scene editing, node creation and configuration, all applicable inspector properties, scripts and resources, filesystem and resource import, animation, tilemaps, shaders, materials, audio, physics, navigation, debugging, profiling, running/stopping/testing, output/errors, plugins, and project configuration.
+- Read-only inspection of editor state plus typed actions that operate through supported Godot editor APIs where possible.
+- A coverage inventory mapping each visible editor section/action to an MCP capability, with explicit statuses for implemented, partially implemented, unavailable, or unsafe.
+- A discoverable generic UI/action layer where feasible, so unusual controls are not omitted simply because they do not have a dedicated named tool. Prefer stable APIs and accessible control metadata over brittle screen-coordinate clicking.
+- Preserve an absolute project-deletion prohibition: no tool may delete the project, its project root, or recursively remove the project directory. Generic script/evaluation tools must not bypass this policy. File/node edits that can destroy work require guardrails, and should use undoable editor operations where available.
+
+Do not claim literal 100% coverage until an automated inventory and device-side tests verify it. The goal is to expose the broadest feasible set of editor options and report honest gaps. This is an editor plugin and a tool server, not proof that ChatGPT can connect directly to the live editor; the actual client/transport connection must be configured and tested separately.
+
