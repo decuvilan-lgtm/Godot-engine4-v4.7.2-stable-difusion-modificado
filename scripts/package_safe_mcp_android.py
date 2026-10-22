@@ -489,6 +489,207 @@ func execute(arguments: Dictionary) -> Dictionary:
 		"undo_available": true,
 	}
 ''',
+        "scripts/tools/scene/inspect_scene_ui_controls_tool.gd": r'''@tool
+extends MCPTool
+
+
+func get_name() -> String:
+	return "inspect_scene_ui_controls"
+
+
+func get_description() -> String:
+	return "Inspect Control nodes in the currently edited scene, including layout, text, button states, sliders, and option choices. This inspects the scene being edited, not a separate running-game process."
+
+
+func get_input_schema() -> Dictionary:
+	return {
+		"type": "object",
+		"properties": {
+			"filter": {"type": "string", "description": "Optional case-insensitive filter by node path, name, class, or text."},
+			"max_items": {"type": "integer", "description": "Maximum results, clamped to 1..500."},
+		},
+		"additionalProperties": false,
+	}
+
+
+func execute(arguments: Dictionary) -> Dictionary:
+	var root := get_edited_scene_root()
+	if root == null:
+		return tool_error("no scene is currently open for editing")
+	var filter_text := String(arguments.get("filter", "")).strip_edges().to_lower()
+	var max_items := clampi(int(arguments.get("max_items", 250)), 1, 500)
+	var results: Array[Dictionary] = []
+	_walk_controls(root, root, filter_text, max_items, results)
+	return {
+		"ok": true,
+		"scene_path": root.scene_file_path,
+		"count": results.size(),
+		"truncated": results.size() >= max_items,
+		"controls": results,
+		"scope": "edited_scene_not_separate_runtime_process",
+	}
+
+
+func _walk_controls(node: Node, root: Node, filter_text: String, max_items: int, output: Array[Dictionary]) -> void:
+	if output.size() >= max_items:
+		return
+	if node is Control:
+		var control := node as Control
+		var node_path := str(root.get_path_to(control))
+		var details := _describe_control(control)
+		var haystack := (node_path + " " + str(control.name) + " " + control.get_class() + " " + details).to_lower()
+		if filter_text == "" or haystack.contains(filter_text):
+			output.append({
+				"path": node_path,
+				"name": str(control.name),
+				"class": control.get_class(),
+				"visible": control.visible,
+				"visible_in_tree": control.is_visible_in_tree(),
+				"disabled": control is BaseButton and (control as BaseButton).disabled,
+				"rect": {
+					"x": control.position.x,
+					"y": control.position.y,
+					"width": control.size.x,
+					"height": control.size.y,
+				},
+				"details": details,
+			})
+	for child in node.get_children():
+		_walk_controls(child, root, filter_text, max_items, output)
+
+
+func _describe_control(control: Control) -> String:
+	if control is Button:
+		return "text=%s; pressed=%s" % [(control as Button).text, str((control as Button).button_pressed)]
+	if control is Label:
+		return (control as Label).text.left(1000)
+	if control is RichTextLabel:
+		return (control as RichTextLabel).get_parsed_text().left(1500)
+	if control is LineEdit:
+		var line_edit := control as LineEdit
+		return "placeholder=%s; text=%s" % [line_edit.placeholder_text, "[redacted]" if line_edit.secret else line_edit.text.left(500)]
+	if control is TextEdit:
+		return (control as TextEdit).text.left(1000)
+	if control is Range:
+		var range_control := control as Range
+		return "value=%s; min=%s; max=%s; step=%s" % [str(range_control.value), str(range_control.min_value), str(range_control.max_value), str(range_control.step)]
+	if control is OptionButton:
+		var option_button := control as OptionButton
+		var options: Array[String] = []
+		for index in range(option_button.get_item_count()):
+			options.append("%d:%s%s" % [index, option_button.get_item_text(index), " [selected]" if index == option_button.selected else ""])
+		return "selected=%d; options=%s" % [option_button.selected, " | ".join(options)]
+	if control is CheckBox or control is CheckButton:
+		return "text=%s; checked=%s" % [(control as Button).text, str((control as BaseButton).button_pressed)]
+	return ""
+
+
+func get_edited_scene_root() -> Node:
+	return editor_interface.get_edited_scene_root()
+''',
+        "scripts/tools/scene/interact_scene_ui_control_tool.gd": r'''@tool
+extends MCPTool
+
+
+func get_name() -> String:
+	return "interact_scene_ui_control"
+
+
+func get_description() -> String:
+	return "Interact with UI controls in the currently edited scene to exercise a UI before or during preview setup: press buttons, set text/ranges/checks/options, or focus controls. Does not control a separate running-game process."
+
+
+func get_input_schema() -> Dictionary:
+	return {
+		"type": "object",
+		"properties": {
+			"node_path": {"type": "string", "description": "Exact node path from the edited scene root; obtain it from inspect_scene_ui_controls."},
+			"action": {"type": "string", "enum": ["press", "set_text", "set_value", "set_checked", "select_option", "focus"]},
+			"text_value": {"type": "string"},
+			"numeric_value": {"type": "number"},
+			"checked_value": {"type": "boolean"},
+			"option_index": {"type": "integer"},
+			"submit_text": {"type": "boolean"},
+		},
+		"required": ["node_path", "action"],
+		"additionalProperties": false,
+	}
+
+
+func execute(arguments: Dictionary) -> Dictionary:
+	var root := editor_interface.get_edited_scene_root()
+	if root == null:
+		return tool_error("no scene is currently open for editing")
+	var path := String(arguments.get("node_path", "")).strip_edges()
+	if path == "" or path == ".":
+		return tool_error("a specific Control node path is required")
+	var node := root.get_node_or_null(NodePath(path))
+	if node == null or not node is Control:
+		return tool_error("Control node path not found in the edited scene")
+	var control := node as Control
+	var action := String(arguments.get("action", ""))
+	match action:
+		"press":
+			if not control is BaseButton:
+				return tool_error("press requires a Button, CheckBox, CheckButton, or other BaseButton")
+			var button := control as BaseButton
+			if button.disabled:
+				return tool_error("button is disabled")
+			if button is CheckBox or button is CheckButton:
+				button.button_pressed = not button.button_pressed
+			button.emit_signal("pressed")
+			return {"ok": true, "path": path, "action": action, "pressed": true}
+		"set_text":
+			if not arguments.has("text_value"):
+				return tool_error("text_value is required")
+			if control is LineEdit:
+				var line_edit := control as LineEdit
+				line_edit.text = String(arguments.get("text_value", ""))
+				if bool(arguments.get("submit_text", false)):
+					line_edit.emit_signal("text_submitted", line_edit.text)
+				return {"ok": true, "path": path, "action": action, "text_length": line_edit.text.length()}
+			if control is TextEdit:
+				(control as TextEdit).text = String(arguments.get("text_value", ""))
+				return {"ok": true, "path": path, "action": action, "text_length": (control as TextEdit).text.length()}
+			return tool_error("set_text supports LineEdit and TextEdit")
+		"set_value":
+			if not control is Range:
+				return tool_error("set_value requires a Range control such as Slider, SpinBox, or ProgressBar")
+			if not arguments.has("numeric_value"):
+				return tool_error("numeric_value is required")
+			var range_control := control as Range
+			var value := float(arguments.get("numeric_value", range_control.value))
+			if value < range_control.min_value or value > range_control.max_value:
+				return tool_error("numeric_value is outside the control's range")
+			range_control.value = value
+			return {"ok": true, "path": path, "action": action, "value": range_control.value}
+		"set_checked":
+			if not control is CheckBox and not control is CheckButton:
+				return tool_error("set_checked requires CheckBox or CheckButton")
+			if not arguments.has("checked_value"):
+				return tool_error("checked_value is required")
+			(control as BaseButton).button_pressed = bool(arguments.get("checked_value", false))
+			return {"ok": true, "path": path, "action": action, "checked": (control as BaseButton).button_pressed}
+		"select_option":
+			if not control is OptionButton:
+				return tool_error("select_option requires an OptionButton")
+			if not arguments.has("option_index"):
+				return tool_error("option_index is required")
+			var options := control as OptionButton
+			var index := int(arguments.get("option_index", -1))
+			if index < 0 or index >= options.get_item_count():
+				return tool_error("option_index is outside the available range")
+			if options.is_item_disabled(index) or options.is_item_separator(index):
+				return tool_error("option is disabled or a separator")
+			options.select(index)
+			options.emit_signal("item_selected", index)
+			return {"ok": true, "path": path, "action": action, "selected_index": index, "selected_text": options.get_item_text(index)}
+		"focus":
+			control.grab_focus()
+			return {"ok": true, "path": path, "action": action, "has_focus": control.has_focus()}
+		_:
+			return tool_error("unsupported action")
+''',
         "scripts/tools/editor/get_editor_state_tool.gd": r'''@tool
 extends MCPTool
 
@@ -739,6 +940,8 @@ func execute(arguments: Dictionary) -> Dictionary:
         'const DuplicateNodeTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/duplicate_node_tool.gd")\n'
         'const RenameNodeTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/rename_node_tool.gd")\n'
         'const ReparentNodeTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/reparent_node_tool.gd")\n'
+        'const InspectSceneUIControlsTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/inspect_scene_ui_controls_tool.gd")\n'
+        'const InteractSceneUIControlTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/interact_scene_ui_control_tool.gd")\n'
         'const GetEditorStateTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/get_editor_state_tool.gd")\n'
         'const InspectEditorUITool := preload("res://addons/godot_mcp_android/scripts/tools/editor/inspect_editor_ui_tool.gd")\n'
         'const ActivateEditorUIControlTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/activate_editor_ui_control_tool.gd")\n'
@@ -754,6 +957,8 @@ func execute(arguments: Dictionary) -> Dictionary:
         '\tregister(DuplicateNodeTool.new(editor_interface))\n'
         '\tregister(RenameNodeTool.new(editor_interface))\n'
         '\tregister(ReparentNodeTool.new(editor_interface))\n'
+        '\tregister(InspectSceneUIControlsTool.new(editor_interface))\n'
+        '\tregister(InteractSceneUIControlTool.new(editor_interface))\n'
         '\tregister(GetEditorStateTool.new(editor_interface))\n'
         '\tregister(InspectEditorUITool.new(editor_interface))\n'
         '\tregister(ActivateEditorUIControlTool.new(editor_interface))\n'
@@ -978,6 +1183,8 @@ func execute(arguments: Dictionary) -> Dictionary:
         "DuplicateNodeTool",
         "RenameNodeTool",
         "ReparentNodeTool",
+        "InspectSceneUIControlsTool",
+        "InteractSceneUIControlTool",
         "GetEditorStateTool",
         "InspectEditorUITool",
         "ActivateEditorUIControlTool",
