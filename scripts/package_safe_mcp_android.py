@@ -76,6 +76,8 @@ def main() -> int:
 \t\trecovery_file.close()
 \t\tif not FileAccess.file_exists(recovery_path):
 \t\t\treturn tool_error("recovery copy was not created; original file was not changed")
+\t\tif FileAccess.get_file_as_string(recovery_path) != previous_text:
+\t\t\treturn tool_error("recovery copy could not be verified; original file was not changed")
 \n\tvar file := FileAccess.open(resource_path, FileAccess.WRITE)
 \tif file == null:"""),
     )
@@ -233,6 +235,8 @@ def main() -> int:
 \trecovery_file.close()
 \tif not FileAccess.file_exists(recovery_path):
 \t\treturn tool_error("recovery copy was not created; original file was not changed")
+\tif FileAccess.get_file_as_string(recovery_path) != original_content:
+\t\treturn tool_error("recovery copy could not be verified; original file was not changed")
 \n\tvar write_file := FileAccess.open(resource_path, FileAccess.WRITE)
 \tif write_file == null:"""),
     )
@@ -240,7 +244,7 @@ def main() -> int:
     write_tool = (ADDON_OUT / "scripts/tools/filesystem/write_file_tool.gd").read_text(encoding="utf-8")
     edit_tool = (ADDON_OUT / "scripts/tools/filesystem/edit_file_tool.gd").read_text(encoding="utf-8")
     for label, tool_text in (("write_file", write_tool), ("edit_file", edit_tool)):
-        if ".godot_mcp_backups" not in tool_text or "recovery copy" not in tool_text:
+        if ".godot_mcp_backups" not in tool_text or "recovery copy" not in tool_text or "get_file_as_string(recovery_path)" not in tool_text:
             raise RuntimeError(f"{label} is missing recovery-copy protection")
 
     registry_text = registry.read_text(encoding="utf-8")
