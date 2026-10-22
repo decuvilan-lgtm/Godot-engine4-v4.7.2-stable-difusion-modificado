@@ -1679,7 +1679,6 @@ func get_input_schema() -> Dictionary:
 			"y": {"type": "number"},
 			"end_x": {"type": "number"},
 			"end_y": {"type": "number"},
-			"index": {"type": "integer"},
 			"button_index": {"type": "integer"},
 			"keycode": {"type": "integer"},
 			"pressed": {"type": "boolean"},
