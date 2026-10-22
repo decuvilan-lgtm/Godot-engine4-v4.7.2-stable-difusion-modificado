@@ -193,3 +193,9 @@ Coverage should include:
 
 Do not claim literal 100% coverage until an automated inventory and device-side tests verify it. The goal is to expose the broadest feasible set of editor options and report honest gaps. This is an editor plugin and a tool server, not proof that ChatGPT can connect directly to the live editor; the actual client/transport connection must be configured and tested separately.
 
+## MCP coverage and safety documents
+
+- [Godot editor MCP coverage inventory](docs/MCP_EDITOR_COVERAGE.md) — exhaustive editor surfaces to audit, coverage states, acceptance criteria and safety boundaries.
+- [Android MCP upstream capability audit](docs/ANDROID_MCP_UPSTREAM_AUDIT.md) — current upstream tool surface, gaps and next engineering steps.
+
+These documents are inventories/plans, not claims of complete implementation. The addon packaging workflow still needs a successful run and the installed plugin still needs real device and MCP-client testing.
