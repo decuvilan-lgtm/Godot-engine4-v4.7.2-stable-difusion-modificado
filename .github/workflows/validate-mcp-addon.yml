@@ -120,6 +120,7 @@ jobs:
               reparent_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/reparent_node_tool.gd").decode()
               assert all("get_editor_undo_redo()" in tool and "undo_available" in tool for tool in (duplicate_node, rename_node, reparent_node))
               assert "is_ancestor_of(new_parent)" in reparent_node
+              assert "_set_owner_recursive" in duplicate_node
               assert "project deletion/removal is permanently blocked" in activate_ui
               assert "confirm_destructive" in activate_ui
               set_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/set_node_property_tool.gd").decode()
