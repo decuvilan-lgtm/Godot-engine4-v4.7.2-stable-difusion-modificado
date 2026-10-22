@@ -45,7 +45,7 @@ void ProjectManager::_show_github_import_dialog() {
 \tif (!github_import_dialog) {
 \t\tgithub_import_dialog = memnew(ConfirmationDialog);
 \t\tgithub_import_dialog->set_title(TTRC("Import from GitHub"));
-\t\tgithub_import_dialog->set_ok_button_text(TTRC("Download"));
+\t\tgithub_import_dialog->set_ok_button_text(TTRC("Search / Download"));
 
 \t\tVBoxContainer *container = memnew(VBoxContainer);
 \t\tcontainer->add_theme_constant_override("separation", 8 * EDSCALE);
@@ -67,8 +67,13 @@ void ProjectManager::_show_github_import_dialog() {
 \t\tgithub_results_dialog = memnew(ConfirmationDialog);
 \t\tgithub_results_dialog->set_title(TTRC("GitHub search results"));
 \t\tgithub_results_dialog->set_ok_button_text(TTRC("Import selected"));
+\t\tVBoxContainer *results_container = memnew(VBoxContainer);
+\t\tLabel *results_help = memnew(Label);
+\t\tresults_help->set_text(TTRC("Choose a public repository to download and import."));
+\t\tresults_container->add_child(results_help);
 \t\tgithub_repo_results = memnew(OptionButton);
-\t\tgithub_results_dialog->add_child(github_repo_results);
+\t\tresults_container->add_child(github_repo_results);
+\t\tgithub_results_dialog->add_child(results_container);
 \t\tadd_child(github_results_dialog);
 \t\tgithub_results_dialog->connect("confirmed", callable_mp(this, &ProjectManager::_github_search_result_confirmed));
 \t}
