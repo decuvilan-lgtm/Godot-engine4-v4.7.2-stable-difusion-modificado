@@ -209,10 +209,15 @@ void ProjectManager::_install_mcp_addon_confirmed() {
         return;
     }
     uint8_t buffer[16384];
-    while (!bundled_asset.eof_reached()) {
-        uint64_t bytes_read = bundled_asset.get_buffer(buffer, sizeof(buffer));
+    uint64_t remaining = bundled_asset.get_length();
+    while (remaining > 0) {
+        const uint64_t requested = remaining < sizeof(buffer) ? remaining : sizeof(buffer);
+        uint64_t bytes_read = bundled_asset.get_buffer(buffer, requested);
         if (bytes_read == 0) {
-            break;
+            zip_output.unref();
+            bundled_asset.close();
+            _show_error(TTR("The bundled MCP ZIP could not be read completely."));
+            return;
         }
         if (!zip_output->store_buffer(buffer, bytes_read)) {
             zip_output.unref();
@@ -220,6 +225,7 @@ void ProjectManager::_install_mcp_addon_confirmed() {
             _show_error(TTR("Could not copy the MCP bundle into app cache."));
             return;
         }
+        remaining -= bytes_read;
     }
     zip_output.unref();
     bundled_asset.close();
