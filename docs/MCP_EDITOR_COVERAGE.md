@@ -100,6 +100,12 @@ Two more tools are generated and registered:
 
 **Important preview distinction:** these tools operate on the currently edited scene tree. They are useful to inspect and exercise UI nodes before running a preview, but they do not yet inject input into a separate running game process. The generic editor UI bridge can operate on controls actually exposed inside the editor's own UI tree, including text controls, ranges/sliders, checkboxes, tabs, options, buttons, and open menus; this must not be confused with full control of the game viewport/runtime. Actual running-preview control still requires a tested remote-runtime transport or an embedded-preview adapter.
 
+## Embedded preview input — source added, not yet validated
+
+The `send_editor_viewport_input` tool targets a specific `SubViewport` or `SubViewportContainer` found under the editor UI and can send mouse clicks/motion, key events, and text events to that viewport. This is intended to exercise controls in an embedded game preview without clicking arbitrary parts of the editor.
+
+The tool does **not** claim to control a game launched in a separate external process. If the target Godot Android editor runs the game externally, a separate authenticated loopback runtime bridge or supported debugger integration is still required. Coordinates are viewport-local and must be obtained from a live preview inspection; source is not yet validated on the target Android device.
+
 ## Required breadth-first expansion plan
 
 The target is comprehensive coverage of every usable editor surface, including rare/obscure options. Work through these families rather than stopping at the current tool list:
