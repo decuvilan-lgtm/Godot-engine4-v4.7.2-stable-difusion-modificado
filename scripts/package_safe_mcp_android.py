@@ -1587,6 +1587,9 @@ func execute(arguments: Dictionary) -> Dictionary:
     viewport_input = (ADDON_OUT / "scripts/tools/editor/send_editor_viewport_input_tool.gd").read_text(encoding="utf-8")
     if "SubViewportContainer" not in viewport_input or "viewport.push_input(event, true)" not in viewport_input:
         raise RuntimeError("embedded preview input tool is missing viewport targeting")
+    diagnostics = (ADDON_OUT / "scripts/tools/editor/read_editor_diagnostics_tool.gd").read_text(encoding="utf-8")
+    if "RichTextLabel" not in diagnostics or "TextEdit" not in diagnostics or "max_chars_per_control" not in diagnostics:
+        raise RuntimeError("editor diagnostics reader is missing bounded text extraction")
     if "separate external game process" not in viewport_input:
         raise RuntimeError("embedded preview input tool must document its scope")
     for tool_name, required_text in (
