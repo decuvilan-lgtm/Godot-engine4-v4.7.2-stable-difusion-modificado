@@ -1,7 +1,10 @@
 name: Build Godot Android Editor (source pipeline)
 
-# Manual-only while the feature set is being assembled. Run the full build once integration is ready.
+# Run automatically when the integration branch changes, and allow manual runs for focused checks.
 on:
+  push:
+    branches:
+      - feature/github-sync-and-safe-mcp
   workflow_dispatch:
     inputs:
       run_type:
