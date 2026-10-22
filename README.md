@@ -216,6 +216,12 @@ The reason this needs a deliberate design is that the upstream MCP code is a God
 
 These are source/package checks only. They do not yet prove that Godot parses the addon, undo/redo works in a live editor, a compatible MCP client can connect, or that the feature works on Android.
 
+### Source audit note (2026-10-22)
+
+The upstream Android editor's `platform/android/java/editor/build.gradle` does not define a ready-made MCP addon installation hook. The current Android editor is built from the Godot native editor and its Android wrapper; the addon is a project-level `EditorPlugin`, not a native engine module. Therefore a Gradle-only copy of the ZIP would be packaging evidence, not a usable integration.
+
+The next implementation should provide a deliberate **Install MCP into this project** flow from the patched Project Manager/editor, backed by a reproducible bundle included in the build. It must copy the plugin into the chosen project's `addons/godot_mcp_android`, validate that the destination is a Godot project, avoid overwriting an existing addon without a safe backup/confirmation, and enable the plugin only after the user confirms. The build must verify both that the bundle is inside the final APK and that the installer path can retrieve it. This approach preserves Godot's per-project plugin model instead of pretending the MCP plugin is globally active.
+
 ### Integration plan — do not skip the runtime boundary
 
 1. Inspect the Android editor's project-loading and plugin lifecycle in Godot 4.7.2, and identify a supported way to make the addon available without silently enabling it in user projects or copying files into the APK with no usable install path.
