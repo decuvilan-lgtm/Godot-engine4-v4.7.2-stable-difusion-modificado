@@ -50,6 +50,268 @@ def main() -> int:
     # Remove the unused implementation too, so it cannot be re-registered accidentally.
     (ADDON_OUT / "scripts/tools/system/execute_script_tool.gd").unlink(missing_ok=True)
 
+    # Expand the editor-facing MCP surface beyond basic scene mutation.
+    # These tools use typed, explicit operations; arbitrary execute_script remains disabled.
+    extra_tools = {
+        "scripts/tools/editor/get_editor_state_tool.gd": r'''@tool
+extends MCPTool
+
+
+func get_name() -> String:
+	return "get_editor_state"
+
+
+func get_description() -> String:
+	return "Return the current editor scene, open scenes, and play state."
+
+
+func execute(_arguments: Dictionary) -> Dictionary:
+	var root := editor_interface.get_edited_scene_root()
+	var scene_path := ""
+	var root_name := ""
+	var root_type := ""
+	if root != null:
+		scene_path = root.scene_file_path
+		root_name = str(root.name)
+		root_type = root.get_class()
+	return {
+		"ok": true,
+		"edited_scene_path": scene_path,
+		"root_name": root_name,
+		"root_type": root_type,
+		"open_scenes": Array(editor_interface.get_open_scenes()),
+		"is_playing_scene": editor_interface.is_playing_scene(),
+	}
+''',
+        "scripts/tools/editor/open_scene_tool.gd": r'''@tool
+extends MCPTool
+
+
+func get_name() -> String:
+	return "open_scene"
+
+
+func get_description() -> String:
+	return "Open an existing Godot scene file in the editor."
+
+
+func get_input_schema() -> Dictionary:
+	return {
+		"type": "object",
+		"properties": {
+			"path": {"type": "string", "description": "Project-relative scene path, such as res://scenes/level.tscn."},
+		},
+		"required": ["path"],
+		"additionalProperties": false,
+	}
+
+
+func execute(arguments: Dictionary) -> Dictionary:
+	var scene_path := String(arguments.get("path", "")).strip_edges()
+	if scene_path == "":
+		return tool_error("path is required")
+	if not scene_path.begins_with("res://"):
+		return tool_error("scene path must begin with res://")
+	if not is_safe_project_path(scene_path):
+		return tool_error("unsafe scene path")
+	if scene_path.get_extension().to_lower() not in ["tscn", "scn"]:
+		return tool_error("only .tscn and .scn scene files can be opened")
+	if not FileAccess.file_exists(scene_path):
+		return tool_error("scene file does not exist")
+	editor_interface.open_scene_from_path(scene_path)
+	return {
+		"ok": true,
+		"path": scene_path,
+	}
+''',
+        "scripts/tools/editor/run_scene_tool.gd": r'''@tool
+extends MCPTool
+
+
+func get_name() -> String:
+	return "control_running_scene"
+
+
+func get_description() -> String:
+	return "Start the current scene or main project scene, stop playback, or inspect play state."
+
+
+func get_input_schema() -> Dictionary:
+	return {
+		"type": "object",
+		"properties": {
+			"action": {
+				"type": "string",
+				"enum": ["start_current", "start_main", "stop", "status"],
+				"description": "Playback action to perform.",
+			},
+		},
+		"required": ["action"],
+		"additionalProperties": false,
+	}
+
+
+func execute(arguments: Dictionary) -> Dictionary:
+	var action := String(arguments.get("action", "status"))
+	match action:
+		"start_current":
+			if editor_interface.get_edited_scene_root() == null:
+				return tool_error("no scene is currently open")
+			editor_interface.play_current_scene()
+		"start_main":
+			editor_interface.play_main_scene()
+		"stop":
+			editor_interface.stop_playing_scene()
+		"status":
+			pass
+		_:
+			return tool_error("unsupported action: %s" % action)
+	return {
+		"ok": true,
+		"action": action,
+		"is_playing_scene": editor_interface.is_playing_scene(),
+	}
+''',
+        "scripts/tools/scene/get_node_properties_tool.gd": r'''@tool
+extends MCPTool
+
+
+func get_name() -> String:
+	return "get_node_properties"
+
+
+func get_description() -> String:
+	return "List a node's available Godot properties and their Variant types."
+
+
+func get_input_schema() -> Dictionary:
+	return {
+		"type": "object",
+		"properties": {
+			"node_path": {"type": "string", "description": "NodePath from the edited scene root. Use . for the root."},
+			"include_values": {"type": "boolean", "description": "Include simple values as strings; complex values are omitted."},
+		},
+		"required": ["node_path"],
+		"additionalProperties": false,
+	}
+
+
+func execute(arguments: Dictionary) -> Dictionary:
+	var node := resolve_scene_node(String(arguments.get("node_path", ".")))
+	if node == null:
+		return tool_error("node not found")
+	var include_values := bool(arguments.get("include_values", false))
+	var properties: Array[Dictionary] = []
+	for item in node.get_property_list():
+		var property_name := String(item.get("name", ""))
+		if property_name.begins_with("_"):
+			continue
+		var entry := {
+			"name": property_name,
+			"type": int(item.get("type", TYPE_NIL)),
+			"usage": int(item.get("usage", 0)),
+		}
+		if include_values:
+			var value = node.get(property_name)
+			if value == null or typeof(value) in [TYPE_NIL, TYPE_BOOL, TYPE_INT, TYPE_FLOAT, TYPE_STRING, TYPE_STRING_NAME, TYPE_NODE_PATH]:
+				entry["value"] = str(value)
+			elif typeof(value) in [TYPE_VECTOR2, TYPE_VECTOR2I, TYPE_RECT2, TYPE_RECT2I, TYPE_VECTOR3, TYPE_VECTOR3I, TYPE_VECTOR4, TYPE_VECTOR4I, TYPE_COLOR]:
+				entry["value"] = str(value)
+		properties.append(entry)
+	return {
+		"ok": true,
+		"path": relative_scene_path(node),
+		"class": node.get_class(),
+		"properties": properties,
+	}
+''',
+        "scripts/tools/resource/create_resource_tool.gd": r'''@tool
+extends MCPTool
+
+
+func get_name() -> String:
+	return "create_resource"
+
+
+func get_description() -> String:
+	return "Create and save a new Resource of a registered Godot class to a project path."
+
+
+func get_input_schema() -> Dictionary:
+	return {
+		"type": "object",
+		"properties": {
+			"class_name": {"type": "string", "description": "Resource class, for example Gradient, Curve, or StandardMaterial3D."},
+			"path": {"type": "string", "description": "New project resource path, for example res://resources/material.tres."},
+		},
+		"required": ["class_name", "path"],
+		"additionalProperties": false,
+	}
+
+
+func execute(arguments: Dictionary) -> Dictionary:
+	var class_name := String(arguments.get("class_name", "")).strip_edges()
+	var resource_path := String(arguments.get("path", "")).strip_edges()
+	if class_name == "" or resource_path == "":
+		return tool_error("class_name and path are required")
+	if not resource_path.begins_with("res://") or not is_safe_project_path(resource_path):
+		return tool_error("resource path must be a safe res:// path")
+	if resource_path.get_extension().to_lower() not in ["tres", "res"]:
+		return tool_error("resource path must end in .tres or .res")
+	if FileAccess.file_exists(resource_path):
+		return tool_error("resource path already exists; refusing to overwrite")
+	if not ClassDB.class_exists(class_name) or not ClassDB.can_instantiate(class_name):
+		return tool_error("class cannot be instantiated: %s" % class_name)
+	var instance = ClassDB.instantiate(class_name)
+	if not instance is Resource:
+		if instance != null:
+			instance.free()
+		return tool_error("class is not a Resource: %s" % class_name)
+	var resource: Resource = instance
+	var parent_path := resource_path.get_base_dir()
+	if parent_path.begins_with("res://") and parent_path != "res://":
+		var absolute_parent := ProjectSettings.globalize_path(parent_path)
+		var dir_error := DirAccess.make_dir_recursive_absolute(absolute_parent)
+		if dir_error != OK:
+			resource.free()
+			return tool_error("could not create resource directory: %s" % error_string(dir_error))
+	var save_error := ResourceSaver.save(resource, resource_path)
+	resource.free()
+	if save_error != OK:
+		return tool_error("could not save resource: %s" % error_string(save_error))
+	return {
+		"ok": true,
+		"class_name": class_name,
+		"path": resource_path,
+	}
+''',
+    }
+    for relative_path, source in extra_tools.items():
+        target = ADDON_OUT / relative_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(source, encoding="utf-8")
+
+    replace_once(
+        registry,
+        'const GetProjectInfoTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/get_project_info_tool.gd")\n',
+        'const GetProjectInfoTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/get_project_info_tool.gd")\n'
+        'const GetEditorStateTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/get_editor_state_tool.gd")\n'
+        'const OpenSceneTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/open_scene_tool.gd")\n'
+        'const RunSceneTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/run_scene_tool.gd")\n'
+        'const GetNodePropertiesTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/get_node_properties_tool.gd")\n'
+        'const CreateResourceTool := preload("res://addons/godot_mcp_android/scripts/tools/resource/create_resource_tool.gd")\n',
+    )
+    replace_once(
+        registry,
+        '\tregister(GetProjectInfoTool.new(editor_interface))\n',
+        '\tregister(GetProjectInfoTool.new(editor_interface))\n'
+        '\tregister(GetEditorStateTool.new(editor_interface))\n'
+        '\tregister(OpenSceneTool.new(editor_interface))\n'
+        '\tregister(RunSceneTool.new(editor_interface))\n'
+        '\tregister(GetNodePropertiesTool.new(editor_interface))\n'
+        '\tregister(CreateResourceTool.new(editor_interface))\n',
+    )
+
     # Before replacing an existing project file, preserve its prior UTF-8 contents.
     # Backups are project-local, hash-named, and unique per write so repeated edits do not
     # overwrite earlier recovery points. If the backup cannot be written, abort the mutation.
