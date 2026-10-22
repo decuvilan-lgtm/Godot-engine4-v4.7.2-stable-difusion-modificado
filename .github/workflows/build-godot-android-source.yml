@@ -70,10 +70,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          APK="$GITHUB_WORKSPACE/godot-source/platform/android/java/editor/build/outputs/apk/android/debug/android_editor-android-debug.apk"
+          # Godot's documented Android editor output is generated under bin/android_editor_builds.
+          # Do not accidentally package the small Gradle intermediate/bootstrap APK from editor/build/outputs.
+          APK="$GITHUB_WORKSPACE/godot-source/bin/android_editor_builds/android_editor-android-debug.apk"
           if [ ! -s "$APK" ]; then
-            echo "Preferred editor APK not found; available APKs:"
-            find "$GITHUB_WORKSPACE/godot-source" -type f -name '*.apk' -print
+            echo "Complete Android editor APK not found at the expected output path."
+            echo "Available APKs produced by this build:"
+            find "$GITHUB_WORKSPACE/godot-source" -type f -name '*.apk' -printf '%s bytes %p\\n' | sort -nr
+            exit 1
+          fi
+
+          APK_SIZE="$(stat -c '%s' "$APK")"
+          echo "Selected source-built editor APK: $APK ($APK_SIZE bytes)"
+          # The previous run mistakenly staged a ~13 MB intermediate APK. Fail closed rather than
+          # publishing an incomplete editor if the expected full editor package is not present.
+          if [ "$APK_SIZE" -lt 50000000 ]; then
+            echo "ERROR: Android editor APK is unexpectedly small (<50 MB); refusing to publish it."
             exit 1
           fi
 
