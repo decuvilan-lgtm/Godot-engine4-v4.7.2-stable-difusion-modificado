@@ -135,7 +135,7 @@ func _control_label(control: Control) -> String:
 	if control is PopupMenu:
 		var menu := control as PopupMenu
 		var entries: Array[String] = []
-		for index in range(menu.item_count):
+		for index in range(menu.get_item_count()):
 			entries.append("%d:%s" % [index, menu.get_item_text(index)])
 		return " | ".join(entries)
 	return ""
@@ -205,7 +205,7 @@ func execute(arguments: Dictionary) -> Dictionary:
 		if not arguments.has("menu_index"):
 			return tool_error("menu_index is required for PopupMenu activation")
 		var index := int(arguments.get("menu_index", -1))
-		if index < 0 or index >= menu.item_count:
+		if index < 0 or index >= menu.get_item_count():
 			return tool_error("menu_index is outside the menu item range")
 		if menu.is_item_disabled(index) or menu.is_item_separator(index):
 			return tool_error("menu item is disabled or a separator")
@@ -733,6 +733,17 @@ func execute(arguments: Dictionary) -> Dictionary:
     for registration in required_tool_registrations:
         if registration not in registry_text:
             raise RuntimeError(f"new typed MCP tool is not registered: {registration}")
+
+    inspect_ui = (ADDON_OUT / "scripts/tools/editor/inspect_editor_ui_tool.gd").read_text(encoding="utf-8")
+    activate_ui = (ADDON_OUT / "scripts/tools/editor/activate_editor_ui_control_tool.gd").read_text(encoding="utf-8")
+    if "get_base_control()" not in inspect_ui or "get_path_to(control)" not in inspect_ui:
+        raise RuntimeError("inspect_editor_ui is missing live editor UI traversal")
+    if "get_base_control()" not in activate_ui or "activate_item(index)" not in activate_ui:
+        raise RuntimeError("activate_editor_ui_control is missing UI activation")
+    if "project deletion/removal is permanently blocked" not in activate_ui:
+        raise RuntimeError("generic UI activation must permanently block project deletion")
+    if "confirm_destructive" not in activate_ui:
+        raise RuntimeError("generic UI activation must require confirmation for destructive actions")
 
     open_scene = (ADDON_OUT / "scripts/tools/editor/open_scene_tool.gd").read_text(encoding="utf-8")
     run_scene = (ADDON_OUT / "scripts/tools/editor/run_scene_tool.gd").read_text(encoding="utf-8")
