@@ -76,3 +76,18 @@ All rows start as **planned / not audited** until source inspection and tests es
 - A packaged plugin is not the same as a configured MCP client connection. The transport and a real Godot Android editor session still need end-to-end testing.
 - The GitHub import button and the proposed multi-repository incremental sync are separate features. The latter is documented but not implemented by this inventory.
 - Packaging/CI success, APK build success, addon installation, and live MCP functionality are separate test claims and must be reported separately.
+
+
+## Latest source-level MCP expansion — not yet validated
+
+The packaging script now generates and registers five additional typed tools:
+
+| Tool | Intended coverage | Current status |
+|---|---|---|
+| `get_editor_state` | Current edited scene, root class/name, open scenes, play state | Implemented in source; parser/runtime test pending |
+| `open_scene` | Open an existing `.tscn` or `.scn` project scene | Implemented in source; runtime test pending |
+| `control_running_scene` | Start current scene, start main scene, stop, or query play state | Implemented in source; runtime test pending |
+| `get_node_properties` | Enumerate node property names/types and optionally simple values | Implemented in source; serialization test pending |
+| `create_resource` | Create a registered Resource class and save to a new safe `res://` path without overwriting | Implemented in source; parser/runtime test pending |
+
+These are **partial editor capabilities**, not full Godot control. The MCP registry still does not expose every menu, dock, viewport action, importer, inspector editor, animation/tilemap tool, debugger/profiler operation, export workflow, or third-party plugin action. Typed tools must be expanded surface by surface, with safety checks and tests. No full-coverage claim is permitted.
