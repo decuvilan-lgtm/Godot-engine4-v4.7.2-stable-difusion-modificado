@@ -154,3 +154,28 @@ The synchronizer should handle large change sets without treating each file as a
 - Preserve the Android editor and keep the GitHub import patch narrow.
 - Do not claim an install, launch, or GitHub-import test passed without a corresponding log or device result.
 - Keep durable source changes in the patch script/workflow so builds are reproducible; do not treat editing the APK ZIP directly as a substitute for modifying source and rebuilding.
+
+## Confirmed implementation decisions: GitHub sync and Android MCP
+
+The active implementation branch is `feature/github-sync-and-safe-mcp`.
+
+### GitHub sync scope
+- Accept **public repositories only**. Do not implement GitHub OAuth, private repository browsing, token storage, or private repository access.
+- Keep the sync action manual and one-way: GitHub to local project.
+- Keep Analyze read-only and bind its plan to the exact remote commit SHA.
+- Rescue local-only or locally modified files outside the project before overwriting/removing them. Never upload rescue content.
+- Keep each repository's destination, manifest, baseline, and rescue folder isolated.
+
+### Android MCP scope and safety
+- Build on the Android-compatible GDScript editor plugin, then expand its tool registry in parallel with GitHub sync.
+- Goal: broad editor operations covering project inspection, scenes, nodes, scripts, properties, resources, filesystem, runtime testing, and diagnostics.
+- **Hard prohibition: no MCP tool may delete a Godot project or its project directory.** Do not expose a `delete_project` tool. Any generic script/evaluation facility must not be allowed to bypass this rule.
+- Keep destructive operations behind explicit safeguards and prefer Godot's undoable editor APIs where available.
+- MCP listeners must remain loopback-only by default. Do not expose unauthenticated editor control on a LAN or public interface; any remote bridge needs authentication and a separate security review.
+- Do not claim ChatGPT is connected to the live editor until an actual supported client connection has been configured and tested. Adding an addon to the repository alone does not establish that connection.
+
+### Parallel work and verification
+- Sync and MCP work are independent tracks; neither should block progress on the other.
+- Keep the existing Android APK build path intact while changing the patcher or packaging.
+- Verify source changes with automated checks before attempting a full APK build. A successful build or artifact upload is not proof of installation or runtime behavior on the user's phone.
+
