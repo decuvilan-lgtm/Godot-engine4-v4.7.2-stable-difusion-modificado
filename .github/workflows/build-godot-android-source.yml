@@ -101,7 +101,8 @@ jobs:
           APK="$(find "$GITHUB_WORKSPACE/godot-source" -type f -name '*.apk' -print -quit)"
           if [ -z "$APK" ]; then
             echo "ERROR: Gradle reported success but no APK was found."
-            find "$GITHUB_WORKSPACE/godot-source" -type f \\( -name '*.aab' -o -name '*apk*' \\) -print | head -n 100
+            find "$GITHUB_WORKSPACE/godot-source" -type f -name '*.aab' -print | head -n 100
+            find "$GITHUB_WORKSPACE/godot-source" -type f -name '*apk*' -print | head -n 100
             exit 1
           fi
           cp "$APK" "$GITHUB_WORKSPACE/godot-editor-test.apk"
