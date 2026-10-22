@@ -996,6 +996,17 @@ func execute(arguments: Dictionary) -> Dictionary:
         raise RuntimeError("generic UI activation must require confirmation for destructive actions")
     if "text_value" not in activate_ui or "numeric_value" not in activate_ui or "checked_value" not in activate_ui:
         raise RuntimeError("generic UI activation is missing form-control operations")
+    for tool_name, required_text in (
+        ("duplicate_node", "get_editor_undo_redo"),
+        ("rename_node", "get_editor_undo_redo"),
+        ("reparent_node", "get_editor_undo_redo"),
+    ):
+        tool_path = ADDON_OUT / "scripts/tools/scene" / f"{tool_name}_tool.gd"
+        tool_text = tool_path.read_text(encoding="utf-8")
+        if required_text not in tool_text or "undo_available" not in tool_text:
+            raise RuntimeError(f"{tool_name} is missing undo/redo safeguards")
+    if "is_ancestor_of(new_parent)" not in (ADDON_OUT / "scripts/tools/scene/reparent_node_tool.gd").read_text(encoding="utf-8"):
+        raise RuntimeError("reparent_node is missing cycle prevention")
 
     open_scene = (ADDON_OUT / "scripts/tools/editor/open_scene_tool.gd").read_text(encoding="utf-8")
     run_scene = (ADDON_OUT / "scripts/tools/editor/run_scene_tool.gd").read_text(encoding="utf-8")
