@@ -316,3 +316,7 @@ Commit `f54f1c3cd73eee346949a549d45c92035bb1b3a0` replaces an unsupported `FileA
 ### Validation assertion update — 2026-10-22
 
 The first retry of the packaging validation correctly exposed a stale assertion that treated the literal `res://mcp-addon.zip` asset filename as the old invalid `res://mcp-addon` directory. The validation now checks for the forbidden `res://mcp-addon/` directory form and expects the current `Ref<FileAccess>` factory-based reader. Workflow correction commit: `6d088971040d76173eaeb97703aeb36ef482b15b`. Fresh validation and Android build runs for that commit are queued; neither has passed yet.
+
+### Asset reader follow-up
+
+The initial `Ref<FileAccess>` retry still routed the ZIP name through Godot's normal resource-path factory, which was not appropriate for the raw APK asset namespace. The installer now explicitly uses `FileAccessAndroid::open_internal("mcp-addon.zip", FileAccess::READ)` to access Android's AssetManager. The copy loop is bounded by the asset's declared length, preventing a possible zero-byte EOF loop on an exact 16 KiB multiple and treating short reads as errors. Validation assertions were updated to cover the direct AssetManager path and bounded read loop. Latest source commit for this fix: `85ce3504316778bc7104e78f619c20a80ab99be5`; validation update commit: `7bbff02fc506dbd3755daa433ef6b5e878265cc9`. A fresh full Android build and validation are still pending.
