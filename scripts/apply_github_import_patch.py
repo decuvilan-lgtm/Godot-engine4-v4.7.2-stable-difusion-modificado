@@ -19,7 +19,7 @@ if not HEADER.is_file() or not SOURCE.is_file():
 
 replace_once(HEADER,
     "class HFlowContainer;\nclass LineEdit;",
-    "class HFlowContainer;\nclass HTTPRequest;\nclass LineEdit;")
+    "class HFlowContainer;\nclass HTTPRequest;\nclass LineEdit;\nclass OptionButton;")
 replace_once(HEADER,
     "ProjectDialog *project_dialog = nullptr;",
     "ProjectDialog *project_dialog = nullptr;\n\tConfirmationDialog *github_import_dialog = nullptr;\n\tLineEdit *github_repo_url = nullptr;\n\tHTTPRequest *github_http_request = nullptr;\n\tHTTPRequest *github_search_request = nullptr;\n\tConfirmationDialog *github_results_dialog = nullptr;\n\tOptionButton *github_repo_results = nullptr;\n\tString github_zip_path;\n\tString github_repo_name;\n\tConfirmationDialog *mcp_install_dialog = nullptr;")
@@ -28,7 +28,7 @@ replace_once(HEADER,
     "\tvoid _import_project();\n\tvoid _show_github_import_dialog();\n\tvoid _github_import_confirmed();\n\tvoid _github_search_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n\tvoid _github_search_result_confirmed();\n\tvoid _github_download_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n\tvoid _show_mcp_install_dialog();\n\tvoid _install_mcp_addon_confirmed();\n\tvoid _new_project();")
 replace_once(SOURCE,
     '#include "scene/gui/separator.h"\n#include "scene/main/scene_tree.h"',
-    '#include "scene/gui/separator.h"\n#include "scene/main/http_request.h"\n#include "scene/main/scene_tree.h"\n#include "platform/android/file_access_android.h"\n#include "modules/zip/zip_reader.h"')
+    '#include "core/io/json.h"\n#include "scene/gui/separator.h"\n#include "scene/main/http_request.h"\n#include "scene/main/scene_tree.h"\n#include "platform/android/file_access_android.h"\n#include "modules/zip/zip_reader.h"')
 replace_once(SOURCE,
     """void ProjectManager::_import_project() {
 \tproject_dialog->set_mode(ProjectDialog::MODE_IMPORT);
