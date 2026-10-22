@@ -92,6 +92,8 @@ jobs:
                   "addons/godot_mcp_android/scripts/tools/editor/run_scene_tool.gd": "RunSceneTool",
                   "addons/godot_mcp_android/scripts/tools/scene/get_node_properties_tool.gd": "GetNodePropertiesTool",
                   "addons/godot_mcp_android/scripts/tools/resource/create_resource_tool.gd": "CreateResourceTool",
+                  "addons/godot_mcp_android/scripts/tools/editor/inspect_editor_ui_tool.gd": "InspectEditorUITool",
+                  "addons/godot_mcp_android/scripts/tools/editor/activate_editor_ui_control_tool.gd": "ActivateEditorUIControlTool",
               }
               for path, registration in required_tools.items():
                   assert path in names, f"missing packaged MCP tool: {path}"
