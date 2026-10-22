@@ -96,15 +96,22 @@ jobs:
           echo "Workspace: $GITHUB_WORKSPACE"
           echo "Searching generated APKs:"
           find "$GITHUB_WORKSPACE/godot-source" -type f -name '*.apk' -print
-          APK="$(find "$GITHUB_WORKSPACE/godot-source" -type f -name '*.apk' -print -quit)"
-          if [ -z "$APK" ]; then
-            echo "ERROR: Gradle reported success but no APK was found."
+          APK="$GITHUB_WORKSPACE/godot-source/platform/android/java/editor/build/outputs/apk/android/debug/android_editor-android-debug.apk"
+          if [ ! -s "$APK" ]; then
+            echo "Preferred editor APK not found at: $APK"
+            echo "Searching generated APKs:"
+            find "$GITHUB_WORKSPACE/godot-source" -type f -name '*.apk' -print || true
+            APK="$(find "$GITHUB_WORKSPACE/godot-source/bin/android_editor_builds" -type f -name '*.apk' -print -quit 2>/dev/null || true)"
+          fi
+          if [ -z "$APK" ] || [ ! -s "$APK" ]; then
+            echo "ERROR: Build finished but no usable editor APK was found."
             echo "Diagnostic: available Android bundles:"
-            find "$GITHUB_WORKSPACE/godot-source" -type f -name '*.aab' -print | head -n 100
+            find "$GITHUB_WORKSPACE/godot-source" -type f -name '*.aab' -print | head -n 100 || true
             echo "Diagnostic: APK-related files:"
-            find "$GITHUB_WORKSPACE/godot-source" -type f -iname '*apk*' -print | head -n 100
+            find "$GITHUB_WORKSPACE/godot-source" -type f -iname '*apk*' -print | head -n 100 || true
             exit 1
           fi
+          echo "Selected APK: $APK"
           cp "$APK" "$GITHUB_WORKSPACE/godot-editor-test.apk"
           test -s "$GITHUB_WORKSPACE/godot-editor-test.apk"
           ls -lh "$GITHUB_WORKSPACE/godot-editor-test.apk"
