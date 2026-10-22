@@ -74,15 +74,48 @@ void ProjectManager::_github_import_confirmed() {
 \t}
 
 \tString repository = github_repo_url->get_text().strip_edges();
-\trepository = repository.trim_prefix("https://github.com/");
-\trepository = repository.trim_prefix("http://github.com/");
-\trepository = repository.trim_suffix("/");
-\trepository = repository.trim_suffix(".git");
-\tPackedStringArray parts = repository.split("/", false);
-\tif (parts.size() != 2 || parts[0].is_empty() || parts[1].is_empty() || parts[0].contains_char(' ') || parts[1].contains_char(' ')) {
-\t\t_show_error(TTR("Invalid repository. Use a public GitHub URL such as https://github.com/owner/repository."));
-\t\treturn;
-\t}
+	repository = repository.strip_edges();
+	// Accept only github.com repository URLs or the exact owner/repository form.
+	// Reject lookalike hosts, extra path segments, query strings, and fragments.
+	if (repository.begins_with("https://github.com/")) {
+		repository = repository.trim_prefix("https://github.com/");
+	} else if (repository.begins_with("http://github.com/")) {
+		repository = repository.trim_prefix("http://github.com/");
+	} else if (repository.begins_with("github.com/")) {
+		repository = repository.trim_prefix("github.com/");
+	} else if (repository.contains("://") || repository.begins_with("www.")) {
+		_show_error(TTR("Use github.com/owner/repository or enter owner/repository. Other hosts are not supported."));
+		return;
+	}
+	repository = repository.trim_suffix("/");
+	repository = repository.trim_suffix(".git");
+	if (repository.contains("?") || repository.contains("#")) {
+		_show_error(TTR("Remove query parameters or fragments. Enter only the repository URL."));
+		return;
+	}
+	PackedStringArray parts = repository.split("/", false);
+	if (parts.size() != 2 || parts[0].is_empty() || parts[1].is_empty()) {
+		_show_error(TTR("Invalid repository. Use https://github.com/owner/repository or owner/repository."));
+		return;
+	}
+	const String owner_allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-";
+	const String repo_allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.";
+	for (int i = 0; i < parts[0].length(); i++) {
+		if (owner_allowed.find(parts[0][i]) < 0) {
+			_show_error(TTR("The GitHub account name contains unsupported characters."));
+			return;
+		}
+	}
+	for (int i = 0; i < parts[1].length(); i++) {
+		if (repo_allowed.find(parts[1][i]) < 0) {
+			_show_error(TTR("The repository name contains unsupported characters."));
+			return;
+		}
+	}
+	if (parts[0].begins_with("-") || parts[0].ends_with("-") || parts[1] == "." || parts[1] == "..") {
+		_show_error(TTR("The GitHub account or repository name is invalid."));
+		return;
+	}
 
 \tgithub_repo_name = parts[1];
 \tgithub_zip_path = OS::get_singleton()->get_cache_path().path_join("godot_github_import.zip");
