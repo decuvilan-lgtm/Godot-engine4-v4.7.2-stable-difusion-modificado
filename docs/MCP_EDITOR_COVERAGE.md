@@ -87,7 +87,7 @@ Two additional tools are now generated and registered by the packaging script:
 | `inspect_editor_ui` | Enumerate editor controls and their paths, labels, classes, visibility, disabled state, tab titles, and open-menu entries | Source added; parser/runtime test pending |
 | `activate_editor_ui_control` | Activate an exact visible button or a specific item in an open PopupMenu, enabling UI-level navigation where no dedicated typed action exists | Source added; parser/runtime test pending |
 
-This is a **generic UI bridge**, not proof that every Godot action is accessible. It deliberately blocks project deletion/removal, requires explicit confirmation for potentially destructive labels, and currently activates buttons and open PopupMenu items only. More control types and dialogs may need dedicated adapters. It must be checked on the actual Android editor because some internal controls may be hidden, dynamically created, or inaccessible through the public editor tree.
+This is a **generic UI bridge**, not proof that every Godot action is accessible. It deliberately blocks project deletion/removal, requires explicit confirmation for potentially destructive labels, and currently activates buttons, tabs, OptionButton choices, and open PopupMenu items. More control types and dialogs may need dedicated adapters. It must be checked on the actual Android editor because some internal controls may be hidden, dynamically created, or inaccessible through the public editor tree.
 
 ## Required breadth-first expansion plan
 
