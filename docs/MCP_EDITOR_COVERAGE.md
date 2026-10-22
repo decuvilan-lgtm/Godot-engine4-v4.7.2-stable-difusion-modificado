@@ -89,6 +89,17 @@ Two additional tools are now generated and registered by the packaging script:
 
 This is a **generic UI bridge**, not proof that every Godot action is accessible. It deliberately blocks project deletion/removal, requires explicit confirmation for potentially destructive labels, and currently activates buttons, switches tabs and OptionButton choices, selects open PopupMenu items, and edits LineEdit/SpinBox/checkbox controls. More control types and dialogs may need dedicated adapters. It must be checked on the actual Android editor because some internal controls may be hidden, dynamically created, or inaccessible through the public editor tree.
 
+## Scene UI and preview-control bridge — source added, not yet validated
+
+Two more tools are generated and registered:
+
+| Tool | Intended coverage | Scope and status |
+|---|---|---|
+| `inspect_scene_ui_controls` | Enumerate Control nodes in the edited scene, including path, class, visibility, geometry, text, values, checks, and option choices | Source added; parser/runtime test pending |
+| `interact_scene_ui_control` | Press buttons, set LineEdit/TextEdit content, change Range values, toggle checks, select OptionButton entries, and focus controls | Source added; parser/runtime test pending |
+
+**Important preview distinction:** these tools operate on the currently edited scene tree. They are useful to inspect and exercise UI nodes before running a preview, but they do not yet inject input into a separate running game process. The generic editor UI bridge can operate on controls that are actually exposed inside the editor's own UI tree; this must not be confused with full control of the game viewport/runtime. Actual running-preview control still requires a tested remote-runtime transport or an embedded-preview adapter.
+
 ## Required breadth-first expansion plan
 
 The target is comprehensive coverage of every usable editor surface, including rare/obscure options. Work through these families rather than stopping at the current tool list:
