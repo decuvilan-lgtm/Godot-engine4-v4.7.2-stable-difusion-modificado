@@ -148,7 +148,7 @@ func _control_label(control: Control) -> String:
 		if not arguments.has("option_index"):
 			return tool_error("option_index is required for OptionButton selection")
 		var option_index := int(arguments.get("option_index", -1))
-		if option_index < 0 or option_index >= options.item_count:
+		if option_index < 0 or option_index >= options.get_item_count():
 			return tool_error("option_index is outside the option range")
 		if options.is_item_disabled(option_index) or options.is_item_separator(option_index):
 			return tool_error("option is disabled or a separator")
