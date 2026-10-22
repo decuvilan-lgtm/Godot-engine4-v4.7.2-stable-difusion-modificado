@@ -104,6 +104,14 @@ jobs:
               assert "the project has no main scene configured" in run_scene
               assert "FileAccess.file_exists(resource_path)" in create_resource
               assert "ResourceSaver.save" in create_resource
+              inspect_ui = zf.read("addons/godot_mcp_android/scripts/tools/editor/inspect_editor_ui_tool.gd").decode()
+              activate_ui = zf.read("addons/godot_mcp_android/scripts/tools/editor/activate_editor_ui_control_tool.gd").decode()
+              assert "get_path_to(control)" in inspect_ui
+              assert "activate_item(index)" in activate_ui
+              assert "tabs.current_tab = tab_index" in activate_ui
+              assert "options.select(option_index)" in activate_ui
+              assert "project deletion/removal is permanently blocked" in activate_ui
+              assert "confirm_destructive" in activate_ui
               set_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/set_node_property_tool.gd").decode()
               remove_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/remove_node_tool.gd").decode()
               http = zf.read("addons/godot_mcp_android/scripts/server/mcp_http_server.gd").decode()
