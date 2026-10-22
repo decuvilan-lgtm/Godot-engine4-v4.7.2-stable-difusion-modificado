@@ -388,7 +388,7 @@ I expanded the Android MCP packaging script with five additional typed tools: `g
 The five new tools are source changes only. They have not been run through the packaging workflow, the Godot headless parser, an MCP client, or the Android device. No new build or validation was launched, per the integration pause.
 
 
-**Intended registered MCP tool count: 24** (source-derived and not yet runtime-confirmed). They cover connection/project info, editor state, scene tree and node edits, opening/running scenes, file search/read/write/edit, resource UID/validation/creation, filesystem scan, and editor logs. The unrestricted expression tool remains disabled. The number of tools is not the same as full Godot coverage: visual editor operations and many advanced workflows still require dedicated tools.
+**Intended registered MCP tool count: 27** (source-derived and not yet runtime-confirmed). They cover connection/project info, editor state, scene tree and node edits, opening/running scenes, file search/read/write/edit, resource UID/validation/creation, filesystem scan, and editor logs. The unrestricted expression tool remains disabled. The number of tools is not the same as full Godot coverage: visual editor operations and many advanced workflows still require dedicated tools.
 
 ## Generic Godot editor UI bridge — source added, not yet validated
 
@@ -402,3 +402,8 @@ This is a first bridge toward navigating the main toolbar, menus, docks, tabs, O
 Next scope is comprehensive inventory and implementation across main menus, context menus, workspace layout, scene tree, Inspector, filesystem/import, script editor, Output and Debugger details, profiling, 2D/3D, animation, TileMap/TileSet, resources, Project/Editor Settings, export, plugins, Android-specific UI, and every remaining obscure control or option.
 
 **Status:** source changes only. No packaging workflow, parser validation, CI, Android build, or device test has been run for the two UI tools. The intended count of 24 is not a runtime-confirmed count and is not a claim of full editor coverage.
+
+
+### Scene-tree organization — source added, not yet validated
+
+The packaging script now generates three additional typed tools: `duplicate_node`, `rename_node`, and `reparent_node`. They use Godot's undo/redo history and include checks against root-node duplication/renaming collisions, self-descendant reparenting, and moving nodes into an instanced subscene. The validation workflow now expects these tool files and registry entries. Parser/runtime validation and real scene-tree/undo behavior remain pending; no tests or builds were launched for these changes.
