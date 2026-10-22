@@ -85,6 +85,18 @@ jobs:
               assert "ExecuteScriptTool" not in registry
               assert "delete_project" not in registry
               assert "execute_script_tool.gd" not in "\\n".join(names)
+              # New typed editor tools must be present in both the archive and registry.
+              required_tools = {
+                  "addons/godot_mcp_android/scripts/tools/editor/get_editor_state_tool.gd": "GetEditorStateTool",
+                  "addons/godot_mcp_android/scripts/tools/editor/open_scene_tool.gd": "OpenSceneTool",
+                  "addons/godot_mcp_android/scripts/tools/editor/run_scene_tool.gd": "RunSceneTool",
+                  "addons/godot_mcp_android/scripts/tools/scene/get_node_properties_tool.gd": "GetNodePropertiesTool",
+                  "addons/godot_mcp_android/scripts/tools/resource/create_resource_tool.gd": "CreateResourceTool",
+              }
+              for path, registration in required_tools.items():
+                  assert path in names, f"missing packaged MCP tool: {path}"
+                  assert registration in registry, f"tool not registered: {registration}"
+              assert "execute_script_tool.gd" not in registry
               set_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/set_node_property_tool.gd").decode()
               remove_node = zf.read("addons/godot_mcp_android/scripts/tools/scene/remove_node_tool.gd").decode()
               http = zf.read("addons/godot_mcp_android/scripts/server/mcp_http_server.gd").decode()
