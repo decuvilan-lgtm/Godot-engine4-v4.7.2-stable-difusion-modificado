@@ -355,3 +355,17 @@ The initial `Ref<FileAccess>` retry still routed the ZIP name through Godot's no
 - MCP payload is present in the APK: `assets/mcp-addon/plugin.cfg`, `assets/mcp-addon/scripts/protocol/mcp_tool_registry.gd`, and `assets/mcp-addon.zip`. The build checks also confirmed loopback-only HTTP/WebSocket bind addresses and rejected wildcard CORS and the generic script-evaluation/project-deletion tool registrations.
 - Separate MCP validation [run 39813174855](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39813174855) also passed.
 - **Still unverified:** installation/launch on the LG K51 (Android 11), successful in-app MCP addon installation, undo/redo behavior on device, and a real MCP client round-trip. A successful CI build is not a device test.
+
+
+## Integration work in progress — public repository search and file recovery
+
+As of 2026-10-22, the Project Manager GitHub dialog is being expanded from URL-only import to a single-field workflow that accepts either:
+- a search query such as `godot mcp` or an account/repository name,
+- a direct `owner/repository` identifier, or
+- a GitHub repository URL.
+
+A search query calls GitHub's public repository search API, presents up to 20 matching repositories, and lets the user choose one to import. Direct repository identifiers/URLs continue through the ZIP download/import flow. This is public-repository search only; private repositories and authenticated account access are not included.
+
+The MCP package hardening script is also being expanded so `write_file` and `edit_file` save the previous contents to unique project-local recovery copies under `.godot_mcp_backups/` before changing an existing file. If a recovery copy cannot be created, the operation should abort before the original file is overwritten. The tool result reports the recovery-copy path.
+
+**Status: source changes committed; deliberately not tested yet.** To respect the requested integration order, automatic Android builds and MCP validation have been paused and changed to manual dispatch. Do not install a new APK or call these features verified until the remaining integration work is complete and the full validation/build sequence is explicitly started.
