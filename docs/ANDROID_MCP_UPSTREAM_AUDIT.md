@@ -103,3 +103,15 @@ The packaging job should continue to assert all of the following:
 ## Next MCP hardening task
 
 The pinned upstream `write_file` and `edit_file` tools still overwrite project files directly. Before expanding mutation coverage, add collision-safe recovery copies for existing files, reject directory targets and empty/invalid paths, and test both successful writes and failure paths. Keep recovery data outside the project tree and never upload it. This work remains unimplemented until code and automated tests land.
+
+
+## Updated dual-ABI build result — 2026-10-22
+
+The previously pending full Android build has now completed successfully: [run 39813174735](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39813174735).
+
+- The downloadable artifact `godot-4.7.2-android-editor-arm32-arm64` (ID `12444807436`) contains the full APK and badging metadata.
+- APK SHA-256: `8ab4089907fc6aaed3eb62e6794bf4287e3cc3f4ce9f50389db3fd4f8573b06f`; artifact ZIP SHA-256: `09a298d4a86582ba4fee733ee2a3785ee5f944cfbf0ea55e3bdeec8b383a2e51`.
+- Verified ABI metadata and native-library entries include both `armeabi-v7a` and `arm64-v8a`; ZIP integrity, APK v2 signature verification, and ZIP alignment passed.
+- Package ID: `org.godotengine.editor.v4.debug.prilcustom`.
+- The APK contains the MCP addon files and ZIP bundle, and CI checks enforce loopback listeners, no wildcard CORS, and no generic expression-execution or project-deletion tool registration.
+- These results establish a source-built, signed dual-ABI artifact—not successful installation or live MCP operation on a physical Android device. File write/edit recovery and runtime undo/redo remain open hardening tasks.
