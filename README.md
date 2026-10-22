@@ -66,6 +66,13 @@ The separate `validate-import-only` option checks the patcher's Python syntax an
 - The size guard correctly refused to publish it; no artifact was created. This is not a successful deliverable.
 - Comparing the workflow with the official Godot Android build documentation exposed a missing `generate_android_binaries=yes` flag in the SCons editor build. The workflow also ran Gradle `clean` immediately before `generateGodotEditor`, unlike the official Godot workflow.
 
+### Run 31 — [39722571162](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39722571162)
+
+- Build completed and published artifact `godot-4.7.2-android-editor-arm64-only` (artifact ID `12403042462`, approximately 84 MiB as a ZIP).
+- The APK inside is 179,432,685 bytes (about 171 MiB), SHA-256 `896f1c34e6501872ee8ce038826981fd579f2535950ea2437e3c93c79b16592e`.
+- Metadata reports package `org.godotengine.editor.v4.debug`, version `4.7.2.stable`, min SDK 24, and native code exactly `arm64-v8a`. ZIP integrity, v2 signature verification, and ZIP alignment passed.
+- This run verifies a complete-sized ARM64-only build artifact and static package checks. It does **not** prove installation on the user's LG K51 / Android 11 phone, runtime behavior of the GitHub button, or MCP integration. The phone's install failure remains unresolved.
+
 ### Current corrective change
 
 Commit `894b99d89c5659f00a6b0a64a4b52517c5c6166e` adds `generate_android_binaries=yes` and removes Gradle `clean` before generating the editor. The workflow still selects `godot-source/bin/android_editor_builds/android_editor-android-debug.apk` and refuses to publish if it is missing or smaller than 50 MB. This correction has **not yet been validated by a new run**; inspect the next run and actual APK artifact before claiming success.
@@ -192,6 +199,30 @@ Coverage should include:
 - Preserve an absolute project-deletion prohibition: no tool may delete the project, its project root, or recursively remove the project directory. Generic script/evaluation tools must not bypass this policy. File/node edits that can destroy work require guardrails, and should use undoable editor operations where available.
 
 Do not claim literal 100% coverage until an automated inventory and device-side tests verify it. The goal is to expose the broadest feasible set of editor options and report honest gaps. This is an editor plugin and a tool server, not proof that ChatGPT can connect directly to the live editor; the actual client/transport connection must be configured and tested separately.
+
+## Current MCP-to-APK integration status (checked 2026-10-22)
+
+**Important: the MCP addon is not yet integrated into the generated editor APK.** The successful MCP workflow currently creates a separate ZIP artifact, `godot-mcp-android-safe.zip`. The Android build workflow has a separate `package-safe-mcp-addon` job, but the APK packaging step does not consume or embed that addon.
+
+The reason this needs a deliberate design is that the upstream MCP code is a Godot `EditorPlugin`: Godot normally enables editor plugins per project. Merely copying the addon ZIP into the APK, or placing it somewhere inside the APK, would not make it available and active in every project. Do not call that integration.
+
+### Verified safeguards in the separately packaged addon
+
+- Upstream is pinned to `GeorgeMee/godot-mcp-android` commit `5df91076250ece38ab182b2ca8b8a4a5d9a2d938`.
+- The packaging script removes the generic `execute_script` tool and its implementation; it asserts that no `delete_project` tool is registered.
+- HTTP and WebSocket listeners are patched to bind to `127.0.0.1`; wildcard HTTP CORS is removed.
+- Scene property changes and node removal are patched to use the editor undo/redo manager.
+- Workflow run [39737203890](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39737203890) passed static packaging checks and produced artifact `godot-mcp-android-safe` (artifact ID `12407299346`).
+
+These are source/package checks only. They do not yet prove that Godot parses the addon, undo/redo works in a live editor, a compatible MCP client can connect, or that the feature works on Android.
+
+### Integration plan — do not skip the runtime boundary
+
+1. Inspect the Android editor's project-loading and plugin lifecycle in Godot 4.7.2, and identify a supported way to make the addon available without silently enabling it in user projects or copying files into the APK with no usable install path.
+2. Prefer a reproducible source/build integration that exposes a clear user-controlled install/enable action. Keep user projects isolated; never modify or delete project files unexpectedly.
+3. Connect the safe-addon packaging job to the APK build only after the delivery mechanism is established. Add checks that inspect the final APK and prove the addon is actually reachable through that mechanism; an artifact ZIP beside the APK is not enough.
+4. Add progressively stronger tests: Godot parser/import test, editor enable/disable test, scene edit + undo/redo test, loopback-only listener test, MCP client round-trip, then physical Android install/launch.
+5. Keep the build ARM64-only (`arm64-v8a`), preserve the GitHub import patch, do not merge the draft PR without explicit permission, and update this README after each meaningful change or test.
 
 ## MCP coverage, hardening and remaining tests
 
