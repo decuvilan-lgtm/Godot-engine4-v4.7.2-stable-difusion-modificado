@@ -18,6 +18,12 @@ jobs:
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v4
+      - name: Checkout Godot 4.7.2 source for patch validation
+        uses: actions/checkout@v4
+        with:
+          repository: godotengine/godot
+          ref: 4.7.2-stable
+          path: godot-source
       - name: Checkout public Android MCP addon
         uses: actions/checkout@v4
         with:
@@ -27,6 +33,8 @@ jobs:
           path: godot-mcp-android-source
       - name: Validate Python syntax
         run: python -m py_compile scripts/package_safe_mcp_android.py scripts/apply_github_import_patch.py
+      - name: Validate and apply Project Manager patches to upstream source
+        run: python scripts/apply_github_import_patch.py
       - name: Package and validate safe MCP addon
         run: python scripts/package_safe_mcp_android.py
       - name: Verify archive contents
@@ -78,6 +86,17 @@ jobs:
           missing = [item for item in required if item not in workflow]
           assert not missing, f"Android APK workflow is missing MCP integration guards: {missing}"
           assert 'unzip -p "$APK" assets/mcp-addon/' in workflow, "final APK content is not inspected"
+
+          patcher = Path("scripts/apply_github_import_patch.py").read_text(encoding="utf-8")
+          for item in (
+              'Button *mcp_install_btn',
+              '_show_mcp_install_dialog',
+              '_install_mcp_addon_confirmed',
+              'copy_dir(".", addon_target)',
+              'DirAccess::dir_exists_absolute(addon_target)',
+              'config.set_value("editor_plugins", "enabled", enabled)',
+          ):
+              assert item in patcher, f"Project Manager MCP installer missing safeguard or action: {item}"
           print("Android build workflow contains pinned addon, APK embedding, and final-package safety checks.")
           PY
       - name: Upload safe MCP addon
