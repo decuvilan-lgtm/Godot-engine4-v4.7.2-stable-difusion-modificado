@@ -332,3 +332,12 @@ The initial `Ref<FileAccess>` retry still routed the ZIP name through Godot's no
 - Signing certificate SHA-256: `217fdedb7f49b0b9018cb23de327099b38e4db319456ab6529096b224e970d5c`. Debug signing can still differ between CI runs, so do not assume an existing install can be upgraded in place.
 - **Not yet proven:** installation or launch on the user's LG K51 / Android 11, or runtime installation and activation of MCP inside a project.
 - Artifact: [godot-4.7.2-android-editor-arm64-only](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39805117373).
+
+
+### Run 41 — [39813174735](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39813174735)
+
+- **Status at 2026-10-22 16:31 UTC: in progress.** The native engine compilation step is still running; APK generation, ABI validation, signature verification, and artifact upload have not completed yet.
+- The current workflow compiles ARM32 first and ARM64 second with `generate_android_binaries=yes` on the final SCons invocation. The APK validation step is configured to fail unless both `armeabi-v7a` and `arm64-v8a` are present.
+- The separate safe MCP validation run [39813174855](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/39813174855) completed successfully, including headless addon loading and packaging assertions.
+- **Do not treat this run as a dual-ABI APK success until the build finishes and the final APK validation step passes.** No on-device installation or live MCP transport test has been demonstrated.
+- The earlier Run 40 APK remains ARM64-only and is not the corrected deliverable.
