@@ -42,6 +42,24 @@ jobs:
           ref: 4.7.2-stable
           path: godot-source
 
+      - name: Give the custom editor a distinct Android package ID
+        shell: bash
+        working-directory: godot-source
+        run: |
+          set -euo pipefail
+          GRADLE_FILE="platform/android/java/editor/build.gradle"
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("platform/android/java/editor/build.gradle")
+          s = p.read_text(encoding="utf-8")
+          old = 'applicationIdSuffix ".debug"'
+          new = 'applicationIdSuffix ".debug.prilcustom"'
+          if s.count(old) != 1:
+              raise SystemExit(f"Expected exactly one default editor package suffix; found {s.count(old)}")
+          p.write_text(s.replace(old, new, 1), encoding="utf-8")
+          print("Custom package suffix configured: .debug.prilcustom")
+          PY
+
       - name: Checkout reviewed public MCP addon
         uses: actions/checkout@v4
         with:
