@@ -122,3 +122,15 @@ The previously pending full Android build has now completed successfully: [run 3
 The packaging script now creates and registers five more typed tools: `get_editor_state`, `open_scene`, `control_running_scene`, `get_node_properties`, and `create_resource`. They are designed to add editor-state inspection, scene opening/playback control, property reflection, and non-overwriting resource creation. The validation workflow now asserts that their scripts are present in the packaged ZIP and that each is registered.
 
 These changes have **not been tested by running the packaging workflow or the Godot headless parser**. The tools must not be counted as runtime-verified until those checks pass. Even if they pass, the MCP still exposes only a small subset of Godot's editor surfaces; the full coverage inventory remains the source of truth.
+
+
+## Expanded registered tool inventory — source state only
+
+After packaging, the intended registry contains 22 typed tools (this count is source-derived, not runtime-confirmed):
+
+- Connection/project: `ping`, `get_project_info`, `get_editor_state`
+- Scene/node: `get_scene_tree`, `add_node`, `set_node_property`, `get_node_property`, `get_node_properties`, `remove_node`, `save_scene`, `open_scene`, `control_running_scene`
+- Resources/diagnostics: `get_resource_uid`, `validate_resource`, `create_resource`, `get_editor_log`
+- Filesystem: `list_files`, `read_file`, `write_file`, `edit_file`, `grep`, `scan_filesystem`
+
+The upstream `execute_script` expression tool is intentionally removed. The registered tools cover useful slices of project inspection, file editing, scene/node editing, resource creation and scene playback, but do not expose every Godot Editor API or every visual editor operation. All newly generated tools remain pending parser, package and live MCP round-trip validation.
