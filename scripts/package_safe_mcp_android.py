@@ -2004,7 +2004,7 @@ func execute(arguments: Dictionary) -> Dictionary:
 \tif recovered_text != original_content:
 \t\treturn tool_error("recovery copy could not be verified; original file was not changed")
 \n\tvar write_file := FileAccess.open(resource_path, FileAccess.WRITE)
-\tif write_file == null:"""),
+\tif write_file == null:"""
     )
 
     write_tool = (ADDON_OUT / "scripts/tools/filesystem/write_file_tool.gd").read_text(encoding="utf-8")
