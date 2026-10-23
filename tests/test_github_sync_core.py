@@ -2,6 +2,9 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
+
+import github_sync_core
 
 from github_sync_core import (
     Change, SyncError, apply_plan, build_plan, git_blob_sha1,
@@ -218,6 +221,43 @@ class GitHubSyncCoreTests(unittest.TestCase):
                     "https://github.com/example/project", "main", "1" * 40,
                 )
             self.assertEqual(target.read_text(), "user data")
+
+    def test_manifest_commit_failure_rolls_back_all_project_changes(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            root = base / "project"
+            root.mkdir()
+            (root / "project.godot").write_text("config")
+            (root / "update.txt").write_bytes(b"before")
+            manifest_path = base / "metadata" / "manifest.json"
+            manifest_path.parent.mkdir()
+            original_manifest = {
+                "version": 1,
+                "project_root": str(root.resolve()),
+                "repository_url": "https://github.com/example/project",
+                "tracked_files": {"update.txt": {"sha": blob(b"before"), "size": 6}},
+            }
+            manifest_path.write_text(json.dumps(original_manifest))
+            real_writer = github_sync_core.write_json_atomic
+
+            def fail_manifest_write(path, value):
+                if Path(path) == manifest_path:
+                    raise OSError("simulated manifest commit failure")
+                return real_writer(path, value)
+
+            plan = [
+                Change("update.txt", "update", blob(b"after"), blob(b"before"), 5),
+                Change("new.txt", "add", blob(b"new"), None, 3),
+            ]
+            with patch("github_sync_core.write_json_atomic", side_effect=fail_manifest_write):
+                with self.assertRaisesRegex(SyncError, "rollback was attempted"):
+                    apply_plan(
+                        root, plan, lambda path, _sha: {"update.txt": b"after", "new.txt": b"new"}[path],
+                        manifest_path, "https://github.com/example/project", "main", "9" * 40,
+                    )
+            self.assertEqual((root / "update.txt").read_bytes(), b"before")
+            self.assertFalse((root / "new.txt").exists())
+            self.assertEqual(json.loads(manifest_path.read_text()), original_manifest)
 
     def test_bad_download_hash_leaves_project_unchanged(self):
         with tempfile.TemporaryDirectory() as td:
