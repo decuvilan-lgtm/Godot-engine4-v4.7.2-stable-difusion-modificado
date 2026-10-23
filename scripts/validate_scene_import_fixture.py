@@ -33,4 +33,22 @@ if "ExtResource(" in standalone or 'instance=ExtResource' in standalone:
 project = (ROOT / "project.godot").read_text(encoding="utf-8")
 if 'run/main_scene="res://Main.tscn"' not in project:
     raise SystemExit("Fixture main scene configuration is incorrect")
-print("Scene fixture structural checks passed: Main -> Level -> Enemy -> Weapon; standalone scene preserved.")
+inherited = (ROOT / "scenes/InheritedEnemy.tscn").read_text(encoding="utf-8")
+if 'path="res://scenes/Enemy.tscn"' not in inherited or 'instance=ExtResource("1_enemy")' not in inherited:
+    raise SystemExit("Inherited scene fixture no longer references its base scene")
+
+shared_material = ROOT / "scenes/shared_material.tres"
+if not shared_material.is_file():
+    raise SystemExit("Missing shared resource fixture")
+for name in ("SharedA.tscn", "SharedB.tscn"):
+    scene = (ROOT / "scenes" / name).read_text(encoding="utf-8")
+    if 'path="res://scenes/shared_material.tres"' not in scene:
+        raise SystemExit(f"{name} does not reference the shared material at its original path")
+
+missing = (ROOT / "scenes/MissingDependency.tscn").read_text(encoding="utf-8")
+if 'path="res://scenes/IntentionallyMissing.tscn"' not in missing:
+    raise SystemExit("Missing-dependency fixture must remain intentionally missing")
+if (ROOT / "scenes/IntentionallyMissing.tscn").exists():
+    raise SystemExit("The intentionally missing dependency unexpectedly exists")
+
+print("Scene fixture structural checks passed: nested chain, standalone scene, inherited scene, shared resource, and missing-reference case.")
