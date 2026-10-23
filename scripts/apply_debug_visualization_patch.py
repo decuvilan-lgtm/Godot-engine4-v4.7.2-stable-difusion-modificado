@@ -176,7 +176,7 @@ def main() -> None:
         "scene:debug_collision_shapes",
         "PREVIEW_DEBUG_COLLISIONS",
         "set_debug_collisions_hint(requested)",
-        \"ProjectSettings::get_singleton()->set_setting(\\\"debug/visible_collision_shapes\\\", requested)\",
+        "ProjectSettings::get_singleton()->set_setting(\"debug/visible_collision_shapes\", requested)",
         "p_args[0].get_type() != Variant::BOOL",
         "active != requested",
         "Collision visualization is unavailable in this build or physics backend.",
