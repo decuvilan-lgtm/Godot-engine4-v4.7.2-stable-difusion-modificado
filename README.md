@@ -95,10 +95,13 @@ Estas son ampliaciones propias del editor Android y de su complemento MCP; no de
 
 ## Visualización de depuración sin scripts temporales
 
-**Estado: primera opción aislada integrada en el código fuente; falta compilación C++ y prueba visual en Android.** La vista previa incorpora únicamente el interruptor de formas de colisión. Este envía el estado por el protocolo nativo de depuración a `SceneDebugger`, que activa el hint de colisiones de `SceneTree`. Output informa la acción y advierte si no existe una sesión de depuración activa. Actions aplicó y validó estáticamente el parche sobre el código oficial 4.7.2, sin compilar. Esto no prueba todavía el comportamiento visual del APK.
+**Estado: primera opción aislada integrada en el código fuente; falta compilación C++ y prueba visual en Android.** La vista previa incorpora únicamente el interruptor de formas de colisión. Este envía el estado por el protocolo nativo de depuración a `SceneDebugger`, que solicita el hint de colisiones de `SceneTree`. El handler valida el número y tipo del argumento y comprueba si el backend activó el estado solicitado; si no, devuelve un error de depuración en lugar de darlo por hecho. Output también advierte si no existe una sesión activa. Actions aplica el parche al código oficial 4.7.2 y ejecuta comprobaciones estáticas, no compila el motor.
 
 ### Física y colisiones
 - **Integración de código fuente:** interruptor de formas de colisión en la vista previa, conectado al hint nativo de Godot. Aún sin prueba de compilación o ejecución.
+- **Variables y límites cubiertos:** desactivado por defecto; estado booleano explícito; solo acepta un argumento booleano; comprueba sesión de depuración y confirma el estado que informa el backend; falla de forma visible si la compilación/backend no admite la función; cubre el dibujo nativo 2D/3D que ofrezca el backend, sin recorrer nodos ni crear geometría por frame.
+- **Rendimiento:** no se añade un proceso por frame, no se escanean nodos, no se crean materiales/meshes ni se alteran físicas; el coste extra queda limitado al dibujo nativo mientras está activado. La visualización puede bajar FPS en escenas con muchas formas, por lo que debe permanecer apagada por defecto.
+- **Limitación documentada por Godot:** `SceneTree.debug_collisions_hint` no está diseñado para cambiarse durante la ejecución y puede no tener el efecto visual deseado. Por eso la comprobación del estado del backend no sustituye una prueba visual real; hasta esa prueba, no se marca como funcionalmente verificado.
 - **Pendiente:** distinguir áreas/cuerpos, puntos de contacto y normales, RayCast/ShapeCast, capas, máscaras y exclusiones.
 - Formas de colisión 2D/3D y formas activas durante la ejecución.
 - Áreas `Area2D`/`Area3D` y cuerpos StaticBody, RigidBody y CharacterBody.
