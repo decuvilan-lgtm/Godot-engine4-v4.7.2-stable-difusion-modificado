@@ -383,10 +383,10 @@ void ProjectManager::_run_project() {
     # Verify required integration points before accepting the patch.
     h = HEADER.read_text(encoding="utf-8")
     c = SOURCE.read_text(encoding="utf-8")
-    for token in ("github_sync_btn", "_github_analysis_request_completed", "GitHub Sync", "Local project:", "Pinned commit:", "Review changes (revalidate)", "_review_github_analysis", "REVIEW INVALIDATED:", "/commits/", "github_analysis_waiting_for_tree", "HashingContext::HASH_SHA1", "local_scan_errors > 0", "selected_projects.size() != 1"):
+    for token in ("github_sync_btn", "_github_analysis_request_completed", "GitHub Sync", "Local project:", "Pinned commit:", "Review changes (revalidate)", "_review_github_analysis", "github_analysis_fingerprint", "HashingContext::HASH_SHA256", "REVIEW VALID:", "REVIEW INVALIDATED:", "/commits/", "github_analysis_waiting_for_tree", "HashingContext::HASH_SHA1", "local_scan_errors > 0", "selected_projects.size() != 1", "disabled_sync->set_disabled(true)"):
         if token not in h + c:
             raise SystemExit(f"Patch verification failed: {token}")
-    print("Added sidebar GitHub comparison against exactly one selected local project; writes and deletes remain disabled.")
+    print("Added commit-pinned Analyze and local/remote hash revalidation for Review; native Sync remains disabled pending transactional integration and build validation.")
 
 
 if __name__ == "__main__":
