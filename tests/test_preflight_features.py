@@ -63,10 +63,11 @@ class CorruptFileClassifierTests(unittest.TestCase):
         for normal_error in ("syntax_error", "missing_resource", "runtime_error", "parse_error"):
             self.assertIsNone(classify_file_read_failure("res://script.gd", normal_error))
 
-    def test_grouping_deduplicates_same_path(self):
-        first = classify_file_read_failure("res://bad.bin", FileReadFailure.IO_ERROR)
-        second = classify_file_read_failure("res://bad.bin", FileReadFailure.TRUNCATED_CONTAINER)
-        self.assertEqual(group_corrupt_findings([first, second]), [first])
+    def test_grouping_deduplicates_and_sorts_paths(self):
+        later = classify_file_read_failure("res://z/bad.bin", FileReadFailure.IO_ERROR)
+        first = classify_file_read_failure("res://a/bad.bin", FileReadFailure.TRUNCATED_CONTAINER)
+        duplicate = classify_file_read_failure("res://z/bad.bin", FileReadFailure.TRUNCATED_CONTAINER)
+        self.assertEqual(group_corrupt_findings([later, first, duplicate]), [first, later])
 
 
 if __name__ == "__main__":
