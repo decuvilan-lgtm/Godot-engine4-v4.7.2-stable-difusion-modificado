@@ -8,9 +8,10 @@ import re
 from pathlib import PurePosixPath
 from typing import Mapping
 
-_EXT_RESOURCE = re.compile(r'^\[ext_resource\s+.*?path="(res://[^"]+)"', re.M)
+_EXT_RESOURCE = re.compile(r'^\[ext_resource\s+.*?\bpath\s*=\s*"?(res://[^"\s\]]+)"?', re.M)
 _LOAD = re.compile(r'\b(?:load|preload)\s*\(\s*["\'](res://[^"\']+)["\']\s*\)')
-_PATH = re.compile(r'\bpath="(res://[^"]+)"')
+# Resource properties outside ext_resource blocks can also point to files.
+_PATH = re.compile(r'\bpath\s*=\s*["\'](res://[^"\']+)["\']')
 
 
 class SceneImportError(ValueError):
@@ -30,6 +31,7 @@ def normalize_res_path(path: str) -> str:
 def dependencies_for_text(text: str) -> set[str]:
     """Collect explicit external resource paths and literal load/preload paths."""
     paths = set(_EXT_RESOURCE.findall(text))
+    paths.update(_PATH.findall(text))
     paths.update(_LOAD.findall(text))
     return {normalize_res_path(path) for path in paths}
 
