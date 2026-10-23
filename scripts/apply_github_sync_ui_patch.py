@@ -116,7 +116,6 @@ void ProjectManager::_review_github_analysis() {
 	github_review_expected_fingerprint = github_analysis_fingerprint;
 	github_review_pending = true;
 	github_review_valid = false;
-	github_review_button->set_disabled(true);
 	_run_github_analysis();
 }
 
@@ -175,6 +174,8 @@ void ProjectManager::_github_analysis_request_completed(int p_result, int p_code
 	}
 	if (p_result != HTTPRequest::RESULT_SUCCESS || p_code < 200 || p_code >= 300) {
 		github_analysis_waiting_for_tree = false;
+		github_review_pending = false;
+		github_review_valid = false;
 		github_analysis_output->append_text(vformat(TTR("\\nGitHub request failed (HTTP %d, result %d). Check the repository, branch, connection, or API rate limit."), p_code, p_result));
 		return;
 	}
@@ -307,7 +308,7 @@ void ProjectManager::_github_analysis_request_completed(int p_result, int p_code
 		fingerprint_lines.push_back("L:" + entry.key + ":" + entry.value);
 	}
 	fingerprint_lines.sort();
-	String fingerprint_source = String::join(fingerprint_lines, "\\n");
+	String fingerprint_source = String("\\n").join(fingerprint_lines);
 	Ref<HashingContext> fingerprint_hasher;
 	fingerprint_hasher.instantiate();
 	if (fingerprint_hasher->start(HashingContext::HASH_SHA256) != OK ||
