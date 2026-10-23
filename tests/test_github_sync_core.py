@@ -93,6 +93,29 @@ class GitHubSyncCoreTests(unittest.TestCase):
             self.assertEqual(saved["commit_sha"], "a" * 40)
             self.assertEqual(result["changed_count"], 3)
 
+    def test_apply_plan_refuses_to_delete_untracked_local_file(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            root = base / "project"
+            root.mkdir()
+            (root / "project.godot").write_text("config")
+            local_file = root / "personal.txt"
+            local_file.write_text("keep me")
+            manifest_path = base / "meta" / "manifest.json"
+            manifest_path.parent.mkdir()
+            manifest_path.write_text(json.dumps({
+                "version": 1, "project_root": str(root.resolve()),
+                "repository_url": "https://github.com/example/project",
+                "tracked_files": {}
+            }))
+            with self.assertRaisesRegex(SyncError, "not tracked"):
+                apply_plan(
+                    root, [Change("personal.txt", "delete")],
+                    lambda _path, _sha: b"", manifest_path,
+                    "https://github.com/example/project", "main", "e" * 40,
+                )
+            self.assertEqual(local_file.read_text(), "keep me")
+
     def test_bad_download_hash_leaves_project_unchanged(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td) / "project"
