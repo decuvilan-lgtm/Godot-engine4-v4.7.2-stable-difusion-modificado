@@ -25,6 +25,20 @@ class SceneDependencyPlanTests(unittest.TestCase):
         with self.assertRaises(SceneImportError):
             plan_scene_import("res://../outside.tscn", {})
 
+    def test_literal_load_and_preload_dependencies_are_followed(self):
+        files = {
+            "res://Main.tscn": '[gd_scene format=3]\\n[ext_resource type="Script" path="res://scripts/main.gd" id="1"]',
+            "res://scripts/main.gd": 'const DATA = preload("res://data/settings.tres")\\nfunc get_scene(): return load("res://scenes/Optional.tscn")',
+            "res://data/settings.tres": '[gd_resource type="Resource" format=3]',
+            "res://scenes/Optional.tscn": '[gd_scene format=3]',
+        }
+        self.assertEqual(plan_scene_import("res://Main.tscn", files), sorted(files))
+
+    def test_backslash_and_empty_path_segments_are_rejected(self):
+        for path in ("res://assets\\\\evil.tres", "res://assets//file.tres"):
+            with self.subTest(path=path), self.assertRaises(SceneImportError):
+                plan_scene_import(path, {})
+
 
 class CorruptFileClassifierTests(unittest.TestCase):
     def test_only_explicit_low_level_failures_create_findings(self):
