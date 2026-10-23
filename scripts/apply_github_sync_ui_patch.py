@@ -57,10 +57,10 @@ def main() -> None:
 		github_repo_input->set_clear_button_enabled(true);
 		layout->add_child(github_repo_input);
 		Label *ref_label = memnew(Label);
-		ref_label->set_text(TTR("Branch or tag"));
+		ref_label->set_text(TTR("Branch, tag, or commit"));
 		layout->add_child(ref_label);
 		github_ref_input = memnew(LineEdit);
-		github_ref_input->set_text("HEAD");
+		github_ref_input->set_placeholder(TTR("main, master, tag, or commit SHA"));
 		github_ref_input->set_clear_button_enabled(true);
 		layout->add_child(github_ref_input);
 		github_analyze_button = memnew(Button);
@@ -90,7 +90,7 @@ def main() -> None:
 		return;
 	}
 	github_analysis_output->clear();
-	github_analysis_output->append_text(TTR("Read-only analysis. No local project files will be changed. Enter owner/name and a branch or tag, then analyze."));
+	github_analysis_output->append_text(TTR("Read-only comparison. Select exactly one local project, enter owner/repository and a branch, tag, or commit, then analyze. No files will be changed."));
 	github_analysis_panel->show();
 }
 
@@ -282,7 +282,7 @@ void ProjectManager::_run_project() {
     # Verify required integration points before accepting the patch.
     h = HEADER.read_text(encoding="utf-8")
     c = SOURCE.read_text(encoding="utf-8")
-    for token in ("github_sync_btn", "_github_analysis_request_completed", "GitHub Sync", "Local project:", "HashingContext::HASH_SHA1"):
+    for token in ("github_sync_btn", "_github_analysis_request_completed", "GitHub Sync", "Local project:", "HashingContext::HASH_SHA1", "local_scan_errors > 0", "selected_projects.size() != 1"):
         if token not in h + c:
             raise SystemExit(f"Patch verification failed: {token}")
     print("Added sidebar GitHub comparison against exactly one selected local project; writes and deletes remain disabled.")
