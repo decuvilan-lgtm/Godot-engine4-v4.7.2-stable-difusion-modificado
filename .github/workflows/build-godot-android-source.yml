@@ -244,6 +244,8 @@ jobs:
           path: godot-source
       - name: Validate import integration patcher syntax
         run: python -m py_compile scripts/apply_github_import_patch.py
+      - name: Validate nested and standalone scene fixture structure
+        run: python scripts/validate_scene_import_fixture.py
       - name: Run import integration patcher
         run: python scripts/apply_github_import_patch.py
 
