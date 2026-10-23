@@ -107,6 +107,8 @@ def main() -> None:
     TOOL.parent.mkdir(parents=True, exist_ok=True)
     TOOL.write_text(TOOL_SOURCE, encoding="utf-8")
     registry = REGISTRY.read_text(encoding="utf-8")
+    if "InspectSceneDependenciesTool" in registry or TOOL.exists():
+        raise SystemExit("Dependency inspection patch is already applied or partially applied; refusing duplicate registration.")
     registry = replace_once(
         registry,
         'const InstallRuntimeGameBridgeTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/install_runtime_game_bridge_tool.gd")',
@@ -130,6 +132,16 @@ def main() -> None:
         raise SystemExit("Unsafe MCP tool registration detected.")
     if "ResourceLoader.get_dependencies(current)" not in TOOL_SOURCE or "is_safe_project_path(dependency)" not in TOOL_SOURCE:
         raise SystemExit("Native dependency traversal or path validation is missing.")
+    with ZipFile(archive_path, "r") as archive:
+        names = set(archive.namelist())
+        expected_tool = "addons/godot_mcp_android/scripts/tools/editor/inspect_scene_dependencies_tool.gd"
+        expected_registry = "addons/godot_mcp_android/scripts/protocol/mcp_tool_registry.gd"
+        if expected_tool not in names or expected_registry not in names:
+            raise SystemExit("Rebuilt standalone ZIP is missing the dependency tool or registry.")
+        if any(name.startswith("/") or ".." in name.split("/") for name in names):
+            raise SystemExit("Unsafe path detected in rebuilt standalone ZIP.")
+        if "ExecuteScriptTool" in archive.read(expected_registry).decode("utf-8"):
+            raise SystemExit("Unsafe generic execution tool appeared in rebuilt ZIP.")
     print("Added inspect_scene_dependencies: native ResourceLoader traversal, bounded output, safe paths, read-only operation.")
 
 
