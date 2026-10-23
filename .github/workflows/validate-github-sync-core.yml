@@ -1,0 +1,38 @@
+name: Validate GitHub sync core (no Godot build)
+
+on:
+  push:
+    branches:
+      - work/mobile-ui-preflight
+    paths:
+      - "scripts/github_sync_core.py"
+      - "tests/test_github_sync_core.py"
+      - ".github/workflows/validate-github-sync-core.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-unit-tests:
+    name: Python sync-core unit tests only
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check Python syntax
+        run: python -m py_compile scripts/github_sync_core.py tests/test_github_sync_core.py
+
+      - name: Run sync-core unit tests
+        working-directory: tests
+        run: python -m unittest -v test_github_sync_core
+
+      - name: Report scope
+        run: echo "This workflow runs Python unit tests only. It does not build, launch, or test the Godot editor on Linux."
