@@ -15,6 +15,23 @@ class SceneDependencyPlanTests(unittest.TestCase):
         }
         self.assertEqual(plan_scene_import("res://Main.tscn", files), sorted(files))
 
+    def test_inherited_scene_and_resource_path_properties_are_dependencies(self):
+        files = {
+            "res://scenes/child.tscn": (
+                '[gd_scene load_steps=2 format=3]\n'
+                '[ext_resource type="PackedScene" path = "res://scenes/base.tscn" id="1"]\n'
+                '[node name="Child" instance=ExtResource("1")]\n'
+                '[node name="Sprite" type="Sprite2D" parent="."]\n'
+                'owner = NodePath("..")\n'
+                'signal connected()\n'
+            ),
+            "res://scenes/base.tscn": '[gd_scene format=3]\n[node name="Base" type="Node2D"]\n',
+        }
+        self.assertEqual(
+            plan_scene_import("res://scenes/child.tscn", files),
+            ["res://scenes/base.tscn", "res://scenes/child.tscn"],
+        )
+
     def test_missing_dependency_fails_closed(self):
         with self.assertRaisesRegex(SceneImportError, "Missing dependency"):
             plan_scene_import("res://Main.tscn", {
