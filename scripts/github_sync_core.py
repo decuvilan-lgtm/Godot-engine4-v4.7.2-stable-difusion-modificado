@@ -257,9 +257,15 @@ def apply_plan(
             raise SyncError(f"Plan contains a non-normalized path: {c.path}")
         if should_ignore(c.path, extra_ignores):
             raise SyncError(f"Plan includes an excluded path: {c.path}")
-        if c.action == "delete" and c.path not in tracked_before_sync:
-            raise SyncError(f"Refusing to delete a file not tracked by the previous successful sync: {c.path}")
+        if c.action in ("delete", "archive") and c.path not in tracked_before_sync:
+            raise SyncError(f"Refusing to remove a file not tracked by the previous successful sync: {c.path}")
         target = safe_target(root, c.path)
+        if c.action == "archive":
+            prior = tracked_before_sync[c.path]
+            if not target.is_file() or c.local_sha is None or prior.get("sha") == c.local_sha:
+                raise SyncError(f"Archive requires a modified tracked file: {c.path}")
+            if git_blob_sha1(target.read_bytes()) != c.local_sha:
+                raise SyncError(f"Local file changed after analysis; re-analyze before archiving: {c.path}")
         if c.action == "add" and target.exists():
             raise SyncError(f"Local file appeared after analysis; refusing to overwrite it: {c.path}")
         if c.action == "update":
@@ -315,9 +321,11 @@ def apply_plan(
             if c.action == "update":
                 if not target.is_file() or c.local_sha is None or git_blob_sha1(target.read_bytes()) != c.local_sha:
                     raise SyncError(f"Local file changed during sync; re-analyze before syncing: {c.path}")
-            if c.action == "delete" and c.local_sha is not None and existed:
+            if c.action in ("delete", "archive") and c.local_sha is not None and existed:
                 if not target.is_file() or git_blob_sha1(target.read_bytes()) != c.local_sha:
-                    raise SyncError(f"Tracked file changed during sync; re-analyze before deleting: {c.path}")
+                    raise SyncError(f"Tracked file changed during sync; re-analyze before removing: {c.path}")
+            if c.action == "archive" and not existed:
+                raise SyncError(f"Locally edited file disappeared during sync: {c.path}")
             journal.append({"path": c.path, "action": c.action, "existed": existed})
             if existed:
                 if not target.is_file():
