@@ -6,6 +6,7 @@ on:
       - work/mobile-ui-preflight
     paths:
       - "scripts/apply_github_import_patch.py"
+      - "scripts/apply_github_sync_ui_patch.py"
       - "scripts/apply_preview_debug_menu_patch.py"
       - "scripts/validate_scene_import_fixture.py"
       - "tests/scene_import_fixtures/**"
@@ -46,6 +47,9 @@ jobs:
 
       - name: Apply and verify GitHub import patch anchors
         run: python scripts/apply_github_import_patch.py
+
+      - name: Apply and verify mobile GitHub analysis UI patch anchors
+        run: python scripts/apply_github_sync_ui_patch.py
 
       - name: Apply and verify preview debugger patch anchors
         run: python scripts/apply_preview_debug_menu_patch.py
