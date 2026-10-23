@@ -77,8 +77,8 @@ class GitHubSyncCoreTests(unittest.TestCase):
             previous_manifest={"tracked_files": {"important.txt": {"sha": original, "size": 11}}},
         )
         self.assertEqual(len(plan), 1)
-        self.assertEqual(plan[0].action, "local-only")
-        self.assertIn("CONFLICT", plan[0].reason)
+        self.assertEqual(plan[0].action, "archive")
+        self.assertIn("outside the project", plan[0].reason)
         self.assertEqual(plan[0].local_sha, edited)
 
     def test_manifest_version_is_checked(self):
