@@ -124,6 +124,12 @@ def main() -> None:
     )
 
     replace_once(
+        SCENE_CPP,
+        '#include "core/config/engine.h"',
+        '#include "core/config/engine.h"\\n#include "core/config/project_settings.h"',
+    )
+
+    replace_once(
         SCENE_H,
         "\tstatic Error _msg_debug_mute_audio(const Array &p_args);",
         "\tstatic Error _msg_debug_mute_audio(const Array &p_args);\n"
