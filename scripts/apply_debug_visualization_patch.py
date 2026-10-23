@@ -35,12 +35,7 @@ def main() -> None:
     )
     replace_once(
         GAME_H,
-        "\t\tWINDOW_HDR_OUTPUT_ERROR,\n\t};",
-        "\t\tWINDOW_HDR_OUTPUT_ERROR,\n"
-        "\t\tPREVIEW_DEBUG_SEPARATOR,\n"
-        "\t\tPREVIEW_DEBUG_PAUSE_TOGGLE,\n"
-        "\t\tPREVIEW_DEBUG_NEXT_FRAME,\n"
-        "\t\tPREVIEW_DEBUG_STOP,\n"
+        "\t\tPREVIEW_DEBUG_MUTE_AUDIO,\n\t};",
         "\t\tPREVIEW_DEBUG_MUTE_AUDIO,\n"
         "\t\tPREVIEW_DEBUG_COLLISIONS,\n"
         "\t\tPREVIEW_DEBUG_PATHS,\n"
@@ -120,19 +115,19 @@ def main() -> None:
         "\t\tcase PREVIEW_DEBUG_COLLISIONS: {\n"
         "\t\t\tdebug_visual_collisions = !debug_visual_collisions;\n"
         "\t\t\tdebugger->set_debug_visualization(0, debug_visual_collisions);\n"
-        "\t\t\tmenu->set_item_checked(menu->get_item_index(PREVIEW_DEBUG_COLLISIONS), debug_visual_collisions);\n"
+        "\t\t\tgame_window_options_menu->get_popup()->set_item_checked(game_window_options_menu->get_popup()->get_item_index(PREVIEW_DEBUG_COLLISIONS), debug_visual_collisions);\n"
         "\t\t\tprint_line(debug_visual_collisions ? \"[Preview Debugger] Collision shapes enabled.\" : \"[Preview Debugger] Collision shapes disabled.\");\n"
         "\t\t} break;\n"
         "\t\tcase PREVIEW_DEBUG_PATHS: {\n"
         "\t\t\tdebug_visual_paths = !debug_visual_paths;\n"
         "\t\t\tdebugger->set_debug_visualization(1, debug_visual_paths);\n"
-        "\t\t\tmenu->set_item_checked(menu->get_item_index(PREVIEW_DEBUG_PATHS), debug_visual_paths);\n"
+        "\t\t\tgame_window_options_menu->get_popup()->set_item_checked(game_window_options_menu->get_popup()->get_item_index(PREVIEW_DEBUG_PATHS), debug_visual_paths);\n"
         "\t\t\tprint_line(debug_visual_paths ? \"[Preview Debugger] Path visualization enabled.\" : \"[Preview Debugger] Path visualization disabled.\");\n"
         "\t\t} break;\n"
         "\t\tcase PREVIEW_DEBUG_NAVIGATION: {\n"
         "\t\t\tdebug_visual_navigation = !debug_visual_navigation;\n"
         "\t\t\tdebugger->set_debug_visualization(2, debug_visual_navigation);\n"
-        "\t\t\tmenu->set_item_checked(menu->get_item_index(PREVIEW_DEBUG_NAVIGATION), debug_visual_navigation);\n"
+        "\t\t\tgame_window_options_menu->get_popup()->set_item_checked(game_window_options_menu->get_popup()->get_item_index(PREVIEW_DEBUG_NAVIGATION), debug_visual_navigation);\n"
         "\t\t\tprint_line(debug_visual_navigation ? \"[Preview Debugger] Navigation visualization enabled.\" : \"[Preview Debugger] Navigation visualization disabled.\");\n"
         "\t\t} break;\n",
     )
