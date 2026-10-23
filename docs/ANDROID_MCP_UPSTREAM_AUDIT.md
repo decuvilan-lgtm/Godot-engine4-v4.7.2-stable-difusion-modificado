@@ -49,7 +49,7 @@ This list is not exhaustive; the full inventory in `MCP_EDITOR_COVERAGE.md` is t
 
 ## Concrete safety gaps found during source inspection
 
-- `write_file` and `edit_file` can overwrite an existing project file directly. They currently do not create a recovery copy or route the operation through Godot's undo manager.
+- `write_file` and `edit_file` still perform direct filesystem writes rather than routing file contents through Godot's undo manager. However, the current `package_safe_mcp_android.py` patch injects a project-local `.godot_mcp_backups` recovery copy before overwriting an existing file and verifies the copy before writing. This is source-level protection only: runtime failure handling, backup retention/cleanup, and restoration still require Android validation.
 - The upstream `set_node_property` and `remove_node` implementations originally lacked property-existence validation and editor undo/redo integration. The packaging script now patches both: it checks that the property exists, records property changes through the editor undo manager, and removes nodes reversibly without calling `queue_free()`. These changes are source-patched but still require a successful package build and runtime undo/redo test in Godot Android.
 - The common project-path helper rejects normalized paths that escape with `..`, but path validation still deserves tests for empty/directory paths, unusual separators, and platform-specific edge cases.
 - The HTTP server has wildcard CORS in upstream source; the packaging script removes that header. Both transport implementations also read host settings, so the package must continue to force loopback after settings are applied.
