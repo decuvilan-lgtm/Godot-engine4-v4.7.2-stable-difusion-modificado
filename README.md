@@ -92,6 +92,57 @@ Estas son ampliaciones propias del editor Android y de su complemento MCP; no de
 - No borrar la raíz de un proyecto ni sobrescribir archivos locales durante la importación aditiva.
 - Informar cada herramienta como implementada, parcial, no disponible o bloqueada por seguridad; un archivo generado o un workflow exitoso no demuestra que funcione en el dispositivo.
 
+## Visualización de depuración sin scripts temporales
+
+**Estado: especificación documentada; no declarar estas visualizaciones personalizadas como implementadas ni probadas hasta validarlas.** La prioridad es descubrir y exponer las opciones nativas de Godot 4.7.2 antes de escribir código nuevo. Las vistas deben ser temporales, independientes de la lógica del juego y apagables sin alterar el proyecto del usuario.
+
+### Física y colisiones
+- Formas de colisión 2D/3D y formas activas durante la ejecución.
+- Áreas `Area2D`/`Area3D` y cuerpos StaticBody, RigidBody y CharacterBody.
+- Puntos de contacto y normales, si el depurador nativo lo permite.
+- RayCast2D/3D y ShapeCast2D/3D: forma, dirección y resultados reales.
+- Capas, máscaras y exclusiones de colisión de los nodos seleccionados.
+
+### Navegación e IA
+- Mallas y regiones de navegación, rutas calculadas, destinos y agentes.
+- Obstáculos, trayectorias Path2D/Path3D y seguidores.
+- Zonas existentes de visión, alcance y detección de enemigos.
+Solo mostrar datos reales de nodos/sistemas existentes; no inventar rutas ni crear comportamientos automáticamente.
+
+### Objetos, nodos y movimiento
+- Nombres, rutas e identificadores disponibles de nodos.
+- Posiciones locales/globales, rotación, escala, dimensiones y coordenadas del jugador/objeto.
+- Rectángulos delimitadores, pivotes, centros, orígenes, ejes locales/globales y orientación 3D.
+- Esqueletos/huesos 2D/3D, anclajes, deformación, trayectorias, vectores de velocidad/aceleración/dirección y estado de animación cuando existan datos accesibles.
+- Límites y área visible de cámaras, frustum 3D, desplazamiento de cámara, zonas de influencia y activación.
+
+### Interfaz
+- Rectángulos de controles y áreas interactivas; anclajes, márgenes y contenedores.
+- Guías, cuadrícula, alineación, zona segura móvil y límites visibles de la UI durante la vista previa.
+
+### Herramientas del editor 2D y 3D
+- **2D:** cuadrícula/guías, colisiones, límites físicos, pivotes/orígenes, cámaras, rutas y navegación.
+- **3D:** cuerpos y colisiones, contactos/normales cuando sea posible, cámaras/frustum, luces y rangos, ejes/pivotes/orientación, navegación y obstáculos.
+Si Godot ya ofrece una visualización, exponer un acceso rápido en lugar de duplicarla.
+
+### Menú de la vista previa: “Visualización de depuración”
+Interruptores independientes para colisiones, áreas de detección, RayCast/ShapeCast, contactos/normales, navegación/rutas, nombres/rutas de nodos, pivotes/ejes, límites de cámara, movimiento/animaciones y límites de interfaz. Incluir **Activar todas las compatibles**, **Desactivar todas** y **Restablecer valores predeterminados**. Recordar preferencias solo si puede hacerse sin alterar la configuración del proyecto.
+
+### Requisitos y pruebas
+1. Investigar primero opciones y APIs disponibles en la versión exacta 4.7.2.
+2. No agregar scripts temporales al proyecto ni modificar materiales, colisiones o nodos permanentemente.
+3. Etiquetar el alcance de cada opción: **Editor 2D**, **Editor 3D**, **Vista previa/ejecución** o **No compatible**.
+4. Si una API no permite mostrar una vista durante la ejecución, decirlo claramente; no simular datos ni afirmar compatibilidad.
+5. Mantener controles táctiles aptos para 720 × 1600 y no tapar el juego.
+6. Validar primero anclajes y pruebas estáticas en Actions; después probar proyectos 2D y 3D reales y la vista previa Android. Las pruebas estáticas no prueban el comportamiento visual en el dispositivo.
+
+### Orden de implementación
+1. Inventariar visualizaciones nativas y su alcance.
+2. Exponer colisiones, formas físicas, contactos y RayCast/ShapeCast.
+3. Añadir navegación, rutas, pivotes, nombres y límites.
+4. Añadir animaciones, cámaras e interfaz.
+5. Probar encendido/apagado sin alterar el comportamiento normal del juego.
+
 ## Compilación y comprobación
 
 Workflow principal: [Build Godot Android Editor](.github/workflows/build-godot-android-source.yml).
