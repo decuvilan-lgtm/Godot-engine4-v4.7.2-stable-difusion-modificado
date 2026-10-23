@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 from scene_dependency_plan import plan_scene_import, SceneImportError
 from corrupt_file_classifier import (
     FileReadFailure, classify_file_read_failure, group_corrupt_findings,
@@ -68,6 +69,33 @@ class CorruptFileClassifierTests(unittest.TestCase):
         first = classify_file_read_failure("res://a/bad.bin", FileReadFailure.TRUNCATED_CONTAINER)
         duplicate = classify_file_read_failure("res://z/bad.bin", FileReadFailure.TRUNCATED_CONTAINER)
         self.assertEqual(group_corrupt_findings([later, first, duplicate]), [first, later])
+
+
+class GitHubImportPatchSourceTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        root = Path(__file__).resolve().parents[1]
+        cls.import_patch = (root / "scripts" / "apply_github_import_patch.py").read_text(encoding="utf-8")
+        cls.build_workflow = (root / ".github" / "workflows" / "build-godot-android-source.yml").read_text(encoding="utf-8")
+
+    def test_keyboard_done_routes_to_search_fallback(self):
+        self.assertIn('connect("text_submitted", callable_mp(this, &ProjectManager::_github_import_submitted))', self.import_patch)
+        self.assertIn('_github_import_submitted(const String &p_text)', self.import_patch)
+        self.assertIn('_github_force_search();', self.import_patch)
+
+    def test_pasted_owner_repo_query_is_scoped_to_owner(self):
+        self.assertIn('query = parts[1] + " user:" + parts[0];', self.import_patch)
+        self.assertIn('search_url = "https://api.github.com/search/repositories?q="', self.import_patch)
+
+    def test_search_pagination_and_download_are_guarded(self):
+        self.assertIn('per_page=20&page=', self.import_patch)
+        self.assertIn('MIN(5, MAX(1, (github_search_total_count + 19) / 20))', self.import_patch)
+        self.assertIn('p_response_code != 200', self.import_patch)
+        self.assertIn('!FileAccess::exists(github_zip_path)', self.import_patch)
+
+    def test_android_build_applies_native_github_review_ui(self):
+        self.assertIn('Apply native GitHub analysis and review UI', self.build_workflow)
+        self.assertIn('scripts/apply_github_sync_ui_patch.py', self.build_workflow)
 
 
 if __name__ == "__main__":
