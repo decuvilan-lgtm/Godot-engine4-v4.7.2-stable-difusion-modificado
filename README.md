@@ -1,5 +1,17 @@
 # Godot 4.7.2 Android Editor — GitHub import (ARM32 + ARM64)
 
+## Preview debugger menu integration (feature branch)
+
+The `work/mobile-ui-preflight` branch now includes `scripts/apply_preview_debug_menu_patch.py`, a fail-closed patch for Godot 4.7.2's native `GameView` options menu. It adds actions wired to the existing preview debugger:
+- Pause/resume the running game through the native suspend control.
+- Step one frame only when the game is paused.
+- Stop the running game through the native stop handler.
+- Toggle game-audio muting through the existing debugger interface.
+
+Unavailable actions are disabled when no game is running (and frame-step is disabled while running). Each request/status is written to Godot's Output log; pause/step/stop/audio operations use the existing debugger pathways rather than creating a second debugger. The Android source build and Linux UI preflight both invoke this patch script.
+
+**Validation status:** source-patch anchors and static post-patch tokens are checked by the script. A successful C++ build, UI screenshot review, and on-device APK installation are not yet confirmed; do not treat this feature as device-tested until those checks pass.
+
 ## Current verified status — 2026-10-22 (supersedes older “not yet tested” notes below)
 
 Work branch: `feature/github-sync-and-safe-mcp`  
