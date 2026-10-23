@@ -26,7 +26,7 @@ class GitHubSyncCoreTests(unittest.TestCase):
     def test_plan_add_update_delete_and_preserve_local_only(self):
         local = {
             "keep.txt": {"git_blob_sha": blob(b"same"), "size": 4},
-            "change.txt": {"git_blob_sha": blob(b"local"), "size": 5},
+            "change.txt": {"git_blob_sha": blob(b"old"), "size": 3},
             "removed.txt": {"git_blob_sha": blob(b"old"), "size": 3},
             "personal.png": {"git_blob_sha": blob(b"mine"), "size": 4},
         }
@@ -46,6 +46,24 @@ class GitHubSyncCoreTests(unittest.TestCase):
         self.assertEqual(plan["new.txt"].action, "add")
         self.assertEqual(plan["removed.txt"].action, "delete")
         self.assertEqual(plan["personal.png"].action, "local-only")
+
+    def test_remote_update_preserves_untracked_or_locally_modified_collision(self):
+        old_version = blob(b"last synced")
+        edited = blob(b"user edits")
+        remote_version = blob(b"remote update")
+        for manifest in (
+            {"tracked_files": {}},
+            {"tracked_files": {"important.txt": {"sha": old_version, "size": 10}}},
+        ):
+            with self.subTest(manifest=manifest):
+                plan = build_plan(
+                    remote_tree={"important.txt": {"type": "blob", "sha": remote_version, "size": 13}},
+                    local_inventory={"important.txt": {"git_blob_sha": edited, "size": 10}},
+                    previous_manifest=manifest,
+                )
+                self.assertEqual(plan[0].action, "local-only")
+                self.assertIn("CONFLICT", plan[0].reason)
+                self.assertEqual(plan[0].local_sha, edited)
 
     def test_remote_deletion_preserves_locally_modified_tracked_file(self):
         original = blob(b"last synced")
