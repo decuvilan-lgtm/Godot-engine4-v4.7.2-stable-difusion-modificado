@@ -154,7 +154,7 @@ void ProjectManager::_github_force_search() {
 \tnormalized = normalized.trim_suffix(".git");
 \tPackedStringArray parts = normalized.split("/", false);
 \tif (parts.size() >= 2 && (query.contains("github.com/") || !query.contains(" "))) {
-\t\tquery = parts[parts.size() - 1];
+\t\t// Use the repository segment, not /tree/<branch> or /issues/<number>.\n\t\tquery = parts[1];
 \t}
 \tgithub_search_query = query;
 \tgithub_search_page = 1;
