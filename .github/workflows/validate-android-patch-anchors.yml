@@ -36,7 +36,7 @@ jobs:
           python-version: "3.12"
 
       - name: Check patch scripts syntax
-        run: python -m py_compile scripts/apply_github_import_patch.py scripts/apply_preview_debug_menu_patch.py scripts/validate_scene_import_fixture.py scripts/github_sync_core.py tests/test_github_sync_core.py
+        run: python -m py_compile scripts/apply_github_import_patch.py scripts/apply_github_sync_ui_patch.py scripts/apply_preview_debug_menu_patch.py scripts/validate_scene_import_fixture.py scripts/github_sync_core.py tests/test_github_sync_core.py
 
       - name: Validate sync core unit tests
         working-directory: tests
