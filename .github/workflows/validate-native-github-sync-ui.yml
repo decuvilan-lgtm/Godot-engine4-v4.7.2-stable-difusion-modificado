@@ -1,58 +1,16 @@
-name: Compile patched native Godot editor (Linux validation)
+name: Retired desktop validation (Android-only project)
 
+# This workflow is intentionally inert. The product target is the Android editor;
+# compiling the desktop editor is not an acceptance test for this project.
 on:
-  push:
-    branches:
-      - work/mobile-ui-preflight
-    paths:
-      - "scripts/apply_github_import_patch.py"
-      - "scripts/apply_github_sync_ui_patch.py"
-      - "scripts/apply_preview_debug_menu_patch.py"
-      - ".github/workflows/validate-native-github-sync-ui.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  compile-native-editor:
-    name: Apply native patches and compile Godot editor
+  retired:
+    if: false
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
     steps:
-      - name: Checkout custom project
-        uses: actions/checkout@v4
-
-      - name: Checkout official Godot 4.7.2 source
-        uses: actions/checkout@v4
-        with:
-          repository: godotengine/godot
-          ref: 4.7.2-stable
-          path: godot-source
-
-      - name: Install Linux editor build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libx11-dev libxcursor-dev libxinerama-dev libxi-dev libxrandr-dev libxrender-dev libxext-dev libxfixes-dev libxkbcommon-dev libwayland-dev libgl1-mesa-dev libasound2-dev libpulse-dev libudev-dev libdbus-1-dev libfontconfig1-dev libfreetype-dev libharfbuzz-dev
-
-      - name: Install SCons
-        run: |
-          python -m pip install --user scons
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      - name: Apply GitHub import patch
-        run: python scripts/apply_github_import_patch.py
-
-      - name: Apply GitHub Analyze and Review UI patch
-        run: python scripts/apply_github_sync_ui_patch.py
-
-      - name: Apply preview/debug UI patch
-        run: python scripts/apply_preview_debug_menu_patch.py
-
-      - name: Compile patched Godot editor (Linux, not Android)
-        working-directory: godot-source
-        run: scons platform=linuxbsd target=editor -j2
-
-      - name: State validation scope
-        if: always()
-        run: echo "This job checks C++ compilation for the patched Linux editor. It does not build an Android APK or verify LG K51 runtime behavior."
+      - run: echo "Retired: validate the Android APK and test on an Android device instead."
