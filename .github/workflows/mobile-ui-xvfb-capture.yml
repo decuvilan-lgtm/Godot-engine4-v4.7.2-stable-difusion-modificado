@@ -79,13 +79,26 @@ jobs:
           capture_one() {
             local mode="$1" geometry="$2" name="$3"
             local log="ui-captures/${mode}-${name}.log"
-            Xvfb :99 -screen 0 "${geometry}x24" -ac > /tmp/xvfb.log 2>&1 &
+            Xvfb :99 -screen 0 "${geometry}x24" -ac > "/tmp/xvfb-${mode}-${name}.log" 2>&1 &
             XVFB_PID=$!
+            APP_PID=""
+            cleanup_capture() {
+              if [ -n "$APP_PID" ]; then kill "$APP_PID" 2>/dev/null || true; wait "$APP_PID" 2>/dev/null || true; fi
+              kill "$XVFB_PID" 2>/dev/null || true
+              wait "$XVFB_PID" 2>/dev/null || true
+            }
+            trap cleanup_capture RETURN
             export DISPLAY=:99
+            ready=0
             for _ in $(seq 1 40); do
-              if xdpyinfo -display :99 >/dev/null 2>&1; then break; fi
+              if xdpyinfo -display :99 >/dev/null 2>&1; then ready=1; break; fi
               sleep 0.25
             done
+            if [ "$ready" -ne 1 ]; then
+              cat "/tmp/xvfb-${mode}-${name}.log"
+              echo "Xvfb did not start for ${geometry}" >&2
+              return 1
+            fi
             if [ "$mode" = "project-manager" ]; then
               "$BIN" > "$log" 2>&1 &
             else
@@ -93,11 +106,14 @@ jobs:
             fi
             APP_PID=$!
             sleep 12
+            if ! kill -0 "$APP_PID" 2>/dev/null; then
+              cat "$log"
+              echo "Godot exited before screenshot capture: $mode / $geometry" >&2
+              return 1
+            fi
             import -display :99 -window root "ui-captures/${mode}-${name}.png"
-            kill "$APP_PID" 2>/dev/null || true
-            kill "$XVFB_PID" 2>/dev/null || true
-            wait "$APP_PID" 2>/dev/null || true
-            wait "$XVFB_PID" 2>/dev/null || true
+            test -s "ui-captures/${mode}-${name}.png"
+            identify "ui-captures/${mode}-${name}.png"
           }
           if [ "${{ inputs.capture_mode }}" = "both" ] || [ "${{ inputs.capture_mode }}" = "project-manager" ]; then
             capture_one project-manager 1280x800 desktop
