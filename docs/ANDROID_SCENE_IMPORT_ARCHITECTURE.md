@@ -21,6 +21,17 @@ Godot's FileSystem panel and the scene tabs are different concepts:
 8. **Safe duplicate handling:** if the target path already exists, compare hashes and offer a clear replace/skip/rename choice; do not silently merge all nodes into the active scene.
 9. **Dependencies:** preserve relative paths and import metadata where appropriate. Let Godot's resource importer reimport supported assets. Detect missing external resources and report them instead of silently flattening or dropping references.
 
+## Post-import resource error report (required behavior)
+
+After the import has finished and Godot has completed loading the imported project, show one consolidated popup if any files or resources failed to load. The popup should say that some files/resources could not be loaded and list each affected path, with a concise error/reason when available. It should not make the user guess which asset failed.
+
+- Do not interrupt a large import with one dialog per failure. Collect diagnostics throughout import and project loading, then present the summary once the editor is ready.
+- Include actionable details where available: project-relative path, failure stage (copy/import/resource-load), and Godot's error message. Allow the user to copy the report and open the affected file's folder when possible.
+- If everything loads successfully, do not show an error popup.
+- A missing or unreadable resource must not be silently replaced, omitted, or fabricated. Preserve the source files where possible and report the failure accurately.
+- Keep import-fatal problems separate from post-load warnings: unsafe paths or a failed transaction may require stopping/rolling back; ordinary resource-load failures should be summarized after loading when it is safe to continue.
+- Deduplicate repeated messages for the same resource while retaining distinct causes when they materially differ. Cap popup content for very large failure sets and provide a complete copyable report.
+- The report must identify the exact affected files/resources and must not label a valid standalone scene as an error merely because no scene references it.
 ## Isolated scenes and import safety (required)
 
 A scene that is not reachable from the main scene is not, by itself, an import error. It may be intentionally standalone, unfinished, experimental, or intended for later manual use. A large import must not pause for human decisions just because a valid scene is not referenced by another scene.
