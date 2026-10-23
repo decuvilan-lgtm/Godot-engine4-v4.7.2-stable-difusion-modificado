@@ -37,13 +37,19 @@ jobs:
           python-version: "3.12"
 
       - name: Check patch scripts syntax
-        run: python -m py_compile scripts/apply_github_import_patch.py scripts/apply_github_sync_ui_patch.py scripts/apply_preview_debug_menu_patch.py scripts/validate_scene_import_fixture.py scripts/github_sync_core.py tests/test_github_sync_core.py
+        run: python -m py_compile scripts/apply_github_import_patch.py scripts/apply_github_sync_ui_patch.py scripts/apply_preview_debug_menu_patch.py scripts/validate_scene_import_fixture.py scripts/github_sync_core.py scripts/scene_dependency_plan.py scripts/corrupt_file_classifier.py tests/test_github_sync_core.py tests/test_preflight_features.py
 
       - name: Validate sync core unit tests
         working-directory: tests
         env:
           PYTHONPATH: ../scripts
         run: python -m unittest -v test_github_sync_core
+
+      - name: Validate scene import and corruption-classifier helper tests
+        working-directory: tests
+        env:
+          PYTHONPATH: ../scripts
+        run: python -m unittest -v test_preflight_features
 
       - name: Apply and verify GitHub import patch anchors
         run: python scripts/apply_github_import_patch.py
