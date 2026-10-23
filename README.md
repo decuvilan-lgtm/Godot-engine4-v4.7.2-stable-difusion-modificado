@@ -477,3 +477,12 @@ The runtime controller also exposes touchscreen tap/release and swipe events, pl
 ### Required verification gate
 
 Before expanding MCP capabilities or merging this branch, validate the GitHub import flow (default branch, explicit branch/tag/commit, pagination, download failures, and malformed refs), parse/load the packaged addon in Godot 4.7.2, and build an Android editor APK containing both `armeabi-v7a` and `arm64-v8a`. A green packaging workflow alone does not prove GitHub import works inside the Android UI or that the APK installs and launches on a device. Record these as separate results; do not describe source-only changes as tested.
+
+## Mobile UI preflight — 2026-10-23
+
+Work continues on the isolated branch `work/mobile-ui-preflight`; these changes do not trigger the long Android build automatically.
+
+- The GitHub import, search-results, and MCP confirmation dialogs now calculate their width from the active viewport (capped at 92% of the available width), with a 280 logical-pixel lower bound. GitHub search buttons also receive a larger minimum touch height.
+- The Xvfb capture workflow now fails clearly if the virtual display or Godot process exits before capture, checks that every screenshot is non-empty, and records the screenshot dimensions. Captures cover desktop, portrait (480×800), and narrow landscape (800×480) layouts.
+- This is a source/workflow improvement only. The workflow has not yet been run, the screenshots have not yet been visually reviewed, and no new Android APK has been built. Xvfb captures are a desktop-layout preflight, not a substitute for testing on the LG K51.
+- The next verification gate remains: run the preflight, inspect all screenshots and logs, validate the patched C++ build, test public GitHub search/import and MCP installation behavior, then run one full dual-ABI Android build. Real multi-repository synchronization remains unimplemented and must not be presented as working.
