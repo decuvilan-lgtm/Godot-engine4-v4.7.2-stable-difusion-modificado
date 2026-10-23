@@ -139,6 +139,32 @@ class GitHubSyncCoreTests(unittest.TestCase):
                 )
             self.assertEqual(target.read_bytes(), b"changed after analysis")
 
+    def test_apply_plan_rechecks_local_file_after_download(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            root = base / "project"
+            root.mkdir()
+            (root / "project.godot").write_text("config")
+            target = root / "file.txt"
+            target.write_bytes(b"reviewed")
+            manifest_path = base / "meta" / "manifest.json"
+            manifest_path.parent.mkdir()
+            manifest_path.write_text(json.dumps({
+                "version": 1, "project_root": str(root.resolve()),
+                "repository_url": "https://github.com/example/project",
+                "tracked_files": {"file.txt": {"sha": blob(b"reviewed")}}
+            }))
+            def provider(_path, _sha):
+                target.write_bytes(b"edited while downloading")
+                return b"remote"
+            with self.assertRaisesRegex(SyncError, "changed during sync"):
+                apply_plan(
+                    root, [Change("file.txt", "update", blob(b"remote"), blob(b"reviewed"), 6)],
+                    provider, manifest_path,
+                    "https://github.com/example/project", "main", "2" * 40,
+                )
+            self.assertEqual(target.read_bytes(), b"edited while downloading")
+
     def test_apply_plan_rejects_local_file_created_after_analysis(self):
         with tempfile.TemporaryDirectory() as td:
             base = Path(td)
