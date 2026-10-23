@@ -69,6 +69,29 @@ Existe un clasificador auxiliar; todavía debe conectarse al flujo nativo. Mante
 
 El paquete MCP endurecido ya incluye herramientas tipadas para inspeccionar y activar controles de la interfaz del editor, abrir/ejecutar escenas, modificar nodos con undo/redo, leer diagnósticos y controlar un juego mediante un puente de ejecución local. La nueva herramienta `inspect_scene_dependencies` usa `ResourceLoader.get_dependencies()` para construir un grafo acotado y de solo lectura, incluyendo recursos binarios cuando el cargador los expone. Esto **inspecciona dependencias; todavía no es el importador nativo de escenas desde GitHub**. Todo el conjunto requiere pruebas de empaquetado y uso real antes de declararse listo.
 
+## Funciones adicionales que no vienen de serie en Godot
+
+Estas son ampliaciones propias del editor Android y de su complemento MCP; no deben confundirse con funciones incluidas en Godot original. El objetivo es que una IA pueda operar el editor y probar el juego mediante herramientas tipadas, sin habilitar ejecución arbitraria de código.
+
+| Opción personalizada | Qué debe aportar | Estado honesto |
+|---|---|---|
+| Buscar/importar repositorios GitHub | Buscar repositorios públicos, actualizar resultados y traer proyectos hacia Godot; permitir rama, etiqueta o commit | El flujo de búsqueda existente requiere prueba real en Android. El nuevo importador aditivo tiene parche fuente y validación estática inicial; todavía no está compilado ni probado en el teléfono. |
+| Control de interfaz del editor por MCP | Inspeccionar controles, abrir menús, cambiar pestañas/opciones y activar controles accesibles de la interfaz | Herramientas tipadas añadidas al paquete fuente; cobertura parcial y pruebas de ejecución pendientes. No equivale a controlar todos los menús o complementos. |
+| Control de la escena por IA | Consultar estado, abrir/ejecutar escenas, leer propiedades, crear recursos y organizar nodos, grupos y señales con undo/redo | Parte de las herramientas existe en el código del complemento; pruebas de parser y funcionamiento real pendientes por herramienta. |
+| Encontrar y probar controles del juego | Enumerar controles de la escena y, con el puente de ejecución instalado, localizar controles vivos e interactuar con botones, campos, deslizadores y opciones | El puente de juego en ejecución es código fuente añadido; falta probar el intercambio MCP y el comportamiento real en Android. |
+| Entrada de juego y pantalla completa | Enviar clics, teclado, toques y gestos al juego en ejecución; pedir pantalla completa y volver al modo anterior | Diseñado mediante el puente local del proyecto; no se declara funcional hasta confirmar respuesta y cambio visual en el dispositivo. No controla diálogos nativos de Android. |
+| Inspección de dependencias de escenas | Recorrer dependencias mediante el cargador nativo de recursos de Godot, incluso recursos no textuales cuando se exponen | La herramienta de inspección MCP está añadida; importar automáticamente el cierre completo de dependencias desde GitHub aún requiere integración nativa. |
+| Avisos de archivos realmente dañados | Detectar fallos de lectura, decodificación o contenedor ilegible | Hay un clasificador auxiliar; falta conectarlo al flujo nativo. Los errores normales de scripts siguen en Output/Debugger y no se duplican. |
+| Revisión y sincronización GitHub → Godot | Comparar cambios con el commit revisado y gestionar adiciones, actualizaciones, eliminaciones rastreadas, conflictos y recuperación transaccional | La revisión está en el código nativo. El botón nuevo implementa solo importación aditiva y no sobrescribe archivos existentes; todavía no es la sincronización completa descrita en la arquitectura. |
+
+### Reglas para estas opciones personalizadas
+
+- Mantener controles táctiles accesibles en el diseño móvil de 720 × 1600; no añadir una interfaz de escritorio como solución de producto.
+- El puente de juego solo debe escuchar en loopback y usar autenticación; no abrir control remoto sin autenticar en la red.
+- No añadir ejecución arbitraria de GDScript/eval para fingir cobertura universal.
+- No borrar la raíz de un proyecto ni sobrescribir archivos locales durante la importación aditiva.
+- Informar cada herramienta como implementada, parcial, no disponible o bloqueada por seguridad; un archivo generado o un workflow exitoso no demuestra que funcione en el dispositivo.
+
 ## Compilación y comprobación
 
 Workflow principal: [Build Godot Android Editor](.github/workflows/build-godot-android-source.yml).
