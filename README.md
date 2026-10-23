@@ -1,7 +1,7 @@
 
 ## Android scene-aware import
 
-Importing a complete Godot project must preserve its original directory structure and keep each existing scene as its own `.tscn`/`.scn` resource. It must never flatten all imported nodes into the currently open scene. See [docs/ANDROID_SCENE_IMPORT_ARCHITECTURE.md](docs/ANDROID_SCENE_IMPORT_ARCHITECTURE.md) for modes, native scene-tab behavior, duplicate handling, dependency preservation, and Android acceptance tests. This is a requirement specification; implementation and Android device validation remain pending.
+Importing a complete Godot project must preserve its original directory structure and keep each existing scene as its own `.tscn`/`.scn` resource. It must never flatten all imported nodes into the currently open scene. A parent scene instance in the main scene keeps its descendants active at runtime; child nodes do not need separate instances in the main scene and remain editable in their own scene tab. See [docs/ANDROID_SCENE_IMPORT_ARCHITECTURE.md](docs/ANDROID_SCENE_IMPORT_ARCHITECTURE.md) for modes, native scene-tab behavior, duplicate handling, dependency preservation, and Android acceptance tests. This is a requirement specification; implementation and Android device validation remain pending.
 
 
 ## GitHub Analyze + Sync architecture
