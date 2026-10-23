@@ -115,6 +115,14 @@ def main() -> None:
         "\t}\n\n",
     )
 
+    # The preview toolbar is used on phones too; give its existing controls touch-sized hit areas.
+    for button_name in ("suspend_button", "next_frame_button", "debug_mute_audio_button"):
+        replace_once(
+            SOURCE,
+            f"\\t{button_name} = memnew(Button);\\n",
+            f"\\t{button_name} = memnew(Button);\\n\\t{button_name}->set_custom_minimum_size(Size2(48, 48) * EDSCALE);\\n",
+        )
+
     # Verify the resulting source still contains every real action and menu entry.
     patched_h = HEADER.read_text(encoding="utf-8")
     patched_cpp = SOURCE.read_text(encoding="utf-8")
@@ -123,6 +131,7 @@ def main() -> None:
         "PREVIEW_DEBUG_STOP", "PREVIEW_DEBUG_MUTE_AUDIO",
         "debugger->next_frame()", "_stop_pressed()", "_debug_mute_audio_button_pressed()",
         "TTRC(\"Preview Debugger\")",
+        "set_custom_minimum_size(Size2(48, 48) * EDSCALE)",
     ):
         if token not in patched_h + patched_cpp:
             raise SystemExit(f"Post-patch verification failed: missing {token}")
