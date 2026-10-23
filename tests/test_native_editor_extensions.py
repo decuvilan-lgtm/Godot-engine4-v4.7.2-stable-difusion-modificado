@@ -12,6 +12,7 @@ class NativeEditorExtensionTests(unittest.TestCase):
         self.assertIn('"truncated": not pending.is_empty()', patcher)
         self.assertIn("does not import or rewrite them", patcher)
         self.assertIn("ZipFile(archive_path", patcher)
+        self.assertLess(patcher.index('if "InspectSceneDependenciesTool"'), patcher.index("TOOL.write_text"))
 
     def test_android_and_standalone_addon_jobs_apply_extension(self):
         workflow = (ROOT / ".github/workflows/build-godot-android-source.yml").read_text(encoding="utf-8")
