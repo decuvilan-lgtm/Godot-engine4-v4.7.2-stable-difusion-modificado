@@ -11,6 +11,7 @@ on:
       - "tests/test_github_sync_review.py"
       - "scripts/extend_safe_mcp_scene_tools.py"
       - "scripts/apply_github_sync_ui_patch.py"
+      - "scripts/apply_github_sync_import_patch.py"
       - "scripts/package_safe_mcp_android.py"
       - "tests/test_native_editor_extensions.py"
       - "tests/test_preflight_features.py"
@@ -30,13 +31,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Checkout official Godot 4.7.2 source for patch validation
+        uses: actions/checkout@v4
+        with:
+          repository: godotengine/godot
+          ref: 4.7.2-stable
+          path: godot-source
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Check Python syntax
-        run: python -m py_compile scripts/github_sync_core.py scripts/github_sync_review.py scripts/extend_safe_mcp_scene_tools.py scripts/apply_github_sync_ui_patch.py scripts/package_safe_mcp_android.py tests/test_github_sync_core.py tests/test_github_sync_review.py tests/test_native_editor_extensions.py tests/test_preflight_features.py
+        run: python -m py_compile scripts/github_sync_core.py scripts/github_sync_review.py scripts/extend_safe_mcp_scene_tools.py scripts/apply_github_sync_ui_patch.py scripts/apply_github_sync_import_patch.py scripts/package_safe_mcp_android.py tests/test_github_sync_core.py tests/test_github_sync_review.py tests/test_native_editor_extensions.py tests/test_preflight_features.py
+
+      - name: Apply native GitHub analysis and additive import patches (no build)
+        run: |
+          python scripts/apply_github_sync_ui_patch.py
+          python scripts/apply_github_sync_import_patch.py
 
       - name: Run sync-core unit tests
         working-directory: tests
@@ -59,4 +72,4 @@ jobs:
           python -m unittest -v test_preflight_features
 
       - name: Report scope
-        run: echo "This workflow runs Python sync-core and commit-pinned review snapshot tests only. It does not build or launch Godot."
+        run: echo "This workflow runs Python tests and applies the native GitHub import patch to official Godot source. It does not compile or package Godot."
