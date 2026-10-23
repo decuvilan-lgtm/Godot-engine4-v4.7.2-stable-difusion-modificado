@@ -80,7 +80,7 @@ Estas son ampliaciones propias del editor Android y de su complemento MCP; no de
 | Control de la escena por IA | Consultar estado, abrir/ejecutar escenas, leer propiedades, crear recursos y organizar nodos, grupos y señales con undo/redo | Parte de las herramientas existe en el código del complemento; pruebas de parser y funcionamiento real pendientes por herramienta. |
 | Encontrar y probar controles del juego | Enumerar controles de la escena y, con el puente de ejecución instalado, localizar controles vivos e interactuar con botones, campos, deslizadores y opciones | El puente de juego en ejecución es código fuente añadido; falta probar el intercambio MCP y el comportamiento real en Android. |
 | Entrada de juego y pantalla completa | Enviar clics, teclado, toques y gestos al juego en ejecución; pedir pantalla completa y volver al modo anterior | Diseñado mediante el puente local del proyecto; no se declara funcional hasta confirmar respuesta y cambio visual en el dispositivo. No controla diálogos nativos de Android. |
-| Inspección de dependencias de escenas | Recorrer dependencias mediante el cargador nativo de recursos de Godot, incluso recursos no textuales cuando se exponen | La herramienta de inspección MCP está añadida; importar automáticamente el cierre completo de dependencias desde GitHub aún requiere integración nativa. |
+| Visualización de depuración en vista previa | Menú con interruptores para colisiones, rutas y navegación conectados al depurador nativo; ampliar a contactos, RayCast/ShapeCast, pivotes, cámaras y UI | Parche fuente aplicado y validado en Actions sin compilación. Falta compilar y probar visualmente en Android; las categorías restantes siguen pendientes. |\n| Inspección de dependencias de escenas | Recorrer dependencias mediante el cargador nativo de recursos de Godot, incluso recursos no textuales cuando se exponen | La herramienta de inspección MCP está añadida; importar automáticamente el cierre completo de dependencias desde GitHub aún requiere integración nativa. |
 | Avisos de archivos realmente dañados | Detectar fallos de lectura, decodificación o contenedor ilegible | Hay un clasificador auxiliar; falta conectarlo al flujo nativo. Los errores normales de scripts siguen en Output/Debugger y no se duplican. |
 | Revisión y sincronización GitHub → Godot | Comparar cambios con el commit revisado y gestionar adiciones, actualizaciones, eliminaciones rastreadas, conflictos y recuperación transaccional | La revisión está en el código nativo. El botón nuevo implementa solo importación aditiva y no sobrescribe archivos existentes; todavía no es la sincronización completa descrita en la arquitectura. |
 
@@ -94,9 +94,11 @@ Estas son ampliaciones propias del editor Android y de su complemento MCP; no de
 
 ## Visualización de depuración sin scripts temporales
 
-**Estado: especificación documentada; no declarar estas visualizaciones personalizadas como implementadas ni probadas hasta validarlas.** La prioridad es descubrir y exponer las opciones nativas de Godot 4.7.2 antes de escribir código nuevo. Las vistas deben ser temporales, independientes de la lógica del juego y apagables sin alterar el proyecto del usuario.
+**Estado: primera integración de código fuente añadida; falta compilación y prueba visual en Android.** El menú de la vista previa incorpora interruptores nativos para formas de colisión, rutas y navegación. Los cambios viajan por el protocolo de depuración a `SceneDebugger` y activan los hints de `SceneTree`; los resultados de la acción se informan en Output y los mensajes inválidos generan errores de depuración. Actions validó el anclaje y la aplicación del parche sobre el código oficial 4.7.2 sin compilar. Esto no prueba todavía el comportamiento visual del APK.
 
 ### Física y colisiones
+- **Implementado en el parche fuente inicial:** interruptor de formas de colisión en la vista previa, conectado al hint nativo de Godot.
+- **Pendiente:** distinguir áreas/cuerpos, puntos de contacto y normales, RayCast/ShapeCast, capas, máscaras y exclusiones.
 - Formas de colisión 2D/3D y formas activas durante la ejecución.
 - Áreas `Area2D`/`Area3D` y cuerpos StaticBody, RigidBody y CharacterBody.
 - Puntos de contacto y normales, si el depurador nativo lo permite.
@@ -104,6 +106,8 @@ Estas son ampliaciones propias del editor Android y de su complemento MCP; no de
 - Capas, máscaras y exclusiones de colisión de los nodos seleccionados.
 
 ### Navegación e IA
+- **Implementado en el parche fuente inicial:** interruptores para depuración nativa de rutas y navegación.
+- **Pendiente:** controles separados para mallas, destinos, agentes, obstáculos y visualización específica de detección de enemigos.
 - Mallas y regiones de navegación, rutas calculadas, destinos y agentes.
 - Obstáculos, trayectorias Path2D/Path3D y seguidores.
 - Zonas existentes de visión, alcance y detección de enemigos.
