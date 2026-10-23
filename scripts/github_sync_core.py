@@ -231,10 +231,15 @@ def apply_plan(
     if recorded_repo and recorded_repo.rstrip("/") != repo_url.rstrip("/"):
         raise SyncError("Sync manifest belongs to a different GitHub repository. Re-link and analyze before syncing.")
     selected = [c for c in changes if c.action in ("add", "update", "delete")]
+    tracked_before_sync = manifest.get("tracked_files", {})
     for c in selected:
-        normalize_repo_path(c.path)
+        normalized_path = normalize_repo_path(c.path)
+        if normalized_path != c.path:
+            raise SyncError(f"Plan contains a non-normalized path: {c.path}")
         if should_ignore(c.path, extra_ignores):
             raise SyncError(f"Plan includes an excluded path: {c.path}")
+        if c.action == "delete" and c.path not in tracked_before_sync:
+            raise SyncError(f"Refusing to delete a file not tracked by the previous successful sync: {c.path}")
         safe_target(root, c.path)
 
     txid = uuid.uuid4().hex
