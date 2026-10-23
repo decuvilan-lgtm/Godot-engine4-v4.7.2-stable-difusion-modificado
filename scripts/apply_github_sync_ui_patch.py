@@ -186,11 +186,17 @@ void ProjectManager::_github_analysis_request_completed(int p_result, int p_code
 		remote_files.insert(path, sha.to_lower());
 	}
 	HashMap<String, String> local_files;
+	int local_scan_errors = 0;
 	std::function<void(const String &, const String &)> scan_directory;
 	scan_directory = [&](const String &p_absolute, const String &p_relative) {
+		Ref<DirAccess> parent = DirAccess::open(p_absolute);
+		if (parent.is_null()) {
+			local_scan_errors++;
+			return;
+		}
 		PackedStringArray dirs = DirAccess::get_directories_at(p_absolute);
 		for (const String &dir : dirs) {
-			if (dir == "." || dir == ".." || dir == ".git" || dir == ".godot" || dir == ".github") {
+			if (dir == "." || dir == ".." || dir == ".git" || dir == ".godot" || dir == ".github" || parent->is_link(dir)) {
 				continue;
 			}
 			String relative = p_relative.is_empty() ? dir : p_relative.path_join(dir);
@@ -198,18 +204,30 @@ void ProjectManager::_github_analysis_request_completed(int p_result, int p_code
 		}
 		PackedStringArray files = DirAccess::get_files_at(p_absolute);
 		for (const String &file : files) {
-			if (file == "github_sync_manifest.json") {
+			if (file == "github_sync_manifest.json" || parent->is_link(file)) {
 				continue;
 			}
 			String relative = p_relative.is_empty() ? file : p_relative.path_join(file);
 			String absolute = p_absolute.path_join(file);
-			PackedByteArray bytes = FileAccess::get_file_as_bytes(absolute);
+			Error open_error = OK;
+			Ref<FileAccess> local_file = FileAccess::open(absolute, FileAccess::READ, &open_error);
+			if (local_file.is_null()) {
+				local_scan_errors++;
+				continue;
+			}
+			uint64_t expected_size = local_file->get_length();
+			PackedByteArray bytes = local_file->get_buffer(expected_size);
+			if (bytes.size() != (int64_t)expected_size) {
+				local_scan_errors++;
+				continue;
+			}
 			String header = "blob " + itos(bytes.size()) + String::chr(0);
 			PackedByteArray blob_data = header.to_utf8_buffer();
 			blob_data.append_array(bytes);
 			Ref<HashingContext> hasher;
 			hasher.instantiate();
 			if (hasher->start(HashingContext::HASH_SHA1) != OK || hasher->update(blob_data) != OK) {
+				local_scan_errors++;
 				continue;
 			}
 			PackedByteArray digest = hasher->finish();
@@ -217,6 +235,10 @@ void ProjectManager::_github_analysis_request_completed(int p_result, int p_code
 		}
 	};
 	scan_directory(github_local_project_path, "");
+	if (local_scan_errors > 0) {
+		github_analysis_output->append_text(vformat(TTR("\\nLocal scan incomplete: %d file/directory read failures. No comparison was produced."), local_scan_errors));
+		return;
+	}
 	int adds = 0;
 	int updates = 0;
 	int unchanged = 0;
