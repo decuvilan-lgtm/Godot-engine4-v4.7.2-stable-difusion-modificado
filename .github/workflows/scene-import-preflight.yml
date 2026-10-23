@@ -1,0 +1,34 @@
+name: Scene import preflight
+
+on:
+  push:
+    branches:
+      - work/mobile-ui-preflight
+    paths:
+      - "scripts/apply_github_import_patch.py"
+      - "scripts/validate_scene_import_fixture.py"
+      - "tests/scene_import_fixtures/**"
+      - ".github/workflows/scene-import-preflight.yml"
+  pull_request:
+    paths:
+      - "scripts/apply_github_import_patch.py"
+      - "scripts/validate_scene_import_fixture.py"
+      - "tests/scene_import_fixtures/**"
+      - ".github/workflows/scene-import-preflight.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-preflight:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check patcher Python syntax
+        run: python -m py_compile scripts/apply_github_import_patch.py scripts/validate_scene_import_fixture.py
+      - name: Check nested, isolated, inherited, shared and missing-reference fixtures
+        run: python scripts/validate_scene_import_fixture.py
