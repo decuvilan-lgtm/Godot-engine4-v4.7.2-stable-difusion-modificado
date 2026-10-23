@@ -28,6 +28,18 @@ class ReviewSnapshotTests(unittest.TestCase):
         self.assertEqual(snapshot["counts"]["delete"], 1)
         validate_review_snapshot(snapshot, root, "https://github.com/owner/repo", "main", "a" * 40)
 
+    def test_snapshot_counts_archive_as_remote_deletion_recovery(self):
+        temp, root = self.make_project()
+        self.addCleanup(temp.cleanup)
+        (root / "edited.tscn").write_text("local edits")
+        snapshot = create_review_snapshot(
+            root, "https://github.com/owner/repo", "main", "a" * 40,
+            [Change("edited.tscn", "archive", None, git_blob_sha1(b"local edits"), 11,
+                    "Remote deleted; move local edits to recovery storage.")],
+        )
+        self.assertEqual(snapshot["counts"]["archive"], 1)
+        validate_review_snapshot(snapshot, root, "https://github.com/owner/repo", "main", "a" * 40)
+
     def test_snapshot_rejects_changed_context(self):
         temp, root = self.make_project()
         self.addCleanup(temp.cleanup)
