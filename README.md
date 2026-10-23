@@ -14,6 +14,15 @@
 Importing a complete Godot project must preserve its original directory structure and keep each existing scene as its own `.tscn`/`.scn` resource. It must never flatten all imported nodes into the currently open scene. A parent scene instance in the main scene keeps its descendants active at runtime; child nodes do not need separate instances in the main scene and remain editable in their own scene tab. See [docs/ANDROID_SCENE_IMPORT_ARCHITECTURE.md](docs/ANDROID_SCENE_IMPORT_ARCHITECTURE.md) for modes, native scene-tab behavior, duplicate handling, dependency preservation, and Android acceptance tests. This is a requirement specification; implementation and Android device validation remain pending.
 
 
+## Parallel preflight foundations — 2026-10-23
+
+Two additional source-only helpers now cover the next implementation steps:
+- `scripts/scene_dependency_plan.py` computes a deterministic transitive dependency closure for text-based `res://` references, rejects traversal/missing dependencies, and deduplicates cycles. Binary/imported resources and dynamic resource paths still require native Godot `ResourceLoader` traversal; this helper alone is not a complete scene importer.
+- `scripts/corrupt_file_classifier.py` only emits findings for explicit low-level read failures (I/O, invalid encoding, truncated container), deduplicates by file path, and deliberately ignores ordinary parse/syntax/runtime/missing-reference errors. It is not yet connected to the native editor popup.
+- `tests/test_preflight_features.py` tests these foundations; the source-only Actions workflow now runs them alongside sync-core tests and patch-anchor checks.
+
+**Still pending:** native Analyze → Review → Sync comparison and transactional application; native scene-aware import wired to ResourceLoader; and the grouped corruption-only popup wired to actual low-level read failures. These commits do not claim native integration, an Android build, or phone validation.
+
 ## GitHub sync core groundwork
 
 A first, UI-independent implementation of the synchronization algorithms is in [scripts/github_sync_core.py](scripts/github_sync_core.py), with safety/transaction tests in [tests/test_github_sync_core.py](tests/test_github_sync_core.py). It includes Git blob SHA-1 calculation, path and symlink guards, deterministic change planning, versioned manifest handling, staged downloads, backups, post-apply verification, rollback attempts, stable per-project manifest paths, and guards binding each non-empty manifest to one canonical project root and repository URL. The new `validate-github-sync-core.yml` workflow runs Python unit tests only; `validate-android-patch-anchors.yml` is a manual source-only check for the GitHub import and preview debugger patch anchors plus scene fixtures, with no editor build or launch.
