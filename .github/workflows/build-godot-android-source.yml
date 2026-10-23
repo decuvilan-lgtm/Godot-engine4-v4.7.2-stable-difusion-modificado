@@ -278,6 +278,8 @@ jobs:
           path: godot-mcp-android-source
       - name: Package and validate safe MCP addon
         run: python scripts/package_safe_mcp_android.py
+      - name: Add native scene dependency inspection tool
+        run: python scripts/extend_safe_mcp_scene_tools.py
       - name: Upload safe MCP addon
         uses: actions/upload-artifact@v4
         with:
