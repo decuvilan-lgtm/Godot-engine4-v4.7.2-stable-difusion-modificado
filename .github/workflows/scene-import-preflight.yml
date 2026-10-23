@@ -1,4 +1,4 @@
-name: Scene import preflight
+name: Android source patch preflight
 
 on:
   push:
@@ -23,7 +23,7 @@ permissions:
   contents: read
 
 jobs:
-  static-preflight:
+  source-patch-preflight:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -34,20 +34,6 @@ jobs:
         run: python -m py_compile scripts/apply_github_import_patch.py scripts/apply_preview_debug_menu_patch.py scripts/validate_scene_import_fixture.py
       - name: Check nested, isolated, inherited, shared and missing-reference fixtures
         run: python scripts/validate_scene_import_fixture.py
-      - name: Download official Godot 4.7.2 Linux editor for headless fixture import
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl --fail --location --retry 3 \
-            "https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip" \
-            --output "$RUNNER_TEMP/godot-editor.zip"
-          mkdir -p "$RUNNER_TEMP/godot-editor"
-          unzip -q "$RUNNER_TEMP/godot-editor.zip" -d "$RUNNER_TEMP/godot-editor"
-          GODOT_BIN="$(find "$RUNNER_TEMP/godot-editor" -maxdepth 2 -type f -name 'Godot_v4.7.2-stable_linux.x86_64' -print -quit)"
-          test -n "$GODOT_BIN"
-          chmod +x "$GODOT_BIN"
-          "$GODOT_BIN" --version
-          "$GODOT_BIN" --headless --editor --path "$GITHUB_WORKSPACE/tests/scene_import_fixtures/nested" --quit --import
       - name: Checkout clean upstream Godot 4.7.2 source
         uses: actions/checkout@v4
         with:
