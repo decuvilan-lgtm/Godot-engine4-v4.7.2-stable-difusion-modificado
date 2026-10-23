@@ -21,6 +21,17 @@ Godot's FileSystem panel and the scene tabs are different concepts:
 8. **Safe duplicate handling:** if the target path already exists, compare hashes and offer a clear replace/skip/rename choice; do not silently merge all nodes into the active scene.
 9. **Dependencies:** preserve relative paths and import metadata where appropriate. Let Godot's resource importer reimport supported assets. Detect missing external resources and report them instead of silently flattening or dropping references.
 
+## Isolated scenes and import safety (required)
+
+A scene that is not reachable from the main scene is not, by itself, an import error. It may be intentionally standalone, unfinished, experimental, or intended for later manual use. A large import must not pause for human decisions just because a valid scene is not referenced by another scene.
+
+- Import and preserve every valid project file, including standalone `.tscn`/`.scn` files, in its original relative folder path.
+- Make standalone scenes discoverable in the editor's scene/file navigation so the user can open them later. Opening a scene as a tab is an explicit navigation action; do not auto-open every scene or add every scene to the active node tree.
+- Do not delete, quarantine, hide, or omit a scene merely because it has no incoming instance reference from the main scene or any other scene.
+- Do not invent node instances, parent-child links, scripts, resource references, or scene connections to make an isolated scene appear connected.
+- Do not block or prompt during bulk import solely because a scene is isolated. Continue the import and, if useful, include isolation as non-blocking informational metadata in a report.
+- Reserve blocking errors for actual failures that prevent safe import (for example, corrupt/unreadable files or an unsafe path), not for valid content that is currently unused.
+- Preserve the distinction between “file exists in the project”, “resource depends on another resource”, and “scene is instantiated in the runtime tree”. These are different states and must never be inferred from one another.
 ## Runtime semantics and the distinction that matters
 
 The requirement is **not** “keep every imported scene disconnected from the main scene.” The requirement is to preserve the original scene composition. If the original main scene has one instance of a parent scene, that parent scene and all its descendants continue to participate in the main scene at runtime. The children do not need to be instantiated a second time individually in the main scene. Their node hierarchy remains inside the parent scene and can be inspected by opening the corresponding scene tab.
