@@ -5,7 +5,7 @@ from pathlib import Path
 
 from github_sync_core import (
     Change, SyncError, apply_plan, build_plan, git_blob_sha1,
-    load_manifest, normalize_repo_path, safe_target,
+    load_manifest, normalize_repo_path, project_manifest_path, safe_target,
 )
 
 
@@ -112,6 +112,20 @@ class GitHubSyncCoreTests(unittest.TestCase):
             self.assertEqual((root / "file.txt").read_bytes(), b"original")
 
 
+
+    def test_each_project_gets_a_distinct_stable_manifest_path(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            metadata = base / "editor-metadata"
+            project_a = base / "projects" / "A"
+            project_b = base / "projects" / "B"
+            project_a.mkdir(parents=True)
+            project_b.mkdir(parents=True)
+            first = project_manifest_path(metadata, project_a)
+            second = project_manifest_path(metadata, project_b)
+            self.assertNotEqual(first, second)
+            self.assertEqual(first, project_manifest_path(metadata, project_a))
+            self.assertEqual(first.name, "github_sync_manifest.json")
 
     def test_manifest_cannot_be_reused_for_another_project(self):
         with tempfile.TemporaryDirectory() as td:
