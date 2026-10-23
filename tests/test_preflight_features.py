@@ -27,8 +27,8 @@ class SceneDependencyPlanTests(unittest.TestCase):
 
     def test_literal_load_and_preload_dependencies_are_followed(self):
         files = {
-            "res://Main.tscn": '[gd_scene format=3]\\n[ext_resource type="Script" path="res://scripts/main.gd" id="1"]',
-            "res://scripts/main.gd": 'const DATA = preload("res://data/settings.tres")\\nfunc get_scene(): return load("res://scenes/Optional.tscn")',
+            "res://Main.tscn": '[gd_scene format=3]\n[ext_resource type="Script" path="res://scripts/main.gd" id="1"]',
+            "res://scripts/main.gd": 'const DATA = preload("res://data/settings.tres")\nfunc get_scene(): return load("res://scenes/Optional.tscn")',
             "res://data/settings.tres": '[gd_resource type="Resource" format=3]',
             "res://scenes/Optional.tscn": '[gd_scene format=3]',
         }
