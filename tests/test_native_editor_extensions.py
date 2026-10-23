@@ -23,6 +23,14 @@ class NativeEditorExtensionTests(unittest.TestCase):
         standalone = workflow.index("name: Package and validate safe MCP addon")
         self.assertGreater(workflow.index("name: Add native scene dependency inspection tool", standalone), standalone)
 
+    def test_mobile_github_panel_has_touch_sized_controls(self):
+        patcher = (ROOT / "scripts/apply_github_sync_ui_patch.py").read_text(encoding="utf-8")
+        self.assertIn("Size2(0, 380) * EDSCALE", patcher)
+        self.assertIn("Size2(0, 44) * EDSCALE", patcher)
+        self.assertIn("Size2(0, 48) * EDSCALE", patcher)
+        self.assertIn("Size2(0, 180) * EDSCALE", patcher)
+        self.assertIn("GitHub: analizar y revisar", patcher)
+
     def test_existing_unsafe_execution_tool_stays_disabled(self):
         packager = (ROOT / "scripts/package_safe_mcp_android.py").read_text(encoding="utf-8")
         self.assertIn("Remove it rather than pretending it is a sandbox", packager)
