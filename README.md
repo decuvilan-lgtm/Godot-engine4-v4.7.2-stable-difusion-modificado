@@ -1,4 +1,18 @@
-# Auditoría actual — 2026-10-23
+# Godot Android Editor — alcance exclusivo Android
+
+Este proyecto se desarrolla y valida para **Godot Editor en Android**, especialmente Android 11 en el LG K51, con compatibilidad nativa **ARM32 (armeabi-v7a) y ARM64 (arm64-v8a)**.
+
+- No se distribuirá un editor de escritorio ni se añadirán funciones de producto que requieran Windows, macOS, Linux o una PC.
+- La búsqueda/importación de GitHub, el análisis/revisión/sincronización y las funciones MCP deben ejecutarse desde la interfaz Android.
+- Las pruebas de escritorio/Xvfb y la validación con Godot headless no son criterios de aceptación del producto y quedan fuera del flujo de validación.
+- Se puede usar infraestructura remota de compilación automatizada solo para generar y verificar el APK Android; eso no convierte la PC en parte del producto ni sustituye las pruebas en el teléfono.
+- Se conserva el código multiplataforma original de Godot cuando forma parte del motor compartido; no se borran carpetas de plataformas de upstream a ciegas, porque eso puede romper dependencias del motor. El objetivo de compilación y entrega sigue siendo Android.
+
+**Regla de entrega:** no declarar una función terminada solo porque pasa pruebas estáticas. Distinguir claramente pruebas de código, compilación APK, comprobaciones del paquete y prueba real en el LG K51.
+
+---
+
+## Auditoría actual — 2026-10-23
 
 - **Confirmado en el LG K51 por el usuario:** búsqueda pública de GitHub, importación de su propio repositorio y ejecución del proyecto importado.
 - **Aún por probar en el teléfono:** importación con rama/etiqueta/commit explícitos, paginación, errores de red y recuperación tras fallos.
