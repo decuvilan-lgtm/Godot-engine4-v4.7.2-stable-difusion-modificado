@@ -536,3 +536,14 @@ Work continues on the isolated branch `work/mobile-ui-preflight`; these changes 
 - The Xvfb capture workflow now fails clearly if the virtual display or Godot process exits before capture, checks that every screenshot is non-empty, and records the screenshot dimensions. Captures cover desktop, portrait (480×800), and narrow landscape (800×480) layouts.
 - This is a source/workflow improvement only. The workflow has not yet been run, the screenshots have not yet been visually reviewed, and no new Android APK has been built. Xvfb captures are a desktop-layout preflight, not a substitute for testing on the LG K51.
 - The next verification gate remains: run the preflight, inspect all screenshots and logs, validate the patched C++ build, test public GitHub search/import and MCP installation behavior, then run one full dual-ABI Android build. Real multi-repository synchronization remains unimplemented and must not be presented as working.
+
+
+### GitHub sync / scene import / unreadable-file preflight — 2026-10-23
+
+Additional source-only foundations were added and validated:
+
+- **GitHub Analyze → Review → Sync:** review snapshots bind the selected Godot project path, canonical repository URL, ref, full commit SHA, sorted change rows, and counts. Validation now rejects edits to the snapshot's top-level repository/ref/commit/context/counts as well as fingerprint changes. The native UI still only inventories a public GitHub tree; local comparison, review display, and transactional Sync are not yet connected. Sync remains disabled.
+- **Scene-aware import:** the dependency planner follows explicit external-resource paths and literal load() / preload() references, deduplicates cycles, rejects unsafe paths, and fails closed when a referenced file is missing. This is a text-level helper, not the native importer. Binary resources, dynamic paths, and complete dependency discovery still require Godot's native resource loader. Scene files themselves must be copied intact to preserve nodes, owners, signals, groups, inherited scenes, and instances.
+- **Unreadable-file popup:** the classifier only accepts explicit low-level read/decode/container failures, excludes ordinary script parse/syntax/runtime/missing-reference errors, deduplicates findings by path, and sorts the grouped output deterministically. It is not yet wired to a native popup; Output and Debugger remain the source for ordinary diagnostics.
+
+The latest source-only Actions validation passed at [run 40018225058](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40018225058). It checks Python syntax, helper unit tests, source patch anchors, and fixtures only. It does **not** compile Godot, build an APK, or validate behavior on the LG K51. Native integration and device testing remain required before any of these features can be called complete.
