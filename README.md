@@ -1,3 +1,13 @@
+# Auditoría actual — 2026-10-23
+
+- **Confirmado en el LG K51 por el usuario:** búsqueda pública de GitHub, importación de su propio repositorio y ejecución del proyecto importado.
+- **Aún por probar en el teléfono:** importación con rama/etiqueta/commit explícitos, paginación, errores de red y recuperación tras fallos.
+- **No implementado todavía:** flujo nativo completo de Analizar/Sincronizar con manifiesto y transacciones, y el aviso específico de archivos realmente corruptos. La documentación de arquitectura no equivale a una implementación.
+- **Política Android-only:** se deshabilitaron los workflows de captura de UI Linux/Xvfb y de validación del addon mediante Godot Linux headless en esta rama. La compilación cruzada del APK Android en un runner Linux es distinta de probar el editor Linux.
+- Esta auditoría es estática y de lectura de repositorio; no lanzó compilaciones ni pruebas Linux, ni publicó una APK.
+
+---
+
 
 ## Android scene-aware import
 
@@ -18,11 +28,11 @@ The `work/mobile-ui-preflight` branch now includes `scripts/apply_preview_debug_
 - Stop the running game through the native stop handler.
 - Toggle game-audio muting through the existing debugger interface.
 
-Unavailable actions are disabled when no game is running (and frame-step is disabled while running). Each request/status is written to Godot's Output log; pause/step/stop/audio operations use the existing debugger pathways rather than creating a second debugger. The Android source build and Linux UI preflight both invoke this patch script.
+Unavailable actions are disabled when no game is running (and frame-step is disabled while running). Each request/status is written to Godot's Output log; pause/step/stop/audio operations use the existing debugger pathways rather than creating a second debugger. The Android source build invokes this patch script. The legacy Linux UI preflight is disabled and must not be used for validation.
 
 **Validation status:** source-patch anchors and static post-patch tokens are checked by the script. A successful C++ build, UI screenshot review, and on-device APK installation are not yet confirmed; do not treat this feature as device-tested until those checks pass.
 
-## Current verified status — 2026-10-22 (supersedes older “not yet tested” notes below)
+## Historical CI snapshot — 2026-10-22 (retained for audit trail; not the current branch status)
 
 Work branch: `feature/github-sync-and-safe-mcp`  
 Feature-source commit validated by CI: `9731955a628fee0d38fee7ef8237c40549245853`. Latest documentation commit: `9754a37f9f25edff9acf63409b2cc5484a7f28ae`.
@@ -40,7 +50,7 @@ Feature-source commit validated by CI: `9731955a628fee0d38fee7ef8237c40549245853
 
 **Proven in CI:** source patch applies to the selected Godot 4.7.2 source; addon package can be generated; Godot headless can parse/load the generated addon; static archive/workflow safety checks pass; build run 67 has passed addon packaging and is the current Android build.
 
-**Not yet proven:** build run 67 finishes compiling; a full editor APK is generated and verified to contain both ABIs; installation and launch on the user's LG K51 running Android 11; GitHub import button behavior on-device (default branch, explicit branch/tag/commit, pagination and failures); or end-to-end MCP operation against a real editor/game. No current APK download link should be offered until the build succeeds and the uploaded artifact is checked.
+**At the time of this historical snapshot, not yet proven:** run 67 completion and physical-device installation. Separately, the user has since confirmed on the LG K51 that public GitHub search, importing their own repository, and running the imported project work. Explicit branch/tag/commit selection, pagination, network-failure recovery, and end-to-end MCP operation against a real editor/game remain unverified.
 
 The core priority remains proving GitHub import and the ARM32+ARM64 APK before adding more MCP/AI features or merging the branch. A green addon validation is not a substitute for an APK build or a physical-device test.
 
