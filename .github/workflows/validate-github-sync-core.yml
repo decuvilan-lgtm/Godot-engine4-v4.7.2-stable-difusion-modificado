@@ -25,6 +25,42 @@ permissions:
   contents: read
 
 jobs:
+  native-editor-cpp-build:
+    name: Compile patched Godot editor C++ (Linux x86_64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout project scripts
+        uses: actions/checkout@v4
+
+      - name: Checkout official Godot 4.7.2 source
+        uses: actions/checkout@v4
+        with:
+          repository: godotengine/godot
+          ref: 4.7.2-stable
+          path: godot-source
+
+      - name: Install Linux editor build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libx11-dev libxcursor-dev libxinerama-dev libxi-dev libxrandr-dev libasound2-dev libpulse-dev libgl1-mesa-dev libglu-dev libudev-dev libwayland-dev libxkbcommon-dev yasm nasm
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Apply native editor patches
+        run: |
+          python scripts/apply_github_sync_ui_patch.py
+          python scripts/apply_github_sync_import_patch.py
+          python scripts/apply_preview_debug_menu_patch.py
+          python scripts/apply_debug_visualization_patch.py
+
+      - name: Compile patched Godot editor C++ sources
+        working-directory: godot-source
+        run: scons platform=linuxbsd target=editor arch=x86_64 dev_build=yes -j2
+
   python-unit-tests:
     name: Python sync-core unit tests only
     runs-on: ubuntu-24.04
