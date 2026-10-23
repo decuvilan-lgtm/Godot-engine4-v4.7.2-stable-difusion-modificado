@@ -212,6 +212,17 @@ def apply_plan(
     if not (root / "project.godot").is_file():
         raise SyncError("Selected folder is not a Godot project (project.godot missing).")
     manifest = load_manifest(manifest_path)
+    project_identity = str(root.resolve())
+    # A non-empty legacy manifest without an identity cannot safely authorize
+    # deletes: it may have been copied from another project.
+    if manifest.get("tracked_files") and not manifest.get("project_root"):
+        raise SyncError("Existing sync manifest has no project identity; analyze again to create a project-bound manifest.")
+    recorded_root = manifest.get("project_root")
+    if recorded_root and str(Path(recorded_root).resolve()) != project_identity:
+        raise SyncError("Sync manifest belongs to a different local project. Refusing to apply this plan.")
+    recorded_repo = manifest.get("repository_url")
+    if recorded_repo and recorded_repo.rstrip("/") != repo_url.rstrip("/"):
+        raise SyncError("Sync manifest belongs to a different GitHub repository. Re-link and analyze before syncing.")
     selected = [c for c in changes if c.action in ("add", "update", "delete")]
     for c in selected:
         normalize_repo_path(c.path)
@@ -282,6 +293,7 @@ def apply_plan(
                 remote_tracked[c.path] = {"sha": c.remote_sha, "size": c.size}
         new_manifest = {
             "version": MANIFEST_VERSION,
+            "project_root": project_identity,
             "repository_url": repo_url,
             "ref": ref_name,
             "commit_sha": commit_sha,
