@@ -46,7 +46,7 @@ For a successful sync to the selected commit:
 - Local-only file not present in the remote -> report as local-only; default policy is to leave untracked local-only files untouched unless the user selects “mirror exact repository”. This exception avoids deleting project assets the repo does not manage.
 - A file known to the last successful manifest and removed remotely is tracked and MUST be deleted locally during sync.
 - If a tracked local file was independently edited after analysis, the remote remains authoritative as requested, but show it in the plan and make the destructive overwrite/deletion count explicit before sync.
-- Never delete paths outside the selected project root. Never follow symlinks. Never allow path traversal from repository tree names.
+- Never delete paths outside the selected project root. Never follow symlinks. Never allow path traversal from repository tree names. The apply layer independently rejects delete operations for paths absent from the previous successful manifest, rejects add operations if a local file appeared after analysis, and re-hashes update/delete targets against the reviewed local hash before mutation.
 - Preserve project-specific files only when explicitly configured as ignored/excluded; list exclusions in the report.
 
 This reconciles the user's rule (“if it was deleted from the repo, delete it from the project”) with safe handling of unrelated local-only assets: previously tracked files deleted remotely are deleted. An optional exact-mirror mode can also remove all non-ignored local-only files.
@@ -73,7 +73,7 @@ All product validation targets the Android editor and the LG K51-class mobile vi
 
 1. Run Python syntax checks for patch scripts in CI; this is script validation, not a Linux editor build.
 2. Apply the patches to a clean official Godot 4.7.2 source checkout and fail if any anchor is missing or duplicated.
-3. Run unit tests for Git blob hashes, path safety, tree parsing, diff planning, manifest caching, and transaction recovery.
+3. Run unit tests for Git blob hashes, path safety, tree parsing, diff planning, manifest caching, transaction recovery, untracked-delete rejection, and stale-plan protection when local files change after analysis.
 4. Exercise add/modify/delete/unchanged/local-only/ignored/stale-analysis cases; assert remote tracked deletions are actually removed locally.
 5. Assert no operation can escape the selected Android project root and symlinks are never followed outside it.
 6. Compile the actual Android editor for ARM32 and ARM64, package the full APK, and verify both ABIs, signature, APK contents, and addon assets.
