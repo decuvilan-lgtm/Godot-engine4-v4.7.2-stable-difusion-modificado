@@ -32,6 +32,8 @@ jobs:
 
       - name: Run sync-core unit tests
         working-directory: tests
+        env:
+          PYTHONPATH: ../scripts
         run: python -m unittest -v test_github_sync_core
 
       - name: Report scope
