@@ -34,6 +34,7 @@ def main() -> None:
     once(SOURCE, 'void ProjectManager::_run_project() {\n', '''void ProjectManager::_open_github_analysis() {
 	if (!github_analysis_panel) {
 		github_analysis_panel = memnew(PanelContainer);
+		github_analysis_panel->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 		github_analysis_panel->set_custom_minimum_size(Size2(0, 240) * EDSCALE);
 		VBoxContainer *layout = memnew(VBoxContainer);
 		github_analysis_panel->add_child(layout);
