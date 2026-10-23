@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - feature/github-sync-and-safe-mcp
-      - feature/native-editor-integration
       - work/mobile-ui-preflight
     paths:
       - "scripts/apply_github_import_patch.py"
