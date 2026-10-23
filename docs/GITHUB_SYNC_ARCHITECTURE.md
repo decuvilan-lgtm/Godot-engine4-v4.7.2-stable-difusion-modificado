@@ -11,20 +11,18 @@ The workflow must be explicit and fast:
 3. **Sync** applies the analyzed plan without refetching/re-hashing unchanged content unnecessarily. It revalidates the remote commit and local files that are about to be overwritten/deleted. If either changed since analysis, it refreshes only the affected comparisons and asks for a new review when the plan materially differs.
 4. **Verify** checks resulting file hashes and records the exact remote commit SHA as the last successful sync.
 
-## UI
+## UI and mobile placement (required)
 
-Expose two primary actions in the GitHub panel:
+Do not add a new always-visible control in the middle of the screen, and do not add a new row of buttons to the already crowded Project Manager toolbar. Integrate GitHub Sync with the existing selected-project sidebar/actions area, using the same button sizing, theme, spacing, and scroll container as the existing Edit / Run / Rename actions. Keep it next to related project actions rather than inventing a detached floating control.
 
-- **Analyze**: non-destructive; enabled after a repository/project is selected.
-- **Sync**: enabled only when a valid analysis snapshot exists. Shows the number of files to add/update/delete and the target commit before applying.
-
-Secondary actions:
-
-- **Refresh analysis**: reruns the comparison.
-- **Cancel**: cancels network operations and removes temporary downloads.
-- **Open report**: shows per-path results and errors.
-
-On narrow mobile screens, primary buttons stack vertically or wrap; dialogs are constrained to the current viewport and their content scrolls. Progress, phase, and actionable error text are visible. Network requests must not block the UI thread.
+- The entry action is available in the existing project-list sidebar and acts on the selected project. With no single valid project selected, explain the prerequisite and do not open a misleading sync flow.
+- Open the workflow in the existing Project Manager content area/panel anchored to that sidebar action, not as a large centered modal that obscures the entire 720x1600 mobile interface. Reuse existing panel/dialog conventions where practical; if a compact confirmation dialog is unavoidable, constrain it to the viewport and keep the main workflow inline.
+- Keep the workflow vertically scrollable. At a 720x1600 logical viewport, controls must remain reachable with the Android keyboard open, and text/buttons must not overflow horizontally. Do not hardcode desktop widths.
+- **Analyze** is non-destructive and resolves the repository to an immutable commit before comparing files.
+- **Review** lists additions, updates, tracked remote deletions, unchanged files, local-only files, ignored paths, and conflicts. Show destructive counts and the target commit.
+- **Sync** stays disabled until a fresh analysis has been reviewed. It must confirm add/update/delete counts, then stage, validate, apply transactionally, verify, and roll back on failure.
+- Secondary actions are **Refresh analysis**, **Cancel**, and **Open report**. Cancel removes temporary downloads before apply; during apply it triggers rollback.
+- Show progress and actionable errors in the existing panel. Network requests must not block the UI thread. Do not duplicate generic file errors already reported by Godot's Output/Debugger.
 
 ## Repository model and fast comparison
 
