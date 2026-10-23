@@ -278,6 +278,16 @@ def apply_plan(
         for c in selected:
             target = safe_target(root, c.path)
             existed = target.exists()
+            # Downloads may take time: re-check the reviewed local state immediately
+            # before backing up and applying any mutation.
+            if c.action == "add" and existed:
+                raise SyncError(f"Local file appeared during sync; refusing to overwrite it: {c.path}")
+            if c.action == "update":
+                if not target.is_file() or c.local_sha is None or git_blob_sha1(target.read_bytes()) != c.local_sha:
+                    raise SyncError(f"Local file changed during sync; re-analyze before syncing: {c.path}")
+            if c.action == "delete" and c.local_sha is not None and existed:
+                if not target.is_file() or git_blob_sha1(target.read_bytes()) != c.local_sha:
+                    raise SyncError(f"Tracked file changed during sync; re-analyze before deleting: {c.path}")
             journal.append({"path": c.path, "action": c.action, "existed": existed})
             if existed:
                 if not target.is_file():
