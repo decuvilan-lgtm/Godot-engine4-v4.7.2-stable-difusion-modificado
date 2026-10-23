@@ -11,6 +11,7 @@ on:
       - "scripts/apply_github_sync_ui_patch.py"
       - "scripts/apply_github_sync_import_patch.py"
       - "scripts/apply_preview_debug_menu_patch.py"
+      - "scripts/apply_debug_visualization_patch.py"
       - "scripts/package_safe_mcp_android.py"
       - "scripts/extend_safe_mcp_scene_tools.py"
       - ".github/workflows/build-godot-android-source.yml"
@@ -122,6 +123,9 @@ jobs:
 
       - name: Apply preview debugger menu integration
         run: python "$GITHUB_WORKSPACE/scripts/apply_preview_debug_menu_patch.py"
+
+      - name: Apply native runtime debug visualization toggles
+        run: python "$GITHUB_WORKSPACE/scripts/apply_debug_visualization_patch.py"
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
