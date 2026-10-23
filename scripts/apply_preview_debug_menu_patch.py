@@ -119,8 +119,8 @@ def main() -> None:
     for button_name in ("suspend_button", "next_frame_button", "debug_mute_audio_button"):
         replace_once(
             SOURCE,
-            f"\\t{button_name} = memnew(Button);\\n",
-            f"\\t{button_name} = memnew(Button);\\n\\t{button_name}->set_custom_minimum_size(Size2(48, 48) * EDSCALE);\\n",
+            f"\t{button_name} = memnew(Button);\n",
+            f"\t{button_name} = memnew(Button);\n\t{button_name}->set_custom_minimum_size(Size2(48, 48) * EDSCALE);\n",
         )
 
     # Verify the resulting source still contains every real action and menu entry.
