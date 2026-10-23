@@ -1,141 +1,16 @@
-name: Disabled legacy Linux UI capture (Android-only project)
+name: Retired desktop UI capture (Android-only project)
 
+# This workflow is intentionally inert. Desktop/Xvfb screenshots are not a
+# substitute for checking the mobile layout on the Android device.
 on:
   workflow_dispatch:
-    inputs:
-      capture_mode:
-        description: "Which interface to capture"
-        required: true
-        type: choice
-        default: both
-        options:
-          - both
-          - project-manager
-          - editor
 
 permissions:
   contents: read
 
-concurrency:
-  group: godot-mobile-ui-preflight-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  capture-ui:
-    if: false # User requirement: do not run Linux editor/UI tests for this Android-only modification.
+  retired:
+    if: false
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
     steps:
-      - name: Checkout integration branch
-        uses: actions/checkout@v4
-
-      - name: Checkout official Godot 4.7.2 source
-        uses: actions/checkout@v4
-        with:
-          repository: godotengine/godot
-          ref: 4.7.2-stable
-          path: godot-source
-
-      - name: Install Linux editor and virtual-display dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libx11-dev libxcursor-dev libxinerama-dev libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libpulse-dev libudev-dev libxi-dev libxrandr-dev libwayland-dev libxkbcommon-dev libfontconfig1-dev xvfb x11-utils imagemagick python3
-
-      - name: Apply source integrations
-        run: |
-          python3 -m py_compile scripts/apply_github_import_patch.py
-          python3 scripts/apply_github_import_patch.py
-          python3 -m py_compile scripts/apply_preview_debug_menu_patch.py
-          python3 scripts/apply_preview_debug_menu_patch.py
-
-      - name: Build Linux editor for visual inspection
-        working-directory: godot-source
-        run: |
-          set -euo pipefail
-          python3 -m pip install --user scons
-          export PATH="$HOME/.local/bin:$PATH"
-          scons platform=linuxbsd target=editor dev_mode=no -j2
-
-      - name: Create minimal project for editor capture
-        run: |
-          mkdir -p ui-capture-project
-          cat > ui-capture-project/project.godot <<'EOF'
-          config_version=5
-
-          [application]
-          config/name="Godot Mobile UI Capture"
-          run/main_scene=""
-
-          [rendering]
-          renderer/rendering_method="gl_compatibility"
-          renderer/rendering_method.mobile="gl_compatibility"
-          EOF
-
-      - name: Capture Project Manager and editor at desktop, portrait, and narrow sizes
-        if: ${{ github.event_name == 'push' || inputs.capture_mode == 'both' || inputs.capture_mode == 'project-manager' || inputs.capture_mode == 'editor' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          BIN="$GITHUB_WORKSPACE/godot-source/bin/godot.linuxbsd.editor.x86_64"
-          test -x "$BIN"
-          mkdir -p ui-captures
-          capture_one() {
-            local mode="$1" geometry="$2" name="$3"
-            local log="ui-captures/${mode}-${name}.log"
-            Xvfb :99 -screen 0 "${geometry}x24" -ac > "/tmp/xvfb-${mode}-${name}.log" 2>&1 &
-            XVFB_PID=$!
-            APP_PID=""
-            cleanup_capture() {
-              if [ -n "$APP_PID" ]; then kill "$APP_PID" 2>/dev/null || true; wait "$APP_PID" 2>/dev/null || true; fi
-              kill "$XVFB_PID" 2>/dev/null || true
-              wait "$XVFB_PID" 2>/dev/null || true
-            }
-            trap cleanup_capture RETURN
-            export DISPLAY=:99
-            ready=0
-            for _ in $(seq 1 40); do
-              if xdpyinfo -display :99 >/dev/null 2>&1; then ready=1; break; fi
-              sleep 0.25
-            done
-            if [ "$ready" -ne 1 ]; then
-              cat "/tmp/xvfb-${mode}-${name}.log"
-              echo "Xvfb did not start for ${geometry}" >&2
-              return 1
-            fi
-            if [ "$mode" = "project-manager" ]; then
-              "$BIN" > "$log" 2>&1 &
-            else
-              "$BIN" --editor --path "$GITHUB_WORKSPACE/ui-capture-project" > "$log" 2>&1 &
-            fi
-            APP_PID=$!
-            sleep 12
-            if ! kill -0 "$APP_PID" 2>/dev/null; then
-              cat "$log"
-              echo "Godot exited before screenshot capture: $mode / $geometry" >&2
-              return 1
-            fi
-            import -display :99 -window root "ui-captures/${mode}-${name}.png"
-            test -s "ui-captures/${mode}-${name}.png"
-            identify "ui-captures/${mode}-${name}.png"
-          }
-          if [ "${{ inputs.capture_mode }}" = "both" ] || [ "${{ inputs.capture_mode }}" = "project-manager" ]; then
-            capture_one project-manager 1280x800 desktop
-            capture_one project-manager 480x800 portrait
-            capture_one project-manager 800x480 narrow
-          fi
-          if [ "${{ inputs.capture_mode }}" = "both" ] || [ "${{ inputs.capture_mode }}" = "editor" ]; then
-            capture_one editor 1280x800 desktop
-            capture_one editor 480x800 portrait
-            capture_one editor 800x480 narrow
-          fi
-
-      - name: Upload screenshots and logs for review
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: godot-mobile-ui-xvfb-captures
-          path: |
-            ui-captures/
-            /tmp/xvfb.log
-          if-no-files-found: warn
-          retention-days: 14
+      - run: echo "Retired: validate mobile UI on the Android device."
