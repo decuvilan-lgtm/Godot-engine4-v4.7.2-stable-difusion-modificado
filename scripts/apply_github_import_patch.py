@@ -22,7 +22,7 @@ replace_once(HEADER,
     "class Button;\nclass HFlowContainer;\nclass HTTPRequest;\nclass LineEdit;\nclass OptionButton;")
 replace_once(HEADER,
     "ProjectDialog *project_dialog = nullptr;",
-    "ProjectDialog *project_dialog = nullptr;
+    """ProjectDialog *project_dialog = nullptr;
 	ConfirmationDialog *github_import_dialog = nullptr;
 	LineEdit *github_repo_url = nullptr;
 	LineEdit *github_repo_ref = nullptr;
@@ -36,11 +36,10 @@ replace_once(HEADER,
 	int github_search_page = 1;
 	int github_search_total_count = 0;
 	Button *github_search_more_btn = nullptr;
-	ConfirmationDialog *mcp_install_dialog = nullptr;")
+	ConfirmationDialog *mcp_install_dialog = nullptr;""")
 replace_once(HEADER,
-    "\tvoid _import_project();
-	void _new_project();",
-    "\tvoid _import_project();
+    "\tvoid _import_project();\n\tvoid _new_project();",
+    """\tvoid _import_project();
 	void _show_github_import_dialog();
 	void _github_import_confirmed();
 	void _github_import_submitted(const String &p_text);
@@ -51,7 +50,7 @@ replace_once(HEADER,
 	void _github_download_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);
 	void _show_mcp_install_dialog();
 	void _install_mcp_addon_confirmed();
-	void _new_project();")
+	void _new_project();""")
 replace_once(SOURCE,
     '#include "scene/gui/separator.h"\n#include "scene/main/scene_tree.h"',
     '#include "core/io/json.h"\n#include "scene/gui/separator.h"\n#include "scene/main/http_request.h"\n#include "scene/main/scene_tree.h"\n#include "platform/android/file_access_android.h"\n#include "modules/zip/zip_reader.h"')
