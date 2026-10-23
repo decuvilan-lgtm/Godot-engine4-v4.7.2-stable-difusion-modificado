@@ -264,13 +264,24 @@ def apply_plan(
         if c.action == "add" and target.exists():
             raise SyncError(f"Local file appeared after analysis; refusing to overwrite it: {c.path}")
         if c.action == "update":
+            prior = tracked_before_sync.get(c.path)
+            if prior is None or not prior.get("sha"):
+                raise SyncError(f"Refusing to overwrite an existing file that was never tracked by a successful sync: {c.path}")
+            if c.local_sha != prior.get("sha"):
+                raise SyncError(f"Local file has edits since the last successful sync; conflict preserved: {c.path}")
             if not target.is_file() or c.local_sha is None:
                 raise SyncError(f"Local file changed after analysis; re-analyze before syncing: {c.path}")
             if git_blob_sha1(target.read_bytes()) != c.local_sha:
                 raise SyncError(f"Local file changed after analysis; re-analyze before syncing: {c.path}")
-        if c.action == "delete" and c.local_sha is not None:
-            if target.exists() and (not target.is_file() or git_blob_sha1(target.read_bytes()) != c.local_sha):
-                raise SyncError(f"Tracked file changed after analysis; re-analyze before deleting: {c.path}")
+        if c.action == "delete":
+            prior = tracked_before_sync.get(c.path)
+            if prior is None:
+                raise SyncError(f"Refusing to delete a file not tracked by the previous successful sync: {c.path}")
+            if target.exists() and c.local_sha is not None:
+                if prior.get("sha") != c.local_sha:
+                    raise SyncError(f"Refusing to delete locally edited tracked file; conflict preserved: {c.path}")
+                if not target.is_file() or git_blob_sha1(target.read_bytes()) != c.local_sha:
+                    raise SyncError(f"Tracked file changed after analysis; re-analyze before deleting: {c.path}")
 
     txid = uuid.uuid4().hex
     transaction_root = manifest_path.parent / ("sync-recovery-" + txid)
