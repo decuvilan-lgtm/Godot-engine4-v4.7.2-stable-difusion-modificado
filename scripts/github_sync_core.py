@@ -148,10 +148,19 @@ def build_plan(
                 changes.append(Change(path, "unchanged", rsha, str(lsha), size,
                                       "Local Git blob matches remote."))
         elif old is not None:
-            changes.append(Change(path, "delete", None,
-                                  str(l.get("git_blob_sha")) if l else None,
-                                  int(old.get("size") or 0),
-                                  "Previously tracked file was deleted from the remote repository."))
+            old_sha = old.get("sha")
+            local_sha = str(l.get("git_blob_sha")) if l else None
+            if l is not None and local_sha != old_sha:
+                # A remote deletion must never erase local edits made since the
+                # last successful sync. Preserve the file and surface a conflict.
+                changes.append(Change(
+                    path, "local-only", None, local_sha, int(l.get("size") or 0),
+                    "CONFLICT: remote deleted a tracked file, but local bytes differ from the last synced version; preserved.",
+                ))
+            else:
+                changes.append(Change(path, "delete", None, local_sha,
+                                      int(old.get("size") or 0),
+                                      "Previously tracked file was deleted remotely and local bytes still match the last synced version."))
         elif l is not None:
             changes.append(Change(path, "local-only", None,
                                   str(l.get("git_blob_sha")), int(l.get("size") or 0),
