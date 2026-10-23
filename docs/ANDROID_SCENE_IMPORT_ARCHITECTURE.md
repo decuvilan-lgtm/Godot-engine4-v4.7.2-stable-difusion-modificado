@@ -53,3 +53,34 @@ On the 1600x720 landscape display and narrow/portrait layouts:
 ## Status
 
 This file records the required behavior and acceptance criteria. It does not claim the import UI or scene-opening implementation is already complete. Implementation must use Godot 4.7.2's native resource/scene APIs and must be verified in the Android build.
+
+
+## Nested scene dependency graph (required technical behavior)
+
+A scene dependency is not limited to scenes instantiated directly by the project main scene. Scene instancing is transitive and may occur at any depth. For example:
+
+```text
+Main.tscn
+└── Level.tscn
+    └── Enemy.tscn
+        └── Weapon.tscn
+```
+
+Here, `Enemy.tscn` is not directly instanced by `Main.tscn`, but it is still part of the runtime scene graph through `Level.tscn`; likewise, `Weapon.tscn` is reachable through the enemy. The importer, dependency resolver, report, and any “copy scene with dependencies” operation must traverse this transitive graph rather than inspecting only the root scene's immediate children.
+
+### Required rules
+
+- Treat each scene file as an independent resource and each instance relationship as an edge in a dependency graph. Preserve the source paths and all original `ExtResource` references; do not flatten, clone, or rewrite nested scenes just to make their nodes visible in the root scene tree.
+- Traverse transitive dependencies recursively, including scenes nested inside scenes, scripts, textures, fonts, audio, materials, shaders, and other external resources. Use Godot's native resource dependency APIs where possible rather than trying to parse every resource format manually.
+- Track visited resource paths to avoid infinite recursion and duplicate work. Detect and report missing dependencies and cyclic dependency chains; do not silently drop a resource or loop forever. Cycles that Godot itself supports must be preserved rather than “fixed” by rewriting files.
+- Preserve inherited scenes and editable-instance overrides. Do not replace an inherited scene with a flattened copy, erase instance overrides, or modify node ownership, signal connections, groups, scripts, unique-name references, or resource UIDs unnecessarily.
+- Distinguish the **resource dependency graph** (which files refer to which other files) from the **runtime node tree** (which instances exist during execution). A resource may be present in the project without being instantiated at runtime; importing it must not automatically add it to the active scene.
+- A scene instance nested several levels deep remains part of the runtime hierarchy when its ancestors are instantiated. It should not be added a second time to the main scene. To edit it, open the corresponding original scene resource in its own editor tab.
+- “Instantiate in current scene” adds exactly one instance of the selected scene at the chosen insertion point. It does not recursively instantiate every descendant scene as separate siblings.
+- When copying one scene with dependencies, calculate the transitive dependency closure and preserve relative paths. If a dependency is already present at the same target path, compare content and handle conflicts explicitly; do not overwrite unrelated resources silently.
+- When syncing from GitHub, update or delete scene/resource files at their original paths. A change in a deeply nested scene must never be translated into node insertions in the currently open scene. Remote deletion of a tracked dependency must be reported with its dependents so the user can understand which scenes may become invalid before the authoritative sync is applied.
+- Validation must include a chain of at least four scenes across multiple nesting levels, a scene inherited from another scene, shared resources referenced by multiple scenes, missing dependency reporting, and confirmation that importing leaves the active scene tree unchanged.
+
+### Additional acceptance test
+
+Create a fixture where `Main.tscn` instances `Level.tscn`, `Level.tscn` instances `Enemy.tscn`, and `Enemy.tscn` instances `Weapon.tscn`. Import the project and verify all four files and their resources remain separate, the nested instances are reachable at runtime through their ancestors, and the main scene contains no duplicate sibling copies of `Enemy` or `Weapon`. Open `Enemy.tscn` and `Weapon.tscn` individually and confirm they open as their own scene tabs without modifying `Main.tscn`.
