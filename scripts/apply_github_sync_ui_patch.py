@@ -27,9 +27,9 @@ def main() -> None:
     once(HEADER, "class VBoxContainer;\n", "class VBoxContainer;\nclass HTTPRequest;\n")
     once(HEADER, "\tButton *run_btn = nullptr;\n", "\tButton *run_btn = nullptr;\n\tButton *github_sync_btn = nullptr;\n")
     once(HEADER, "\tvoid _run_project();\n", "\tvoid _run_project();\n\tvoid _open_github_analysis();\n\tvoid _run_github_analysis();\n\tvoid _github_analysis_request_completed(int p_result, int p_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n")
-    once(HEADER, "\tProjectDialog *project_dialog = nullptr;\n", "\tProjectDialog *project_dialog = nullptr;\n\tPanelContainer *github_analysis_panel = nullptr;\n\tLineEdit *github_repo_input = nullptr;\n\tLineEdit *github_ref_input = nullptr;\n\tRichTextLabel *github_analysis_output = nullptr;\n\tHTTPRequest *github_analysis_request = nullptr;\n\tButton *github_analyze_button = nullptr;\n")
+    once(HEADER, "\tProjectDialog *project_dialog = nullptr;\n", "\tProjectDialog *project_dialog = nullptr;\n\tString github_local_project_path;\n\tPanelContainer *github_analysis_panel = nullptr;\n\tLineEdit *github_repo_input = nullptr;\n\tLineEdit *github_ref_input = nullptr;\n\tRichTextLabel *github_analysis_output = nullptr;\n\tHTTPRequest *github_analysis_request = nullptr;\n\tButton *github_analyze_button = nullptr;\n")
 
-    once(SOURCE, '#include "scene/gui/flow_container.h"\n', '#include "scene/gui/flow_container.h"\n#include "core/io/json.h"\n#include "scene/main/http_request.h"\n')
+    once(SOURCE, '#include "scene/gui/flow_container.h"\n', '#include "scene/gui/flow_container.h"\n#include "core/crypto/hashing_context.h"\n#include "core/io/dir_access.h"\n#include "core/io/file_access.h"\n#include "core/io/json.h"\n#include "scene/main/http_request.h"\n')
     once(SOURCE, '\t\t\tsidebar_buttons_containter->add_child(run_btn);\n', '\t\t\t\tsidebar_buttons_containter->add_child(run_btn);\n\n\t\t\t\tgithub_sync_btn = memnew(Button);\n\t\t\t\tgithub_sync_btn->set_text(TTRC("GitHub Sync"));\n\t\t\t\tgithub_sync_btn->set_tooltip_text(TTRC("Analyze a public GitHub repository before syncing."));\n\t\t\t\tgithub_sync_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_open_github_analysis));\n\t\t\t\tgithub_sync_btn->set_h_size_flags(Control::SIZE_EXPAND_FILL);\n\t\t\t\tsidebar_buttons_containter->add_child(github_sync_btn);\n')
     once(SOURCE, 'void ProjectManager::_run_project() {\n', '''void ProjectManager::_open_github_analysis() {
 	if (!github_analysis_panel) {
@@ -108,6 +108,18 @@ void ProjectManager::_run_github_analysis() {
 		github_analysis_output->append_text(TTR("Enter a valid public repository as owner/name and a branch or tag without spaces."));
 		return;
 	}
+	Vector<ProjectList::Item> selected_projects = project_list->get_selected_projects();
+	if (selected_projects.size() != 1) {
+		github_analysis_output->clear();
+		github_analysis_output->append_text(TTR("Select exactly one local Godot project in the list, then analyze again."));
+		return;
+	}
+	github_local_project_path = selected_projects[0].path;
+	if (!FileAccess::file_exists(github_local_project_path.path_join("project.godot"))) {
+		github_analysis_output->clear();
+		github_analysis_output->append_text(TTR("The selected folder is not a readable Godot project (project.godot was not found)."));
+		return;
+	}
 	if (github_analysis_request->get_http_client_status() != HTTPClient::STATUS_DISCONNECTED) {
 		github_analysis_output->append_text(TTR("\\nA request is already in progress."));
 		return;
@@ -150,35 +162,97 @@ void ProjectManager::_github_analysis_request_completed(int p_result, int p_code
 		github_analysis_output->append_text(TTR("\\nGitHub response has no tree. Choose a valid branch or tag."));
 		return;
 	}
-	int shown = 0;
-	int blobs = 0;
-	int trees = 0;
-	github_analysis_output->append_text(vformat(TTR("Tree entries: %d\\n"), tree.size()));
+	if (root.get("truncated", false)) {
+		github_analysis_output->append_text(TTR("\\nGitHub truncated this tree response. Refusing to produce an incomplete comparison."));
+		return;
+	}
+	HashMap<String, String> remote_files;
 	for (int i = 0; i < tree.size(); i++) {
 		Dictionary entry = tree[i];
-		String path = entry.get("path", "");
-		String type = entry.get("type", "");
-		if (type == "blob") {
-			blobs++;
-		} else if (type == "tree") {
-			trees++;
-			continue;
-		} else {
+		if (String(entry.get("type", "")) != "blob") {
 			continue;
 		}
-		if (shown < 250) {
-			github_analysis_output->append_text(vformat("%s  [%s]\\n", path, type));
+		String path = entry.get("path", "");
+		String sha = entry.get("sha", "");
+		if (path.is_empty() || sha.length() != 40 || path.begins_with("/") || path.contains("\\\\") ||
+				path == ".." || path.begins_with("../") || path.contains("/../") || path.ends_with("/..")) {
+			github_analysis_output->append_text(TTR("\\nRepository tree contains an invalid path or blob ID; comparison stopped."));
+			return;
+		}
+		if (path == ".git" || path.begins_with(".git/") || path == ".godot" || path.begins_with(".godot/") ||
+				path == ".github" || path.begins_with(".github/") || path == "github_sync_manifest.json") {
+			continue;
+		}
+		remote_files.insert(path, sha.to_lower());
+	}
+	HashMap<String, String> local_files;
+	std::function<void(const String &, const String &)> scan_directory;
+	scan_directory = [&](const String &p_absolute, const String &p_relative) {
+		PackedStringArray dirs = DirAccess::get_directories_at(p_absolute);
+		for (const String &dir : dirs) {
+			if (dir == "." || dir == ".." || dir == ".git" || dir == ".godot" || dir == ".github") {
+				continue;
+			}
+			String relative = p_relative.is_empty() ? dir : p_relative.path_join(dir);
+			scan_directory(p_absolute.path_join(dir), relative);
+		}
+		PackedStringArray files = DirAccess::get_files_at(p_absolute);
+		for (const String &file : files) {
+			if (file == "github_sync_manifest.json") {
+				continue;
+			}
+			String relative = p_relative.is_empty() ? file : p_relative.path_join(file);
+			String absolute = p_absolute.path_join(file);
+			PackedByteArray bytes = FileAccess::get_file_as_bytes(absolute);
+			String header = "blob " + itos(bytes.size()) + String::chr(0);
+			PackedByteArray blob_data = header.to_utf8_buffer();
+			blob_data.append_array(bytes);
+			Ref<HashingContext> hasher;
+			hasher.instantiate();
+			if (hasher->start(HashingContext::HASH_SHA1) != OK || hasher->update(blob_data) != OK) {
+				continue;
+			}
+			PackedByteArray digest = hasher->finish();
+			local_files.insert(relative.replace("\\\\", "/"), String::hex_encode_buffer(digest.ptr(), digest.size()));
+		}
+	};
+	scan_directory(github_local_project_path, "");
+	int adds = 0;
+	int updates = 0;
+	int unchanged = 0;
+	int local_only = 0;
+	for (const KeyValue<String, String> &remote : remote_files) {
+		if (!local_files.has(remote.key)) {
+			adds++;
+		} else if (local_files[remote.key] == remote.value) {
+			unchanged++;
+		} else {
+			updates++;
+		}
+	}
+	for (const KeyValue<String, String> &local : local_files) {
+		if (!remote_files.has(local.key)) {
+			local_only++;
+		}
+	}
+	github_analysis_output->append_text(vformat(TTR("Local project: %s\\n"), github_local_project_path));
+	github_analysis_output->append_text(vformat(TTR("Pinned tree entries: %d\\n"), tree.size()));
+	github_analysis_output->append_text(vformat(TTR("ADD: %d | UPDATE: %d | UNCHANGED: %d | LOCAL-ONLY (preserved): %d\\n"),
+			adds, updates, unchanged, local_only));
+	int shown = 0;
+	for (const KeyValue<String, String> &remote : remote_files) {
+		String action = !local_files.has(remote.key) ? "ADD" :
+				(local_files[remote.key] == remote.value ? "OK" : "UPDATE");
+		if (shown < 150 && action != "OK") {
+			github_analysis_output->append_text(vformat("%s  %s\\n", action, remote.key));
 			shown++;
 		}
 	}
-	github_analysis_output->append_text(vformat(TTR("\\nFiles: %d | Folders: %d"), blobs, trees));
-	if (root.get("truncated", false)) {
-		github_analysis_output->append_text(TTR("\\nGitHub truncated this tree response. Analysis is incomplete; do not sync from it."));
+	if (adds + updates > shown) {
+		github_analysis_output->append_text(vformat(TTR("Showing %d of %d add/update paths.\\n"), shown, adds + updates));
 	}
-	if (blobs > shown) {
-		github_analysis_output->append_text(vformat(TTR("\\nShowing first %d files only."), shown));
-	}
-	github_analysis_output->append_text(TTR("\\n\\nThis is repository inventory only, not a local change plan. Sync remains disabled until local comparison and transactional writes are integrated."));
+	github_analysis_output->append_text(TTR("\\nComparison is read-only. Local-only files are preserved; no remote-deletion inference or file writes occur."));
+
 }
 
 void ProjectManager::_run_project() {
@@ -186,10 +260,10 @@ void ProjectManager::_run_project() {
     # Verify required integration points before accepting the patch.
     h = HEADER.read_text(encoding="utf-8")
     c = SOURCE.read_text(encoding="utf-8")
-    for token in ("github_sync_btn", "_github_analysis_request_completed", "GitHub Sync"):
+    for token in ("github_sync_btn", "_github_analysis_request_completed", "GitHub Sync", "Local project:", "HashingContext::HASH_SHA1"):
         if token not in h + c:
             raise SystemExit(f"Patch verification failed: {token}")
-    print("Added sidebar entry and read-only GitHub tree analysis; Sync intentionally disabled.")
+    print("Added sidebar GitHub comparison against exactly one selected local project; writes and deletes remain disabled.")
 
 
 if __name__ == "__main__":
