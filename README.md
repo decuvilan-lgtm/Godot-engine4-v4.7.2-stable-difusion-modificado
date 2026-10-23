@@ -3,7 +3,7 @@
 - **Confirmado en el LG K51 por el usuario:** búsqueda pública de GitHub, importación de su propio repositorio y ejecución del proyecto importado.
 - **Aún por probar en el teléfono:** importación con rama/etiqueta/commit explícitos, paginación, errores de red y recuperación tras fallos.
 - **No implementado todavía:** flujo nativo completo de Analizar/Sincronizar con manifiesto y transacciones, y el aviso específico de archivos realmente corruptos. La documentación de arquitectura no equivale a una implementación.
-- **Política Android-only:** se deshabilitaron los workflows de captura de UI Linux/Xvfb y de validación del addon mediante Godot Linux headless en esta rama. La compilación cruzada del APK Android en un runner Linux es distinta de probar el editor Linux.
+- **Rama auditada:** `work/mobile-ui-preflight`. Se deshabilitaron los workflows de captura de UI Linux/Xvfb y de validación del addon mediante Godot Linux headless en esta rama. El workflow de compilación Android se dispara automáticamente solo en `feature/github-sync-and-safe-mcp`; esta auditoría no lo lanzó. La compilación cruzada del APK Android en un runner Linux es distinta de probar el editor Linux.
 - Esta auditoría es estática y de lectura de repositorio; no lanzó compilaciones ni pruebas Linux, ni publicó una APK.
 
 ---
@@ -326,7 +326,7 @@ The next implementation should provide a deliberate **Install MCP into this proj
 - [Android MCP upstream capability audit](docs/ANDROID_MCP_UPSTREAM_AUDIT.md) — registered tool surface, concrete gaps and next engineering steps.
 - CI pins the reviewed public upstream addon revision `5df91076250ece38ab182b2ca8b8a4a5d9a2d938` so packaging is reproducible.
 - The packaging script removes generic expression execution, forces HTTP/WebSocket listeners to loopback, removes wildcard CORS, and patches scene-property changes and node removal to use Godot's editor undo/redo manager.
-- File writes/edits still need a recovery strategy; the scene undo patches are source-level changes and are not yet verified by a successful package run or an on-device undo/redo test.
+- The packaging script now injects verified recovery-copy logic for existing files before `write_file` / `edit_file` overwrites. This remains source-level protection until failure paths and restoration are exercised in the Android editor; scene undo patches also need live undo/redo validation.
 
 These are hardening changes and an audit baseline, not claims of complete editor coverage. The addon still needs successful CI packaging, installation in the actual Godot Android editor, and end-to-end testing with a compatible MCP client.
 
