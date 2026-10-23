@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Add native, read-only scene dependency inspection to the safe MCP addon."""
 from pathlib import Path
+from zipfile import ZIP_DEFLATED, ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
 ADDON = ROOT / "dist/addons/godot_mcp_android"
@@ -119,6 +120,12 @@ def main() -> None:
         "registry registration",
     )
     REGISTRY.write_text(registry, encoding="utf-8")
+    # Rebuild the standalone artifact too; the base packager created an older ZIP.
+    archive_path = ROOT / "dist/godot-mcp-android-safe.zip"
+    with ZipFile(archive_path, "w", ZIP_DEFLATED) as archive:
+        for path in sorted((ROOT / "dist/addons").rglob("*")):
+            if path.is_file():
+                archive.write(path, path.relative_to(ROOT / "dist"))
     if "ExecuteScriptTool" in registry or "delete_project" in registry:
         raise SystemExit("Unsafe MCP tool registration detected.")
     if "ResourceLoader.get_dependencies(current)" not in TOOL_SOURCE or "is_safe_project_path(dependency)" not in TOOL_SOURCE:
