@@ -170,6 +170,52 @@ class GitHubSyncCoreTests(unittest.TestCase):
                 )
             self.assertEqual(local_file.read_text(), "keep me")
 
+    def test_apply_plan_cannot_overwrite_local_edits_even_if_reviewed_after_edit(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            root = base / "project"
+            root.mkdir()
+            (root / "project.godot").write_text("config")
+            target = root / "file.txt"
+            target.write_bytes(b"user edits")
+            manifest_path = base / "meta" / "manifest.json"
+            manifest_path.parent.mkdir()
+            manifest_path.write_text(json.dumps({
+                "version": 1, "project_root": str(root.resolve()),
+                "repository_url": "https://github.com/example/project",
+                "tracked_files": {"file.txt": {"sha": blob(b"last synced"), "size": 10}},
+            }))
+            with self.assertRaisesRegex(SyncError, "edits since the last successful sync"):
+                apply_plan(
+                    root, [Change("file.txt", "update", blob(b"remote"), blob(b"user edits"), 6)],
+                    lambda _path, _sha: b"remote", manifest_path,
+                    "https://github.com/example/project", "main", "7" * 40,
+                )
+            self.assertEqual(target.read_bytes(), b"user edits")
+
+    def test_apply_plan_cannot_delete_local_edits_even_if_reviewed_after_edit(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            root = base / "project"
+            root.mkdir()
+            (root / "project.godot").write_text("config")
+            target = root / "file.txt"
+            target.write_bytes(b"user edits")
+            manifest_path = base / "meta" / "manifest.json"
+            manifest_path.parent.mkdir()
+            manifest_path.write_text(json.dumps({
+                "version": 1, "project_root": str(root.resolve()),
+                "repository_url": "https://github.com/example/project",
+                "tracked_files": {"file.txt": {"sha": blob(b"last synced"), "size": 10}},
+            }))
+            with self.assertRaisesRegex(SyncError, "locally edited tracked file"):
+                apply_plan(
+                    root, [Change("file.txt", "delete", None, blob(b"user edits"), 10)],
+                    lambda _path, _sha: b"", manifest_path,
+                    "https://github.com/example/project", "main", "6" * 40,
+                )
+            self.assertEqual(target.read_bytes(), b"user edits")
+
     def test_apply_plan_rejects_stale_update_without_mutation(self):
         with tempfile.TemporaryDirectory() as td:
             base = Path(td)
