@@ -22,10 +22,36 @@ replace_once(HEADER,
     "class Button;\nclass HFlowContainer;\nclass HTTPRequest;\nclass LineEdit;\nclass OptionButton;")
 replace_once(HEADER,
     "ProjectDialog *project_dialog = nullptr;",
-    "ProjectDialog *project_dialog = nullptr;\n\tConfirmationDialog *github_import_dialog = nullptr;\n\tLineEdit *github_repo_url = nullptr;\n\tLineEdit *github_repo_ref = nullptr;\n\tHTTPRequest *github_http_request = nullptr;\n\tHTTPRequest *github_search_request = nullptr;\n\tConfirmationDialog *github_results_dialog = nullptr;\n\tOptionButton *github_repo_results = nullptr;\n\tString github_zip_path;\n\tString github_repo_name;\n\tString github_search_query;\n\tint github_search_page = 1;\n\tint github_search_total_count = 0;\n\tButton *github_search_more_btn = nullptr;\n\tConfirmationDialog *mcp_install_dialog = nullptr;")
+    "ProjectDialog *project_dialog = nullptr;
+	ConfirmationDialog *github_import_dialog = nullptr;
+	LineEdit *github_repo_url = nullptr;
+	LineEdit *github_repo_ref = nullptr;
+	HTTPRequest *github_http_request = nullptr;
+	HTTPRequest *github_search_request = nullptr;
+	ConfirmationDialog *github_results_dialog = nullptr;
+	OptionButton *github_repo_results = nullptr;
+	String github_zip_path;
+	String github_repo_name;
+	String github_search_query;
+	int github_search_page = 1;
+	int github_search_total_count = 0;
+	Button *github_search_more_btn = nullptr;
+	ConfirmationDialog *mcp_install_dialog = nullptr;")
 replace_once(HEADER,
-    "\tvoid _import_project();\n\tvoid _new_project();",
-    "\tvoid _import_project();\n\tvoid _show_github_import_dialog();\n\tvoid _github_import_confirmed();\n\tvoid _github_import_submitted(const String &p_text);\n\tvoid _github_start_search(int p_page);\n\tvoid _github_search_next_page();\n\tvoid _github_search_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n\tvoid _github_search_result_confirmed();\n\tvoid _github_download_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n\tvoid _show_mcp_install_dialog();\n\tvoid _install_mcp_addon_confirmed();\n\tvoid _new_project();")
+    "\tvoid _import_project();
+	void _new_project();",
+    "\tvoid _import_project();
+	void _show_github_import_dialog();
+	void _github_import_confirmed();
+	void _github_import_submitted(const String &p_text);
+	void _github_start_search(int p_page);
+	void _github_search_next_page();
+	void _github_search_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);
+	void _github_search_result_confirmed();
+	void _github_download_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);
+	void _show_mcp_install_dialog();
+	void _install_mcp_addon_confirmed();
+	void _new_project();")
 replace_once(SOURCE,
     '#include "scene/gui/separator.h"\n#include "scene/main/scene_tree.h"',
     '#include "core/io/json.h"\n#include "scene/gui/separator.h"\n#include "scene/main/http_request.h"\n#include "scene/main/scene_tree.h"\n#include "platform/android/file_access_android.h"\n#include "modules/zip/zip_reader.h"')
@@ -68,7 +94,8 @@ void ProjectManager::_show_github_import_dialog() {
 \t\tcontainer->add_child(github_repo_ref);
 
 \t\tButton *github_search_btn = memnew(Button);
-\t\tgithub_search_btn->set_text(TTRC("Buscar en GitHub"));\n\t\tgithub_search_btn->set_custom_minimum_size(Size2(0, 44 * EDSCALE));
+\t\tgithub_search_btn->set_text(TTRC("Buscar en GitHub"));
+		github_search_btn->set_custom_minimum_size(Size2(0, 44 * EDSCALE));
 \t\tgithub_search_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_github_import_confirmed));
 \t\tcontainer->add_child(github_search_btn);
 
@@ -85,14 +112,16 @@ void ProjectManager::_show_github_import_dialog() {
 \t\tgithub_repo_results = memnew(OptionButton);
 \t\tresults_container->add_child(github_repo_results);
 \t\tgithub_search_more_btn = memnew(Button);
-\t\tgithub_search_more_btn->set_text(TTRC(\"Recargar siguientes 20\"));\n\t\tgithub_search_more_btn->set_custom_minimum_size(Size2(0, 44 * EDSCALE));
+\t\tgithub_search_more_btn->set_text(TTRC("Recargar siguientes 20"));
+		github_search_more_btn->set_custom_minimum_size(Size2(0, 44 * EDSCALE));
 \t\tgithub_search_more_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_github_search_next_page));
 \t\tresults_container->add_child(github_search_more_btn);
 \t\tgithub_results_dialog->add_child(results_container);
 \t\tadd_child(github_results_dialog);
 \t\tgithub_results_dialog->connect("confirmed", callable_mp(this, &ProjectManager::_github_search_result_confirmed));
 \t}
-\tconst int github_dialog_width = MAX(1, MIN(520 * EDSCALE, int(get_viewport_rect().size.x * 0.92)));\n\tgithub_import_dialog->popup_centered(Size2i(github_dialog_width, 0));
+\tconst int github_dialog_width = MAX(1, MIN(520 * EDSCALE, int(get_viewport_rect().size.x * 0.92)));
+	github_import_dialog->popup_centered(Size2i(github_dialog_width, 0));
 }
 
 void ProjectManager::_github_import_submitted(const String &p_text) {
@@ -505,7 +534,8 @@ void ProjectManager::_install_mcp_addon_confirmed() {
 
 void ProjectManager::_new_project() {""")
 replace_once(SOURCE,
-    "\t\t\thb->add_child(import_btn);\n\n\t\t\tscan_btn = memnew(Button);",
+    "\t\t\thb->add_child(import_btn);\n
+		\tscan_btn = memnew(Button);",
     """\t\t\thb->add_child(import_btn);
 
 \t\t\tButton *github_import_btn = memnew(Button);
@@ -515,8 +545,8 @@ replace_once(SOURCE,
 \t\t\thb->add_child(github_import_btn);
 
 \t\t\tButton *mcp_install_btn = memnew(Button);
-\t\t\tmcp_install_btn->set_text(TTRC(\"Install MCP\"));
-\t\t\tmcp_install_btn->set_tooltip_text(TTRC(\"Install and enable the bundled safe MCP addon in the selected project.\"));
+\t\t\tmcp_install_btn->set_text(TTRC("Install MCP"));
+\t\t\tmcp_install_btn->set_tooltip_text(TTRC("Install and enable the bundled safe MCP addon in the selected project."));
 \t\t\tmcp_install_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_show_mcp_install_dialog));
 \t\t\thb->add_child(mcp_install_btn);
 
