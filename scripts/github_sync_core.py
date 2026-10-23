@@ -240,7 +240,17 @@ def apply_plan(
             raise SyncError(f"Plan includes an excluded path: {c.path}")
         if c.action == "delete" and c.path not in tracked_before_sync:
             raise SyncError(f"Refusing to delete a file not tracked by the previous successful sync: {c.path}")
-        safe_target(root, c.path)
+        target = safe_target(root, c.path)
+        if c.action == "add" and target.exists():
+            raise SyncError(f"Local file appeared after analysis; refusing to overwrite it: {c.path}")
+        if c.action == "update":
+            if not target.is_file() or c.local_sha is None:
+                raise SyncError(f"Local file changed after analysis; re-analyze before syncing: {c.path}")
+            if git_blob_sha1(target.read_bytes()) != c.local_sha:
+                raise SyncError(f"Local file changed after analysis; re-analyze before syncing: {c.path}")
+        if c.action == "delete" and c.local_sha is not None:
+            if target.exists() and (not target.is_file() or git_blob_sha1(target.read_bytes()) != c.local_sha):
+                raise SyncError(f"Tracked file changed after analysis; re-analyze before deleting: {c.path}")
 
     txid = uuid.uuid4().hex
     transaction_root = manifest_path.parent / ("sync-recovery-" + txid)
