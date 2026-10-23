@@ -85,5 +85,11 @@ def validate_review_snapshot(snapshot: dict, project_root: Path, repository_url:
         project_root, repository_url, ref_name, commit_sha,
         [Change(**row) for row in snapshot.get("changes", [])],
     )
+    # Compare every context field as well as the fingerprint. A valid fingerprint
+    # over the change rows must not allow edited top-level repo/ref/commit/counts
+    # to be consumed by a future native Sync button.
+    for key in ("project_root", "repository_url", "ref", "commit_sha", "changes", "counts"):
+        if snapshot.get(key) != expected.get(key):
+            raise SyncError("Review plan context or counts were modified; analyze again before syncing.")
     if snapshot["fingerprint"] != expected["fingerprint"]:
         raise SyncError("Review plan was modified or is stale; analyze again before syncing.")
