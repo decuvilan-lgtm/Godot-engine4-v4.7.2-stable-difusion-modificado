@@ -128,7 +128,7 @@ void ProjectManager::_github_import_submitted(const String &p_text) {
 \tif (github_repo_url) {
 \t\tgithub_repo_url->release_focus();
 \t}
-\t_github_import_confirmed();
+\t_github_force_search();
 }
 
 void ProjectManager::_github_force_search() {
