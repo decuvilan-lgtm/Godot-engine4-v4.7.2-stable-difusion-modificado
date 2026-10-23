@@ -1,6 +1,9 @@
 name: Mobile UI preflight (Xvfb screenshots)
 
 on:
+  push:
+    branches:
+      - work/mobile-ui-preflight
   workflow_dispatch:
     inputs:
       capture_mode:
