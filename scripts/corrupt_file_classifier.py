@@ -45,4 +45,4 @@ def group_corrupt_findings(findings: list[CorruptFileFinding]) -> list[CorruptFi
     result: dict[str, CorruptFileFinding] = {}
     for finding in findings:
         result.setdefault(finding.path, finding)
-    return list(result.values())
+    return [result[path] for path in sorted(result)]
