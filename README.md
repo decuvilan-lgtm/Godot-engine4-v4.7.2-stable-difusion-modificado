@@ -26,7 +26,7 @@ La aplicación entregada es el editor Android completo. La infraestructura remot
 
 ### Importación de GitHub
 
-El parche nativo de Project Manager incorpora el flujo de importación de repositorios públicos, búsqueda separada y paginación de resultados, además de selección opcional de rama, etiqueta o commit. El usuario confirmó previamente que la búsqueda pública, la importación de su propio repositorio y la ejecución del proyecto importado funcionaban en su teléfono. Las variantes de ref explícita, paginación y recuperación ante fallos de red requieren pruebas adicionales.
+El parche nativo de Project Manager incorpora importación de repositorios públicos, búsqueda separada y paginación de resultados, además de selección opcional de rama, etiqueta o commit. Se corrigió un fallo de flujo: al pulsar «Listo» en el teclado, el campo llamaba a la descarga directa en lugar de iniciar la búsqueda de respaldo. El parche ahora enruta esa acción a la búsqueda. Esta corrección pasó la validación estática de anclajes, pero todavía falta compilar un APK nuevo y comprobar búsqueda e importación en el teléfono; no se afirma que ya funcione en el dispositivo.
 
 ### Análisis y revisión de sincronización
 
