@@ -350,9 +350,13 @@ def apply_plan(
         # Verify every affected path before making the new manifest authoritative.
         for c in selected:
             target = safe_target(root, c.path)
-            if c.action == "delete":
+            if c.action in ("delete", "archive"):
                 if target.exists():
-                    raise SyncError(f"Remote-deleted file still exists: {c.path}")
+                    raise SyncError(f"Remote-deleted file still exists in project: {c.path}")
+                if c.action == "archive":
+                    archive_target = manifest_path.parent / "preserved-remote-deletions" / txid / c.path
+                    if not archive_target.is_file() or git_blob_sha1(archive_target.read_bytes()) != c.local_sha:
+                        raise SyncError(f"Archived file verification failed: {c.path}")
             else:
                 if not target.is_file() or git_blob_sha1(target.read_bytes()) != c.remote_sha:
                     raise SyncError(f"Post-sync verification failed: {c.path}")
