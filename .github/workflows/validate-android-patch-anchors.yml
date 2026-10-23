@@ -31,6 +31,8 @@ jobs:
 
       - name: Validate sync core unit tests
         working-directory: tests
+        env:
+          PYTHONPATH: ../scripts
         run: python -m unittest -v test_github_sync_core
 
       - name: Apply and verify GitHub import patch anchors
