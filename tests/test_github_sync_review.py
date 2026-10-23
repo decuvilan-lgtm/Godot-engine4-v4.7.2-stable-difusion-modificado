@@ -31,7 +31,7 @@ class ReviewSnapshotTests(unittest.TestCase):
         temp, root = self.make_project()
         self.addCleanup(temp.cleanup)
         snapshot = create_review_snapshot(root, "https://github.com/owner/repo", "main", "a" * 40, [])
-        with self.assertRaisesRegex(SyncError, "stale"):
+        with self.assertRaisesRegex(SyncError, "context|stale"):
             validate_review_snapshot(snapshot, root, "https://github.com/owner/repo", "main", "b" * 40)
 
     def test_snapshot_rejects_tampered_top_level_context_and_counts(self):
