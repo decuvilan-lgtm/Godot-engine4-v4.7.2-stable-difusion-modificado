@@ -9,6 +9,9 @@ on:
       - "scripts/apply_github_sync_ui_patch.py"
       - "scripts/apply_preview_debug_menu_patch.py"
       - "scripts/validate_scene_import_fixture.py"
+      - "scripts/scene_dependency_plan.py"
+      - "scripts/corrupt_file_classifier.py"
+      - "tests/test_preflight_features.py"
       - "tests/scene_import_fixtures/**"
       - ".github/workflows/validate-android-patch-anchors.yml"
   workflow_dispatch:
