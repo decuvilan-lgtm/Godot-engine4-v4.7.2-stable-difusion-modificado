@@ -1,6 +1,15 @@
 name: Validate Android source patch anchors (no editor build)
 
 on:
+  push:
+    branches:
+      - work/mobile-ui-preflight
+    paths:
+      - "scripts/apply_github_import_patch.py"
+      - "scripts/apply_preview_debug_menu_patch.py"
+      - "scripts/validate_scene_import_fixture.py"
+      - "tests/scene_import_fixtures/**"
+      - ".github/workflows/validate-android-patch-anchors.yml"
   workflow_dispatch:
 
 permissions:
