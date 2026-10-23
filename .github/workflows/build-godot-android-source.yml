@@ -74,6 +74,9 @@ jobs:
       - name: Package and harden MCP addon
         run: python scripts/package_safe_mcp_android.py
 
+      - name: Add native scene dependency inspection tool
+        run: python scripts/extend_safe_mcp_scene_tools.py
+
       - name: Embed MCP addon source files in Android editor assets
         shell: bash
         run: |
