@@ -1,46 +1,17 @@
-name: Android source patch preflight
+name: Android-only validation policy
 
+# Android-specific runtime validation must be performed on an Android device.
+# This workflow is intentionally not triggered by pushes or pull requests.
+# Do not add Linux editor/runtime tests here for this mobile-only modification.
 on:
-  push:
-    branches:
-      - work/mobile-ui-preflight
-    paths:
-      - "scripts/apply_github_import_patch.py"
-      - "scripts/apply_preview_debug_menu_patch.py"
-      - "scripts/validate_scene_import_fixture.py"
-      - "tests/scene_import_fixtures/**"
-      - ".github/workflows/scene-import-preflight.yml"
-  pull_request:
-    paths:
-      - "scripts/apply_github_import_patch.py"
-      - "scripts/apply_preview_debug_menu_patch.py"
-      - "scripts/validate_scene_import_fixture.py"
-      - "tests/scene_import_fixtures/**"
-      - ".github/workflows/scene-import-preflight.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  source-patch-preflight:
+  android-device-validation-required:
+    if: false
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Check patcher Python syntax
-        run: python -m py_compile scripts/apply_github_import_patch.py scripts/apply_preview_debug_menu_patch.py scripts/validate_scene_import_fixture.py
-      - name: Check nested, isolated, inherited, shared and missing-reference fixtures
-        run: python scripts/validate_scene_import_fixture.py
-      - name: Checkout clean upstream Godot 4.7.2 source
-        uses: actions/checkout@v4
-        with:
-          repository: godotengine/godot
-          ref: 4.7.2-stable
-          path: godot-source
-      - name: Apply GitHub import patch against clean upstream source
-        run: python scripts/apply_github_import_patch.py
-      - name: Apply preview debugger patch against the same clean source
-        run: python scripts/apply_preview_debug_menu_patch.py
+      - run: echo "Validation must be performed on the target Android device; no Linux runtime test is run."
