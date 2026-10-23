@@ -17,6 +17,7 @@ class ReviewSnapshotTests(unittest.TestCase):
     def test_snapshot_is_pinned_and_deterministic(self):
         temp, root = self.make_project()
         self.addCleanup(temp.cleanup)
+        (root / "a.txt").write_bytes(b"a")
         changes = [
             Change("z.txt", "add", git_blob_sha1(b"z"), None, 1),
             Change("a.txt", "delete", None, git_blob_sha1(b"a"), 1),
@@ -50,6 +51,29 @@ class ReviewSnapshotTests(unittest.TestCase):
         tampered_counts["counts"]["add"] = 0
         with self.assertRaisesRegex(SyncError, "context or counts"):
             validate_review_snapshot(tampered_counts, root, "https://github.com/owner/repo", "main", "a" * 40)
+
+    def test_snapshot_invalidates_when_local_file_changes_after_review(self):
+        temp, root = self.make_project()
+        self.addCleanup(temp.cleanup)
+        (root / "existing.txt").write_bytes(b"before")
+        snapshot = create_review_snapshot(
+            root, "https://github.com/owner/repo", "main", "a" * 40,
+            [Change("existing.txt", "update", git_blob_sha1(b"remote"), git_blob_sha1(b"before"), 6)],
+        )
+        (root / "existing.txt").write_bytes(b"edited after review")
+        with self.assertRaisesRegex(SyncError, "changed after review"):
+            validate_review_snapshot(snapshot, root, "https://github.com/owner/repo", "main", "a" * 40)
+
+    def test_snapshot_invalidates_when_new_local_file_appears_after_review(self):
+        temp, root = self.make_project()
+        self.addCleanup(temp.cleanup)
+        snapshot = create_review_snapshot(
+            root, "https://github.com/owner/repo", "main", "a" * 40,
+            [Change("new.txt", "add", git_blob_sha1(b"remote"), None, 6)],
+        )
+        (root / "new.txt").write_bytes(b"local content")
+        with self.assertRaisesRegex(SyncError, "appeared after review"):
+            validate_review_snapshot(snapshot, root, "https://github.com/owner/repo", "main", "a" * 40)
 
     def test_snapshot_rejects_duplicate_paths_and_noncanonical_url(self):
         temp, root = self.make_project()
