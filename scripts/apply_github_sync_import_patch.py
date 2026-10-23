@@ -35,8 +35,8 @@ def main() -> None:
         "\tbool github_archive_download_pending = false;\n"
         "\tvoid _apply_github_import();\n"
         "\tvoid _apply_github_archive(const PackedByteArray &p_archive);\n")
-    replace_once(SOURCE, '#include "scene/main/http_request.h"\n',
-        '#include "scene/main/http_request.h"\n#include "core/io/zip_reader.h"\n')
+    replace_once(SOURCE, '#include "core/io/json.h"\n',
+        '#include "core/io/json.h"\n#include "core/io/zip_reader.h"\n')
 
     old_button = ('\t\tButton *disabled_sync = memnew(Button);\n'
         '\t\tdisabled_sync->set_text(TTR("Sync (not available yet)"));\n'
