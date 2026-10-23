@@ -27,7 +27,7 @@ def main() -> None:
     once(HEADER, "class VBoxContainer;\n", "class VBoxContainer;\nclass HTTPRequest;\n")
     once(HEADER, "\tButton *run_btn = nullptr;\n", "\tButton *run_btn = nullptr;\n\tButton *github_sync_btn = nullptr;\n")
     once(HEADER, "\tvoid _run_project();\n", "\tvoid _run_project();\n\tvoid _open_github_analysis();\n\tvoid _run_github_analysis();\n\tvoid _github_analysis_request_completed(int p_result, int p_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n")
-    once(HEADER, "\tProjectDialog *project_dialog = nullptr;\n", "\tProjectDialog *project_dialog = nullptr;\n\tString github_local_project_path;\n\tPanelContainer *github_analysis_panel = nullptr;\n\tLineEdit *github_repo_input = nullptr;\n\tLineEdit *github_ref_input = nullptr;\n\tRichTextLabel *github_analysis_output = nullptr;\n\tHTTPRequest *github_analysis_request = nullptr;\n\tButton *github_analyze_button = nullptr;\n")
+    once(HEADER, "\tProjectDialog *project_dialog = nullptr;\n", "\tProjectDialog *project_dialog = nullptr;\n\tString github_local_project_path;\\n\\tString github_analysis_commit_sha;\\n\\tbool github_analysis_waiting_for_tree = false;\n\tPanelContainer *github_analysis_panel = nullptr;\n\tLineEdit *github_repo_input = nullptr;\n\tLineEdit *github_ref_input = nullptr;\n\tRichTextLabel *github_analysis_output = nullptr;\n\tHTTPRequest *github_analysis_request = nullptr;\n\tButton *github_analyze_button = nullptr;\n")
 
     once(SOURCE, '#include "scene/gui/flow_container.h"\n', '#include "scene/gui/flow_container.h"\n#include "core/crypto/hashing_context.h"\n#include "core/io/dir_access.h"\n#include "core/io/file_access.h"\n#include "core/io/json.h"\n#include "scene/main/http_request.h"\n#include <functional>\n')
     once(SOURCE, '\t\t\tsidebar_buttons_containter->add_child(run_btn);\n', '\t\t\t\tsidebar_buttons_containter->add_child(run_btn);\n\n\t\t\t\tgithub_sync_btn = memnew(Button);\n\t\t\t\tgithub_sync_btn->set_text(TTRC("GitHub Sync"));\n\t\t\t\tgithub_sync_btn->set_tooltip_text(TTRC("Analyze a public GitHub repository before syncing."));\n\t\t\t\tgithub_sync_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_open_github_analysis));\n\t\t\t\tgithub_sync_btn->set_h_size_flags(Control::SIZE_EXPAND_FILL);\n\t\t\t\tsidebar_buttons_containter->add_child(github_sync_btn);\n')
@@ -125,7 +125,9 @@ void ProjectManager::_run_github_analysis() {
 		return;
 	}
 	String url = "https://api.github.com/repos/" + parts[0].uri_encode() + "/" + parts[1].uri_encode() +
-			"/git/trees/" + ref.uri_encode() + "?recursive=1";
+			"/commits/" + ref.uri_encode();
+	github_analysis_waiting_for_tree = false;
+	github_analysis_commit_sha = "";
 	github_analysis_output->clear();
 	github_analysis_output->append_text(TTR("Contacting GitHub…\\n"));
 	github_analyze_button->set_disabled(true);
@@ -146,6 +148,7 @@ void ProjectManager::_github_analysis_request_completed(int p_result, int p_code
 		return;
 	}
 	if (p_result != HTTPRequest::RESULT_SUCCESS || p_code < 200 || p_code >= 300) {
+		github_analysis_waiting_for_tree = false;
 		github_analysis_output->append_text(vformat(TTR("\\nGitHub request failed (HTTP %d, result %d). Check the repository, branch, connection, or API rate limit."), p_code, p_result));
 		return;
 	}
@@ -157,6 +160,31 @@ void ProjectManager::_github_analysis_request_completed(int p_result, int p_code
 		return;
 	}
 	Dictionary root = json->get_data();
+	if (!github_analysis_waiting_for_tree) {
+		String commit_sha = root.get("sha", "");
+		Dictionary commit_data = root.get("commit", Dictionary());
+		Dictionary tree_data = commit_data.get("tree", Dictionary());
+		String tree_sha = tree_data.get("sha", "");
+		if (commit_sha.length() != 40 || tree_sha.length() != 40) {
+			github_analysis_output->append_text(TTR("\\nGitHub commit response did not contain valid full commit and tree IDs."));
+			return;
+		}
+		github_analysis_commit_sha = commit_sha.to_lower();
+		String repo = github_repo_input->get_text().strip_edges();
+		PackedStringArray parts = repo.split("/", false);
+		String tree_url = "https://api.github.com/repos/" + parts[0].uri_encode() + "/" + parts[1].uri_encode() +
+				"/git/trees/" + tree_sha.uri_encode() + "?recursive=1";
+		github_analysis_waiting_for_tree = true;
+		PackedStringArray headers;
+		headers.push_back("Accept: application/vnd.github+json");
+		Error request_error = github_analysis_request->request(tree_url, headers, HTTPClient::METHOD_GET);
+		if (request_error != OK) {
+			github_analysis_waiting_for_tree = false;
+			github_analysis_output->append_text(vformat(TTR("\\nCould not request the commit-pinned tree (error %d)."), request_error));
+		}
+		return;
+	}
+	github_analysis_waiting_for_tree = false;
 	Array tree = root.get("tree", Array());
 	if (!root.has("tree")) {
 		github_analysis_output->append_text(TTR("\\nGitHub response has no tree. Choose a valid branch or tag."));
@@ -258,6 +286,7 @@ void ProjectManager::_github_analysis_request_completed(int p_result, int p_code
 		}
 	}
 	github_analysis_output->append_text(vformat(TTR("Local project: %s\\n"), github_local_project_path));
+	github_analysis_output->append_text(vformat(TTR("Pinned commit: %s\\n"), github_analysis_commit_sha));
 	github_analysis_output->append_text(vformat(TTR("Pinned tree entries: %d\\n"), tree.size()));
 	github_analysis_output->append_text(vformat(TTR("ADD: %d | UPDATE: %d | UNCHANGED: %d | LOCAL-ONLY (preserved): %d\\n"),
 			adds, updates, unchanged, local_only));
@@ -282,7 +311,7 @@ void ProjectManager::_run_project() {
     # Verify required integration points before accepting the patch.
     h = HEADER.read_text(encoding="utf-8")
     c = SOURCE.read_text(encoding="utf-8")
-    for token in ("github_sync_btn", "_github_analysis_request_completed", "GitHub Sync", "Local project:", "HashingContext::HASH_SHA1", "local_scan_errors > 0", "selected_projects.size() != 1"):
+    for token in ("github_sync_btn", "_github_analysis_request_completed", "GitHub Sync", "Local project:", "Pinned commit:", "/commits/", "github_analysis_waiting_for_tree", "HashingContext::HASH_SHA1", "local_scan_errors > 0", "selected_projects.size() != 1"):
         if token not in h + c:
             raise SystemExit(f"Patch verification failed: {token}")
     print("Added sidebar GitHub comparison against exactly one selected local project; writes and deletes remain disabled.")
