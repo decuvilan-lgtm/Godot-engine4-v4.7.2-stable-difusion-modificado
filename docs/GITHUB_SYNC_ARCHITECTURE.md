@@ -33,7 +33,7 @@ On narrow mobile screens, primary buttons stack vertically or wrap; dialogs are 
 - Record path, Git object ID, type, size when available, mode, and commit SHA. Reject absolute paths, parent traversal, drive prefixes, and unsafe archive entries.
 - Inventory the local project using normalized relative paths; ignore .git/, .godot/, editor cache, temporary files, and configured generated artifacts. Never follow symlinks outside the project root.
 - Compare remote blob IDs and the saved manifest first. Hash local bytes only when required to distinguish local edits. Git blob IDs are SHA-1 over the bytes `blob <size>\0<bytes>`; do not compare a raw SHA-256 directly to a Git blob ID.
-- Cache analysis by repository, commit SHA, project identity, ignore rules version, and manifest version. Reuse only if those inputs still match.
+- Cache analysis by repository, commit SHA, canonical local project root/identity, ignore rules version, and manifest version. Reuse only if those inputs still match. A manifest is bound to one canonical project root and one repository URL; reusing it for another project or repository is a hard error, never a reason to continue with deletes.
 - Do not download the whole repository archive merely to analyze it. Download file content only for changed/new files during sync; if archive download is used as a transport fallback, it is an apply-stage optimization, not the analysis source.
 
 ## Authoritative sync semantics
@@ -65,7 +65,7 @@ This reconciles the user's rule (“if it was deleted from the repo, delete it f
 
 ## Persistent manifest
 
-Store a versioned manifest inside the editor's per-project metadata/cache, not in the game project unless explicitly configured. It records repository URL, branch/ref, resolved commit SHA, normalized tracked paths and Git object IDs, ignore rules, last successful sync time, and the previous transaction ID. The manifest is written only after verification succeeds.
+Store a versioned manifest inside the editor's per-project metadata/cache, not in the game project unless explicitly configured. It records the canonical project root identity, repository URL, branch/ref, resolved commit SHA, normalized tracked paths and Git object IDs, ignore rules, last successful sync time, and the previous transaction ID. The manifest is written only after verification succeeds. The sync core now rejects a non-empty legacy manifest without project identity, a manifest whose project root differs from the selected root, and a manifest linked to another repository URL. The native Project Manager must still derive the selected project's own metadata path and pass that project root to the core.
 
 ## Android-first validation (no Linux editor build)
 
@@ -84,4 +84,4 @@ Host-side syntax/unit checks may run in CI, but no Linux Godot editor build or L
 
 ## Delivery status
 
-This document defines the intended architecture. It does not claim that the analyzer, manifest, transactional sync, or tests are implemented yet. The native Android UI and implementation must be added and validated against the actual Godot 4.7.2 source and an Android ARM32+ARM64 build before producing a release APK.
+The Python reference core now includes project/repository identity guards and corresponding unit-test cases, but those tests have not been executed. The native analyzer, GitHub HTTP integration, project-specific metadata-path selection, review dialog, and transactional sync are still not integrated into the Android Project Manager. The native Android UI and implementation must be added and validated against the actual Godot 4.7.2 source and an Android ARM32+ARM64 build before producing a release APK.
