@@ -5,6 +5,13 @@ on:
   push:
     branches:
       - feature/github-sync-and-safe-mcp
+      - work/mobile-ui-preflight
+    paths:
+      - "scripts/apply_github_import_patch.py"
+      - "scripts/apply_github_sync_ui_patch.py"
+      - "scripts/apply_preview_debug_menu_patch.py"
+      - "scripts/package_safe_mcp_android.py"
+      - ".github/workflows/build-godot-android-source.yml"
   workflow_dispatch:
     inputs:
       run_type:
@@ -101,6 +108,9 @@ jobs:
 
       - name: Apply GitHub import integration
         run: python "$GITHUB_WORKSPACE/scripts/apply_github_import_patch.py"
+
+      - name: Apply native GitHub analysis and review UI
+        run: python "$GITHUB_WORKSPACE/scripts/apply_github_sync_ui_patch.py"
 
       - name: Apply preview debugger menu integration
         run: python "$GITHUB_WORKSPACE/scripts/apply_preview_debug_menu_patch.py"
