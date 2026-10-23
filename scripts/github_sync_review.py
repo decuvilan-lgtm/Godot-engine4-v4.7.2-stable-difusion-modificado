@@ -49,7 +49,7 @@ def create_review_snapshot(project_root: Path, repository_url: str, ref_name: st
         if path in seen:
             raise SyncError(f"Duplicate path in review plan: {path}")
         seen.add(path)
-        if change.action not in {"add", "update", "delete", "unchanged", "local-only"}:
+        if change.action not in {"add", "update", "delete", "archive", "unchanged", "local-only"}:
             raise SyncError(f"Unknown action in review plan: {change.action}")
         if change.action in {"add", "update", "unchanged"}:
             if not isinstance(change.remote_sha, str) or len(change.remote_sha) != 40 or any(
@@ -61,7 +61,7 @@ def create_review_snapshot(project_root: Path, repository_url: str, ref_name: st
         rows.append(asdict(change) | {"path": path})
     rows.sort(key=lambda item: item["path"])
     counts = {action: sum(1 for row in rows if row["action"] == action)
-              for action in ("add", "update", "delete", "unchanged", "local-only")}
+              for action in ("add", "update", "delete", "archive", "unchanged", "local-only")}
     identity = {
         "project_root": str(root),
         "repository_url": repo,
