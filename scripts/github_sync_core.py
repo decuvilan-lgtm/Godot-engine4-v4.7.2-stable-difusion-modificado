@@ -231,6 +231,9 @@ def apply_plan(
     Call only after the caller revalidates the remote commit and user confirms
     the destructive operation counts.
     """
+    # Materialize once: the plan is consumed for validation and again when
+    # writing the successful manifest. A generator must not silently empty it.
+    changes = list(changes)
     root = root.resolve()
     root.mkdir(parents=True, exist_ok=True)
     if not (root / "project.godot").is_file():
