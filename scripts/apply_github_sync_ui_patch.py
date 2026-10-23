@@ -26,8 +26,8 @@ def main() -> None:
 
     once(HEADER, "class VBoxContainer;\n", "class VBoxContainer;\nclass HTTPRequest;\n")
     once(HEADER, "\tButton *run_btn = nullptr;\n", "\tButton *run_btn = nullptr;\n\tButton *github_sync_btn = nullptr;\n")
-    once(HEADER, "\tvoid _run_project();\n", "\tvoid _run_project();\n\tvoid _open_github_analysis();\n\tvoid _run_github_analysis();\n\tvoid _github_analysis_request_completed(int p_result, int p_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n")
-    once(HEADER, "\tProjectDialog *project_dialog = nullptr;\n", "\tProjectDialog *project_dialog = nullptr;\n\tString github_local_project_path;\n\tString github_analysis_commit_sha;\n\tbool github_analysis_waiting_for_tree = false;\n\tPanelContainer *github_analysis_panel = nullptr;\n\tLineEdit *github_repo_input = nullptr;\n\tLineEdit *github_ref_input = nullptr;\n\tRichTextLabel *github_analysis_output = nullptr;\n\tHTTPRequest *github_analysis_request = nullptr;\n\tButton *github_analyze_button = nullptr;\n")
+    once(HEADER, "\tvoid _run_project();\n", "\tvoid _run_project();\n\tvoid _open_github_analysis();\n\tvoid _run_github_analysis();\n\tvoid _review_github_analysis();\n\tvoid _github_analysis_request_completed(int p_result, int p_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n")
+    once(HEADER, "\tProjectDialog *project_dialog = nullptr;\n", "\tProjectDialog *project_dialog = nullptr;\n\tString github_local_project_path;\n\tString github_analysis_commit_sha;\n\tbool github_analysis_waiting_for_tree = false;\n\tString github_review_repo;\n\tString github_review_ref;\n\tString github_analysis_fingerprint;\n\tString github_review_expected_fingerprint;\n\tbool github_review_pending = false;\n\tbool github_review_valid = false;\n\tPanelContainer *github_analysis_panel = nullptr;\n\tLineEdit *github_repo_input = nullptr;\n\tLineEdit *github_ref_input = nullptr;\n\tRichTextLabel *github_analysis_output = nullptr;\n\tHTTPRequest *github_analysis_request = nullptr;\n\tButton *github_analyze_button = nullptr;\n\tButton *github_review_button = nullptr;\n")
 
     once(SOURCE, '#include "scene/gui/flow_container.h"\n', '#include "scene/gui/flow_container.h"\n#include "core/crypto/hashing_context.h"\n#include "core/io/dir_access.h"\n#include "core/io/file_access.h"\n#include "core/io/json.h"\n#include "scene/main/http_request.h"\n#include <functional>\n')
     once(SOURCE, '\t\t\tsidebar_buttons_containter->add_child(run_btn);\n', '\t\t\t\tsidebar_buttons_containter->add_child(run_btn);\n\n\t\t\t\tgithub_sync_btn = memnew(Button);\n\t\t\t\tgithub_sync_btn->set_text(TTRC("GitHub Sync"));\n\t\t\t\tgithub_sync_btn->set_tooltip_text(TTRC("Analyze a public GitHub repository before syncing."));\n\t\t\t\tgithub_sync_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_open_github_analysis));\n\t\t\t\tgithub_sync_btn->set_h_size_flags(Control::SIZE_EXPAND_FILL);\n\t\t\t\tsidebar_buttons_containter->add_child(github_sync_btn);\n')
@@ -67,6 +67,12 @@ def main() -> None:
 		github_analyze_button->set_text(TTR("Analyze repository"));
 		github_analyze_button->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_run_github_analysis));
 		layout->add_child(github_analyze_button);
+		github_review_button = memnew(Button);
+		github_review_button->set_text(TTR("Review changes (revalidate)"));
+		github_review_button->set_tooltip_text(TTR("Recheck the exact commit and local file hashes before accepting this review."));
+		github_review_button->set_disabled(true);
+		github_review_button->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_review_github_analysis));
+		layout->add_child(github_review_button);
 		github_analysis_output = memnew(RichTextLabel);
 		github_analysis_output->set_fit_content(true);
 		github_analysis_output->set_selection_enabled(true);
@@ -92,6 +98,26 @@ def main() -> None:
 	github_analysis_output->clear();
 	github_analysis_output->append_text(TTR("Read-only comparison. Select exactly one local project, enter owner/repository and a branch, tag, or commit, then analyze. No files will be changed."));
 	github_analysis_panel->show();
+}
+
+void ProjectManager::_review_github_analysis() {
+	if (!github_analysis_panel || !github_analysis_panel->is_visible() || github_analysis_fingerprint.is_empty()) {
+		return;
+	}
+	Vector<ProjectList::Item> selected_projects = project_list->get_selected_projects();
+	String repo = github_repo_input->get_text().strip_edges();
+	String ref = github_ref_input->get_text().strip_edges();
+	if (selected_projects.size() != 1 || selected_projects[0].path != github_local_project_path ||
+			repo != github_review_repo || ref != github_review_ref) {
+		github_review_valid = false;
+		github_analysis_output->append_text(TTR("\\nReview invalidated: selected project, repository, or ref changed. Analyze again."));
+		return;
+	}
+	github_review_expected_fingerprint = github_analysis_fingerprint;
+	github_review_pending = true;
+	github_review_valid = false;
+	github_review_button->set_disabled(true);
+	_run_github_analysis();
 }
 
 void ProjectManager::_run_github_analysis() {
@@ -267,6 +293,51 @@ void ProjectManager::_github_analysis_request_completed(int p_result, int p_code
 		github_analysis_output->append_text(vformat(TTR("\\nLocal scan incomplete: %d file/directory read failures. No comparison was produced."), local_scan_errors));
 		return;
 	}
+	// Fingerprint the exact commit, complete remote tree, and complete local inventory.
+	// Sorting makes the fingerprint independent of HashMap iteration order.
+	PackedStringArray fingerprint_lines;
+	fingerprint_lines.push_back("commit:" + github_analysis_commit_sha);
+	fingerprint_lines.push_back("project:" + github_local_project_path);
+	fingerprint_lines.push_back("repo:" + github_repo_input->get_text().strip_edges());
+	fingerprint_lines.push_back("ref:" + github_ref_input->get_text().strip_edges());
+	for (const KeyValue<String, String> &entry : remote_files) {
+		fingerprint_lines.push_back("R:" + entry.key + ":" + entry.value);
+	}
+	for (const KeyValue<String, String> &entry : local_files) {
+		fingerprint_lines.push_back("L:" + entry.key + ":" + entry.value);
+	}
+	fingerprint_lines.sort();
+	String fingerprint_source = String::join(fingerprint_lines, "\\n");
+	Ref<HashingContext> fingerprint_hasher;
+	fingerprint_hasher.instantiate();
+	if (fingerprint_hasher->start(HashingContext::HASH_SHA256) != OK ||
+			fingerprint_hasher->update(fingerprint_source.to_utf8_buffer()) != OK) {
+		github_analysis_output->append_text(TTR("\\nCould not fingerprint the analysis. Review is unavailable."));
+		github_review_pending = false;
+		if (github_review_button) {
+			github_review_button->set_disabled(github_analysis_fingerprint.is_empty());
+		}
+		return;
+	}
+	PackedByteArray fingerprint_digest = fingerprint_hasher->finish();
+	String current_fingerprint = String::hex_encode_buffer(fingerprint_digest.ptr(), fingerprint_digest.size());
+	if (github_review_pending) {
+		if (current_fingerprint == github_review_expected_fingerprint) {
+			github_review_valid = true;
+			github_analysis_output->append_text(TTR("\\nREVIEW VALID: remote commit and all local/remote file hashes are unchanged."));
+		} else {
+			github_review_valid = false;
+			github_analysis_output->append_text(TTR("\\nREVIEW INVALIDATED: remote commit or local files changed. Inspect this new analysis and review again."));
+		}
+		github_review_pending = false;
+	}
+	github_analysis_fingerprint = current_fingerprint;
+	github_review_repo = github_repo_input->get_text().strip_edges();
+	github_review_ref = github_ref_input->get_text().strip_edges();
+	if (github_review_button) {
+		github_review_button->set_disabled(false);
+	}
+
 	int adds = 0;
 	int updates = 0;
 	int unchanged = 0;
@@ -311,7 +382,7 @@ void ProjectManager::_run_project() {
     # Verify required integration points before accepting the patch.
     h = HEADER.read_text(encoding="utf-8")
     c = SOURCE.read_text(encoding="utf-8")
-    for token in ("github_sync_btn", "_github_analysis_request_completed", "GitHub Sync", "Local project:", "Pinned commit:", "/commits/", "github_analysis_waiting_for_tree", "HashingContext::HASH_SHA1", "local_scan_errors > 0", "selected_projects.size() != 1"):
+    for token in ("github_sync_btn", "_github_analysis_request_completed", "GitHub Sync", "Local project:", "Pinned commit:", "Review changes (revalidate)", "_review_github_analysis", "REVIEW INVALIDATED:", "/commits/", "github_analysis_waiting_for_tree", "HashingContext::HASH_SHA1", "local_scan_errors > 0", "selected_projects.size() != 1"):
         if token not in h + c:
             raise SystemExit(f"Patch verification failed: {token}")
     print("Added sidebar GitHub comparison against exactly one selected local project; writes and deletes remain disabled.")
