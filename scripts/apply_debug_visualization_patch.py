@@ -149,6 +149,8 @@ def main() -> None:
         "\tSceneTree *scene_tree = SceneTree::get_singleton();\n"
         "\tERR_FAIL_NULL_V(scene_tree, ERR_UNCONFIGURED);\n"
         "\tconst bool requested = p_args[0];\n"
+        "\t// Refresh global debug setting so existing collision debug instances update.\n"
+        "\tProjectSettings::get_singleton()->set_setting(\"debug/visible_collision_shapes\", requested);\n"
         "\tscene_tree->set_debug_collisions_hint(requested);\n"
         "\tconst bool active = scene_tree->is_debugging_collisions_hint();\n"
         "\tERR_FAIL_COND_V_MSG(active != requested, ERR_UNAVAILABLE, \"Collision visualization is unavailable in this build or physics backend.\");\n"
@@ -168,6 +170,7 @@ def main() -> None:
         "scene:debug_collision_shapes",
         "PREVIEW_DEBUG_COLLISIONS",
         "set_debug_collisions_hint(requested)",
+        \"ProjectSettings::get_singleton()->set_setting(\\\"debug/visible_collision_shapes\\\", requested)\",
         "p_args[0].get_type() != Variant::BOOL",
         "active != requested",
         "Collision visualization is unavailable in this build or physics backend.",
