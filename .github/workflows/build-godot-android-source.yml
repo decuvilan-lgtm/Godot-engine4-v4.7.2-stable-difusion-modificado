@@ -11,6 +11,7 @@ on:
       - "scripts/apply_github_sync_ui_patch.py"
       - "scripts/apply_preview_debug_menu_patch.py"
       - "scripts/package_safe_mcp_android.py"
+      - "scripts/extend_safe_mcp_scene_tools.py"
       - ".github/workflows/build-godot-android-source.yml"
   workflow_dispatch:
     inputs:
