@@ -19,7 +19,7 @@ Godot's FileSystem panel and the scene tabs are different concepts:
 6. **Existing scenes:** detect valid scene files and retain each as an independent scene resource. Do not rewrite a scene's root, children, owners, connections, scripts, or external-resource references merely to make it visible in the editor.
 7. **Scene tabs:** opening an existing scene uses Godot's native scene-opening mechanism, which should create/select a tab for that scene. Do not emulate this by creating a new empty scene and copying all nodes into it.
 8. **Safe duplicate handling:** if the target path already exists, compare hashes and offer a clear replace/skip/rename choice; do not silently merge all nodes into the active scene.
-9. **Dependencies:** preserve relative paths and import metadata where appropriate. Let Godot's resource importer reimport supported assets. Detect missing external resources and report them instead of silently flattening or dropping references.
+9. **Dependencies:** preserve relative paths and import metadata where appropriate. Let Godot's resource importer reimport supported assets. Do not silently flatten or drop missing references; ordinary missing-resource diagnostics belong in Godot's existing Output/Debugger, not in the corrupt-file popup.
 
 ## Post-import corrupt-file alert (required behavior)
 
@@ -40,8 +40,8 @@ A scene that is not reachable from the main scene is not, by itself, an import e
 - Make standalone scenes discoverable in the editor's scene/file navigation so the user can open them later. Opening a scene as a tab is an explicit navigation action; do not auto-open every scene or add every scene to the active node tree.
 - Do not delete, quarantine, hide, or omit a scene merely because it has no incoming instance reference from the main scene or any other scene.
 - Do not invent node instances, parent-child links, scripts, resource references, or scene connections to make an isolated scene appear connected.
-- Do not block or prompt during bulk import solely because a scene is isolated. Continue the import and, if useful, include isolation as non-blocking informational metadata in a report.
-- Reserve blocking errors for actual failures that prevent safe import (for example, corrupt/unreadable files or an unsafe path), not for valid content that is currently unused.
+- Do not block or prompt during bulk import solely because a scene is isolated. Continue the import; isolation alone needs no warning, popup, or error report.
+- Reserve blocking failures for conditions that genuinely prevent a safe import (such as an unsafe path or a failed write transaction). File corruption is reported through the dedicated corrupt-file flow; a valid but unused scene is not an error.
 - Preserve the distinction between “file exists in the project”, “resource depends on another resource”, and “scene is instantiated in the runtime tree”. These are different states and must never be inferred from one another.
 ## Runtime semantics and the distinction that matters
 
@@ -93,8 +93,8 @@ Here, `Enemy.tscn` is not directly instanced by `Main.tscn`, but it is still par
 ### Required rules
 
 - Treat each scene file as an independent resource and each instance relationship as an edge in a dependency graph. Preserve the source paths and all original `ExtResource` references; do not flatten, clone, or rewrite nested scenes just to make their nodes visible in the root scene tree.
-- Traverse transitive dependencies recursively, including scenes nested inside scenes, scripts, textures, fonts, audio, materials, shaders, and other external resources. Use Godot's native resource dependency APIs where possible rather than trying to parse every resource format manually.
-- Track visited resource paths to avoid infinite recursion and duplicate work. Detect and report missing dependencies and cyclic dependency chains; do not silently drop a resource or loop forever. Cycles that Godot itself supports must be preserved rather than “fixed” by rewriting files.
+- Traverse transitive dependencies recursively, including scenes nested inside scenes, scripts, textures, fonts, audio, materials, shaders, and other external resources. Use Godot's native resource dependency APIs where possible rather than trying to parse every resource format manually. Missing-reference diagnostics stay in Godot's normal Output/Debugger; the corrupt-file popup is only for confirmed damaged/unreadable file contents.
+- Track visited resource paths to avoid infinite recursion and duplicate work. Detect missing dependencies and cyclic dependency chains without silently dropping resources or looping forever; surface ordinary dependency diagnostics through Godot's normal diagnostics. Cycles that Godot itself supports must be preserved rather than “fixed” by rewriting files.
 - Preserve inherited scenes and editable-instance overrides. Do not replace an inherited scene with a flattened copy, erase instance overrides, or modify node ownership, signal connections, groups, scripts, unique-name references, or resource UIDs unnecessarily.
 - Distinguish the **resource dependency graph** (which files refer to which other files) from the **runtime node tree** (which instances exist during execution). A resource may be present in the project without being instantiated at runtime; importing it must not automatically add it to the active scene.
 - A scene instance nested several levels deep remains part of the runtime hierarchy when its ancestors are instantiated. It should not be added a second time to the main scene. To edit it, open the corresponding original scene resource in its own editor tab.
