@@ -70,4 +70,4 @@ jobs:
         run: python scripts/validate_scene_import_fixture.py
 
       - name: Report scope
-        run: echo "Source patch anchors and Python fixtures only. No Godot editor compilation, launch, or Linux UI tests were performed."
+        run: echo "Source patch anchors, sync/review helper tests, and scene/corruption fixtures only. No Godot editor compilation, launch, or Linux UI tests were performed."
