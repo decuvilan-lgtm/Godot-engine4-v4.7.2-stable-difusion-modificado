@@ -1,9 +1,6 @@
-name: Mobile UI preflight (Xvfb screenshots)
+name: Disabled legacy Linux UI preflight (Android-only validation)
 
 on:
-  push:
-    branches:
-      - work/mobile-ui-preflight
   workflow_dispatch:
     inputs:
       capture_mode:
