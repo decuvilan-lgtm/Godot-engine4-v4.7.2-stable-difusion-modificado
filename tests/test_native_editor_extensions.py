@@ -32,6 +32,13 @@ class NativeEditorExtensionTests(unittest.TestCase):
         self.assertIn("Size2(0, 180) * EDSCALE", patcher)
         self.assertIn("GitHub: analizar y revisar", patcher)
 
+    def test_preview_debug_controls_have_touch_sized_hit_targets(self):
+        patcher = (ROOT / "scripts/apply_preview_debug_menu_patch.py").read_text(encoding="utf-8")
+        self.assertIn("set_custom_minimum_size(Size2(48, 48) * EDSCALE)", patcher)
+        self.assertIn('("suspend_button", "next_frame_button", "debug_mute_audio_button")', patcher)
+        self.assertIn("PREVIEW_DEBUG_PAUSE_TOGGLE", patcher)
+        self.assertIn("PREVIEW_DEBUG_STOP", patcher)
+
     def test_existing_unsafe_execution_tool_stays_disabled(self):
         packager = (ROOT / "scripts/package_safe_mcp_android.py").read_text(encoding="utf-8")
         self.assertIn("Remove it rather than pretending it is a sandbox", packager)
