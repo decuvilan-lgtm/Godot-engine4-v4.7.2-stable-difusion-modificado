@@ -35,17 +35,18 @@ def main() -> None:
 	if (!github_analysis_panel) {
 		github_analysis_panel = memnew(PanelContainer);
 		github_analysis_panel->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-		github_analysis_panel->set_custom_minimum_size(Size2(0, 240) * EDSCALE);
+		github_analysis_panel->set_custom_minimum_size(Size2(0, 380) * EDSCALE);
 		VBoxContainer *layout = memnew(VBoxContainer);
 		github_analysis_panel->add_child(layout);
 		HBoxContainer *title_row = memnew(HBoxContainer);
 		layout->add_child(title_row);
 		Label *title = memnew(Label);
-		title->set_text(TTR("GitHub Sync — Analyze"));
+		title->set_text(TTR("GitHub: analizar y revisar"));
 		title->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 		title_row->add_child(title);
 		Button *close_button = memnew(Button);
-		close_button->set_text(TTR("Close"));
+		close_button->set_text(TTR("Cerrar"));
+		close_button->set_custom_minimum_size(Size2(64, 44) * EDSCALE);
 		close_button->connect(SceneStringName(pressed), callable_mp(github_analysis_panel, &Control::hide));
 		title_row->add_child(close_button);
 
@@ -55,6 +56,7 @@ def main() -> None:
 		github_repo_input = memnew(LineEdit);
 		github_repo_input->set_placeholder(TTR("owner/repository"));
 		github_repo_input->set_clear_button_enabled(true);
+		github_repo_input->set_custom_minimum_size(Size2(0, 44) * EDSCALE);
 		layout->add_child(github_repo_input);
 		Label *ref_label = memnew(Label);
 		ref_label->set_text(TTR("Branch, tag, or commit"));
@@ -62,13 +64,16 @@ def main() -> None:
 		github_ref_input = memnew(LineEdit);
 		github_ref_input->set_placeholder(TTR("main, master, tag, or commit SHA"));
 		github_ref_input->set_clear_button_enabled(true);
+		github_ref_input->set_custom_minimum_size(Size2(0, 44) * EDSCALE);
 		layout->add_child(github_ref_input);
 		github_analyze_button = memnew(Button);
-		github_analyze_button->set_text(TTR("Analyze repository"));
+		github_analyze_button->set_text(TTR("Analizar repositorio"));
+		github_analyze_button->set_custom_minimum_size(Size2(0, 48) * EDSCALE);
 		github_analyze_button->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_run_github_analysis));
 		layout->add_child(github_analyze_button);
 		github_review_button = memnew(Button);
-		github_review_button->set_text(TTR("Review changes (revalidate)"));
+		github_review_button->set_text(TTR("Revisar cambios"));
+		github_review_button->set_custom_minimum_size(Size2(0, 48) * EDSCALE);
 		github_review_button->set_tooltip_text(TTR("Recheck the exact commit and local file hashes before accepting this review."));
 		github_review_button->set_disabled(true);
 		github_review_button->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_review_github_analysis));
@@ -77,7 +82,7 @@ def main() -> None:
 		github_analysis_output->set_fit_content(true);
 		github_analysis_output->set_selection_enabled(true);
 		github_analysis_output->set_v_size_flags(Control::SIZE_EXPAND_FILL);
-		github_analysis_output->set_custom_minimum_size(Size2(0, 120) * EDSCALE);
+		github_analysis_output->set_custom_minimum_size(Size2(0, 180) * EDSCALE);
 		layout->add_child(github_analysis_output);
 		github_analysis_request = memnew(HTTPRequest);
 		github_analysis_request->set_timeout(30.0);
