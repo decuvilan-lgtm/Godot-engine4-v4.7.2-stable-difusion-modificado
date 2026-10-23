@@ -65,6 +65,8 @@ class GitHubSyncCoreTests(unittest.TestCase):
             manifest_path = Path(td) / "metadata" / "manifest.json"
             old_manifest = {
                 "version": 1,
+                "project_root": str(root.resolve()),
+                "repository_url": "https://github.com/example/project",
                 "tracked_files": {
                     "update.txt": {"sha": blob(b"old")},
                     "delete.txt": {"sha": blob(b"gone")},
@@ -99,13 +101,54 @@ class GitHubSyncCoreTests(unittest.TestCase):
             (root / "file.txt").write_bytes(b"original")
             manifest_path = Path(td) / "meta" / "manifest.json"
             manifest_path.parent.mkdir()
-            manifest_path.write_text(json.dumps({"version": 1, "tracked_files": {}}))
+            manifest_path.write_text(json.dumps({"version": 1, "project_root": str(root.resolve()),
+                                                  "repository_url": "https://github.com/example/project",
+                                                  "tracked_files": {}}))
             plan = [Change("file.txt", "update", blob(b"expected"),
                            blob(b"original"), 8)]
             with self.assertRaises(SyncError):
                 apply_plan(root, plan, lambda _p, _s: b"tampered", manifest_path,
                            "https://github.com/example/project", "main", "b" * 40)
             self.assertEqual((root / "file.txt").read_bytes(), b"original")
+
+
+
+    def test_manifest_cannot_be_reused_for_another_project(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            root_a = base / "project-a"
+            root_b = base / "project-b"
+            root_a.mkdir()
+            root_b.mkdir()
+            (root_a / "project.godot").write_text("a")
+            (root_b / "project.godot").write_text("b")
+            manifest_path = base / "metadata" / "manifest.json"
+            manifest_path.parent.mkdir()
+            manifest_path.write_text(json.dumps({
+                "version": 1, "project_root": str(root_a.resolve()),
+                "repository_url": "https://github.com/example/project",
+                "tracked_files": {}
+            }))
+            with self.assertRaisesRegex(SyncError, "different local project"):
+                apply_plan(root_b, [], lambda _p, _s: b"", manifest_path,
+                           "https://github.com/example/project", "main", "c" * 40)
+
+    def test_manifest_cannot_be_reused_for_another_repository(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            root = base / "project"
+            root.mkdir()
+            (root / "project.godot").write_text("config")
+            manifest_path = base / "metadata" / "manifest.json"
+            manifest_path.parent.mkdir()
+            manifest_path.write_text(json.dumps({
+                "version": 1, "project_root": str(root.resolve()),
+                "repository_url": "https://github.com/example/one",
+                "tracked_files": {}
+            }))
+            with self.assertRaisesRegex(SyncError, "different GitHub repository"):
+                apply_plan(root, [], lambda _p, _s: b"", manifest_path,
+                           "https://github.com/example/two", "main", "d" * 40)
 
 
 if __name__ == "__main__":
