@@ -16,9 +16,9 @@ Importing a complete Godot project must preserve its original directory structur
 
 ## GitHub sync core groundwork
 
-A first, UI-independent implementation of the synchronization algorithms is in [scripts/github_sync_core.py](scripts/github_sync_core.py), with safety/transaction tests in [tests/test_github_sync_core.py](tests/test_github_sync_core.py). It includes Git blob SHA-1 calculation, path and symlink guards, deterministic change planning, versioned manifest handling, staged downloads, backups, post-apply verification, and rollback attempts.
+A first, UI-independent implementation of the synchronization algorithms is in [scripts/github_sync_core.py](scripts/github_sync_core.py), with safety/transaction tests in [tests/test_github_sync_core.py](tests/test_github_sync_core.py). It includes Git blob SHA-1 calculation, path and symlink guards, deterministic change planning, versioned manifest handling, staged downloads, backups, post-apply verification, rollback attempts, and guards binding each non-empty manifest to one canonical project root and repository URL.
 
-**Important:** this is groundwork, not yet connected to the Android Project Manager buttons or GitHub HTTP requests. The native Analyze → Review → Sync flow remains incomplete until that integration is added and tested on the Android editor. No Linux Godot/editor test was run for this change.
+**Important:** this is groundwork, not yet connected to the Android Project Manager buttons or GitHub HTTP requests. The new project/repository isolation checks and tests are source changes only and have not been executed. The native Analyze → Review → Sync flow remains incomplete until that integration is added and tested on the Android editor. No Linux Godot/editor test was run for this change.
 
 ## GitHub Analyze + Sync architecture
 
