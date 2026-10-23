@@ -196,7 +196,7 @@ void ProjectManager::_apply_github_archive(const PackedByteArray &p_archive) {
         '\t\t\tgithub_review_valid = true;\n'
         '\t\t\tif (github_sync_apply_button) { github_sync_apply_button->set_disabled(false); }\n')
     replace_once(SOURCE, old_review, new_review)
-    replace_once(SOURCE, "\\t\\tgithub_review_valid = true;\\n", "\\t\\tgithub_review_valid = true;\\n\\t\\tif (github_sync_apply_button) { github_sync_apply_button->set_disabled(false); }\\n")
+    replace_once(SOURCE, "github_review_valid = true;\n", "github_review_valid = true;\n\t\tif (github_sync_apply_button) { github_sync_apply_button->set_disabled(false); }\n")
     print("Enabled native additive GitHub ZIP import after pinned commit review; existing files are preserved and newly created files are rolled back on write failure.")
 
 
