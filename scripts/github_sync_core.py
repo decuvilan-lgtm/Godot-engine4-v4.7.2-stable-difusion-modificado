@@ -141,12 +141,20 @@ def build_plan(
             size = int(r.get("size") or 0)
             if l is None:
                 changes.append(Change(path, "add", rsha, None, size, "Present in remote, absent locally."))
-            elif lsha != rsha:
-                changes.append(Change(path, "update", rsha, str(lsha), size,
-                                      "Remote version differs from local bytes."))
-            else:
+            elif lsha == rsha:
                 changes.append(Change(path, "unchanged", rsha, str(lsha), size,
                                       "Local Git blob matches remote."))
+            else:
+                old_sha = old.get("sha") if old is not None else None
+                if old_sha is None or lsha != old_sha:
+                    # Never replace untracked or locally edited content silently.
+                    changes.append(Change(
+                        path, "local-only", None, str(lsha), int(l.get("size") or 0),
+                        "CONFLICT: local bytes differ from the last synced version (or no version is tracked); preserved.",
+                    ))
+                else:
+                    changes.append(Change(path, "update", rsha, str(lsha), size,
+                                          "Remote changed since last sync; local bytes still match the last synced version."))
         elif old is not None:
             old_sha = old.get("sha")
             local_sha = str(l.get("git_blob_sha")) if l else None
