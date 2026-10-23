@@ -42,6 +42,7 @@ replace_once(HEADER,
     """\tvoid _import_project();
 	void _show_github_import_dialog();
 	void _github_import_confirmed();
+	void _github_force_search();
 	void _github_import_submitted(const String &p_text);
 	void _github_start_search(int p_page);
 	void _github_search_next_page();
@@ -95,7 +96,7 @@ void ProjectManager::_show_github_import_dialog() {
 \t\tButton *github_search_btn = memnew(Button);
 \t\tgithub_search_btn->set_text(TTRC("Buscar en GitHub"));
 		github_search_btn->set_custom_minimum_size(Size2(0, 44 * EDSCALE));
-\t\tgithub_search_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_github_import_confirmed));
+\t\tgithub_search_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_github_force_search));
 \t\tcontainer->add_child(github_search_btn);
 
 \t\tadd_child(github_import_dialog);
@@ -128,6 +129,37 @@ void ProjectManager::_github_import_submitted(const String &p_text) {
 \t\tgithub_repo_url->release_focus();
 \t}
 \t_github_import_confirmed();
+}
+
+void ProjectManager::_github_force_search() {
+\tif (github_search_request) {
+\t\t_show_error(TTR("A GitHub search is already in progress."));
+\t\treturn;
+\t}
+\tString query = github_repo_url ? github_repo_url->get_text().strip_edges() : String();
+\tif (query.is_empty()) {
+\t\t_show_error(TTR("Enter a repository name, account, or GitHub URL to search."));
+\t\treturn;
+\t}
+\t// A pasted URL becomes a repository-name search, a true fallback for direct import.
+\tString normalized = query;
+\tif (normalized.begins_with("https://github.com/")) {
+\t\tnormalized = normalized.trim_prefix("https://github.com/");
+\t} else if (normalized.begins_with("http://github.com/")) {
+\t\tnormalized = normalized.trim_prefix("http://github.com/");
+\t} else if (normalized.begins_with("github.com/")) {
+\t\tnormalized = normalized.trim_prefix("github.com/");
+\t}
+\tnormalized = normalized.trim_suffix("/");
+\tnormalized = normalized.trim_suffix(".git");
+\tPackedStringArray parts = normalized.split("/", false);
+\tif (parts.size() >= 2 && (query.contains("github.com/") || !query.contains(" "))) {
+\t\tquery = parts[parts.size() - 1];
+\t}
+\tgithub_search_query = query;
+\tgithub_search_page = 1;
+\tgithub_search_total_count = 0;
+\t_github_start_search(1);
 }
 
 void ProjectManager::_github_import_confirmed() {
