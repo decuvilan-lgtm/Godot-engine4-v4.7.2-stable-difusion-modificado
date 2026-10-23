@@ -159,6 +159,13 @@ def build_plan(
     return changes
 
 
+def project_manifest_path(metadata_root: Path, project_root: Path) -> Path:
+    """Return a stable, separate manifest location for one canonical project root."""
+    canonical_root = str(project_root.resolve())
+    identity = hashlib.sha256(canonical_root.encode("utf-8")).hexdigest()
+    return metadata_root.resolve() / "github_sync" / identity / MANIFEST_NAME
+
+
 def load_manifest(path: Path) -> dict:
     if not path.exists():
         return {"version": MANIFEST_VERSION, "tracked_files": {}}
