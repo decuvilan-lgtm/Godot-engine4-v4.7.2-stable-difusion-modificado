@@ -533,21 +533,22 @@ void ProjectManager::_install_mcp_addon_confirmed() {
 
 void ProjectManager::_new_project() {""")
 replace_once(SOURCE,
-    "\t\t\thb->add_child(import_btn);\n
-		\tscan_btn = memnew(Button);",
-    """\t\t\thb->add_child(import_btn);
+    """			hb->add_child(import_btn);
 
-\t\t\tButton *github_import_btn = memnew(Button);
-\t\t\tgithub_import_btn->set_text(TTRC("GitHub"));
-\t\t\tgithub_import_btn->set_tooltip_text(TTRC("Download a project from a public GitHub repository."));
-\t\t\tgithub_import_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_show_github_import_dialog));
-\t\t\thb->add_child(github_import_btn);
+			scan_btn = memnew(Button);""",
+    """			hb->add_child(import_btn);
 
-\t\t\tButton *mcp_install_btn = memnew(Button);
-\t\t\tmcp_install_btn->set_text(TTRC("Install MCP"));
-\t\t\tmcp_install_btn->set_tooltip_text(TTRC("Install and enable the bundled safe MCP addon in the selected project."));
-\t\t\tmcp_install_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_show_mcp_install_dialog));
-\t\t\thb->add_child(mcp_install_btn);
+			Button *github_import_btn = memnew(Button);
+			github_import_btn->set_text(TTRC("GitHub"));
+			github_import_btn->set_tooltip_text(TTRC("Download a project from a public GitHub repository."));
+			github_import_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_show_github_import_dialog));
+			hb->add_child(github_import_btn);
 
-\t\t\tscan_btn = memnew(Button);""")
+			Button *mcp_install_btn = memnew(Button);
+			mcp_install_btn->set_text(TTRC("Install MCP"));
+			mcp_install_btn->set_tooltip_text(TTRC("Install and enable the bundled safe MCP addon in the selected project."));
+			mcp_install_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_show_mcp_install_dialog));
+			hb->add_child(mcp_install_btn);
+
+			scan_btn = memnew(Button);""")
 print("GitHub import patch applied successfully to project_manager.h and project_manager.cpp.")
