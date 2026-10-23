@@ -22,6 +22,12 @@ def _canonical_repo_url(url: str) -> str:
         raise SyncError("Repository URL must identify exactly owner/repository.")
     if any(ch in value for ch in "?#\\"):
         raise SyncError("Repository URL must not contain query, fragment, or backslash.")
+    owner, name = parts
+    allowed_owner = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-"
+    allowed_name = allowed_owner + "_."
+    if (any(ch not in allowed_owner for ch in owner) or owner.startswith("-") or owner.endswith("-")
+            or any(ch not in allowed_name for ch in name) or name in (".", "..")):
+        raise SyncError("Repository owner or name contains unsupported characters.")
     return value
 
 
