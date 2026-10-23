@@ -124,12 +124,6 @@ def main() -> None:
     )
 
     replace_once(
-        SCENE_CPP,
-        '#include "core/config/engine.h"',
-        '#include "core/config/engine.h"\n#include "core/config/project_settings.h"',
-    )
-
-    replace_once(
         SCENE_H,
         "\tstatic Error _msg_debug_mute_audio(const Array &p_args);",
         "\tstatic Error _msg_debug_mute_audio(const Array &p_args);\n"
@@ -155,8 +149,8 @@ def main() -> None:
         "\tSceneTree *scene_tree = SceneTree::get_singleton();\n"
         "\tERR_FAIL_NULL_V(scene_tree, ERR_UNCONFIGURED);\n"
         "\tconst bool requested = p_args[0];\n"
-        "\t// Refresh global debug setting so existing collision debug instances update.\n"
-        "\tProjectSettings::get_singleton()->set_setting(\"debug/visible_collision_shapes\", requested);\n"
+        "\t// Force a state transition so physics debug-change callbacks refresh existing shapes.\n"
+        "\tscene_tree->set_debug_collisions_hint(!requested);\n"
         "\tscene_tree->set_debug_collisions_hint(requested);\n"
         "\tconst bool active = scene_tree->is_debugging_collisions_hint();\n"
         "\tERR_FAIL_COND_V_MSG(active != requested, ERR_UNAVAILABLE, \"Collision visualization is unavailable in this build or physics backend.\");\n"
