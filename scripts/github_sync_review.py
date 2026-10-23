@@ -45,6 +45,13 @@ def create_review_snapshot(project_root: Path, repository_url: str, ref_name: st
         seen.add(path)
         if change.action not in {"add", "update", "delete", "unchanged", "local-only"}:
             raise SyncError(f"Unknown action in review plan: {change.action}")
+        if change.action in {"add", "update", "unchanged"}:
+            if not isinstance(change.remote_sha, str) or len(change.remote_sha) != 40 or any(
+                    ch not in "0123456789abcdefABCDEF" for ch in change.remote_sha):
+                raise SyncError(f"Review entry has an invalid remote blob SHA: {path}")
+        if change.local_sha is not None and (len(change.local_sha) != 40 or any(
+                ch not in "0123456789abcdefABCDEF" for ch in change.local_sha)):
+            raise SyncError(f"Review entry has an invalid local blob SHA: {path}")
         rows.append(asdict(change) | {"path": path})
     rows.sort(key=lambda item: item["path"])
     counts = {action: sum(1 for row in rows if row["action"] == action)
