@@ -181,7 +181,7 @@ void ProjectManager::_github_analysis_request_completed(int p_result, int p_code
 }
 
 void ProjectManager::_run_project() {
-'''))
+''')
     # Verify required integration points before accepting the patch.
     h = HEADER.read_text(encoding="utf-8")
     c = SOURCE.read_text(encoding="utf-8")
