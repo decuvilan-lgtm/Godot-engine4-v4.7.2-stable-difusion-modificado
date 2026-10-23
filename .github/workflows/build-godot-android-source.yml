@@ -267,6 +267,12 @@ jobs:
         run: python scripts/validate_scene_import_fixture.py
       - name: Run import integration patcher
         run: python scripts/apply_github_import_patch.py
+      - name: Validate native GitHub sync patcher syntax
+        run: python -m py_compile scripts/apply_github_sync_ui_patch.py scripts/apply_github_sync_import_patch.py
+      - name: Apply native GitHub analysis and additive import patches
+        run: |
+          python scripts/apply_github_sync_ui_patch.py
+          python scripts/apply_github_sync_import_patch.py
 
   package-safe-mcp-addon:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
