@@ -14,6 +14,12 @@
 Importing a complete Godot project must preserve its original directory structure and keep each existing scene as its own `.tscn`/`.scn` resource. It must never flatten all imported nodes into the currently open scene. A parent scene instance in the main scene keeps its descendants active at runtime; child nodes do not need separate instances in the main scene and remain editable in their own scene tab. See [docs/ANDROID_SCENE_IMPORT_ARCHITECTURE.md](docs/ANDROID_SCENE_IMPORT_ARCHITECTURE.md) for modes, native scene-tab behavior, duplicate handling, dependency preservation, and Android acceptance tests. This is a requirement specification; implementation and Android device validation remain pending.
 
 
+## GitHub sync core groundwork
+
+A first, UI-independent implementation of the synchronization algorithms is in [scripts/github_sync_core.py](scripts/github_sync_core.py), with safety/transaction tests in [tests/test_github_sync_core.py](tests/test_github_sync_core.py). It includes Git blob SHA-1 calculation, path and symlink guards, deterministic change planning, versioned manifest handling, staged downloads, backups, post-apply verification, and rollback attempts.
+
+**Important:** this is groundwork, not yet connected to the Android Project Manager buttons or GitHub HTTP requests. The native Analyze → Review → Sync flow remains incomplete until that integration is added and tested on the Android editor. No Linux Godot/editor test was run for this change.
+
 ## GitHub Analyze + Sync architecture
 
 The planned Analyze/Sync workflow and safety model are documented in [docs/GITHUB_SYNC_ARCHITECTURE.md](docs/GITHUB_SYNC_ARCHITECTURE.md). GitHub is authoritative for tracked files: files removed remotely since the last successful sync are removed locally during sync. Analysis is intended to use commit/tree metadata and a cached manifest so sync does not need to download and compare the entire repository again. Product validation is Android-first for ARM32+ARM64 and the target phone; there is no Linux Godot editor build or Linux screenshot gate. **This is architecture documentation, not a claim that the native analyzer or transactional sync has been implemented or tested.**
