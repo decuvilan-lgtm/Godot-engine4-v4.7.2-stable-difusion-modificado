@@ -386,6 +386,10 @@ def apply_plan(
             try:
                 target = safe_target(root, item["path"])
                 backup_path = safe_target(backup, item["path"])
+                if item.get("action") == "archive" and item.get("existed"):
+                    archived = manifest_path.parent / "preserved-remote-deletions" / txid / item["path"]
+                    if archived.is_file():
+                        archived.unlink()
                 if item["existed"] and backup_path.is_file():
                     target.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(backup_path, target)
