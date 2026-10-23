@@ -1,7 +1,7 @@
 
 ## GitHub Analyze + Sync architecture
 
-The planned Analyze/Sync workflow and safety model are documented in [docs/GITHUB_SYNC_ARCHITECTURE.md](docs/GITHUB_SYNC_ARCHITECTURE.md). GitHub is authoritative for tracked files: files removed remotely since the last successful sync are removed locally during sync. Analysis is intended to use commit/tree metadata and a cached manifest so the sync step does not need to download and compare the entire repository again. **This is architecture documentation, not a claim that the native analyzer or transactional sync has been implemented or tested.**
+The planned Analyze/Sync workflow and safety model are documented in [docs/GITHUB_SYNC_ARCHITECTURE.md](docs/GITHUB_SYNC_ARCHITECTURE.md). GitHub is authoritative for tracked files: files removed remotely since the last successful sync are removed locally during sync. Analysis is intended to use commit/tree metadata and a cached manifest so sync does not need to download and compare the entire repository again. Product validation is Android-first for ARM32+ARM64 and the target phone; there is no Linux Godot editor build or Linux screenshot gate. **This is architecture documentation, not a claim that the native analyzer or transactional sync has been implemented or tested.**
 
 # Godot 4.7.2 Android Editor — GitHub import (ARM32 + ARM64)
 
