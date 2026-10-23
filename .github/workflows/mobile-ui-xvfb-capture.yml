@@ -1,4 +1,4 @@
-name: Disabled legacy Linux UI preflight (Android-only validation)
+name: Disabled legacy Linux UI capture (Android-only project)
 
 on:
   workflow_dispatch:
@@ -22,6 +22,7 @@ concurrency:
 
 jobs:
   capture-ui:
+    if: false # User requirement: do not run Linux editor/UI tests for this Android-only modification.
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
