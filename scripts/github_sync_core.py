@@ -249,7 +249,7 @@ def apply_plan(
     recorded_repo = manifest.get("repository_url")
     if recorded_repo and recorded_repo.rstrip("/") != repo_url.rstrip("/"):
         raise SyncError("Sync manifest belongs to a different GitHub repository. Re-link and analyze before syncing.")
-    selected = [c for c in changes if c.action in ("add", "update", "delete")]
+    selected = [c for c in changes if c.action in ("add", "update", "delete", "archive")]
     tracked_before_sync = manifest.get("tracked_files", {})
     for c in selected:
         normalized_path = normalize_repo_path(c.path)
