@@ -116,7 +116,10 @@ def main() -> None:
         "\t\tgame_size_label->set_text(\"\");",
         "\t\tdebug_visual_collisions = false;\n"
         "\t\tmenu = game_window_options_menu->get_popup();\n"
-        "\t\tmenu->set_item_checked(menu->get_item_index(PREVIEW_DEBUG_COLLISIONS), false);\n"
+        "\t\tconst int collision_item_index = menu->get_item_index(PREVIEW_DEBUG_COLLISIONS);\n"
+        "\t\tif (collision_item_index >= 0) {\n"
+        "\t\t\tmenu->set_item_checked(collision_item_index, false);\n"
+        "\t\t}\n"
         "\t\tgame_size_label->set_text(\"\");",
     )
 
@@ -142,9 +145,13 @@ def main() -> None:
         "}\n\n"
         "Error SceneDebugger::_msg_debug_collision_shapes(const Array &p_args) {\n"
         "\tERR_FAIL_COND_V(p_args.size() != 1, ERR_INVALID_DATA);\n"
+        "\tERR_FAIL_COND_V(p_args[0].get_type() != Variant::BOOL, ERR_INVALID_DATA);\n"
         "\tSceneTree *scene_tree = SceneTree::get_singleton();\n"
         "\tERR_FAIL_NULL_V(scene_tree, ERR_UNCONFIGURED);\n"
-        "\tscene_tree->set_debug_collisions_hint(bool(p_args[0]));\n"
+        "\tconst bool requested = p_args[0];\n"
+        "\tscene_tree->set_debug_collisions_hint(requested);\n"
+        "\tconst bool active = scene_tree->is_debugging_collisions_hint();\n"
+        "\tERR_FAIL_COND_V_MSG(active != requested, ERR_UNAVAILABLE, \"Collision visualization is unavailable in this build or physics backend.\");\n"
         "\treturn OK;\n"
         "}\n",
     )
@@ -160,7 +167,10 @@ def main() -> None:
         "set_debug_collision_shapes(bool p_enabled)",
         "scene:debug_collision_shapes",
         "PREVIEW_DEBUG_COLLISIONS",
-        "set_debug_collisions_hint(bool(p_args[0]))",
+        "set_debug_collisions_hint(requested)",
+        "p_args[0].get_type() != Variant::BOOL",
+        "active != requested",
+        "Collision visualization is unavailable in this build or physics backend.",
         'message_handlers["debug_collision_shapes"]',
         "[Preview Debugger] Collision shapes enabled.",
         "Collision visualization requires a running debug game.",
