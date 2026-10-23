@@ -25,6 +25,9 @@ Two additional source-only helpers now cover the next implementation steps:
 
 ## GitHub sync core groundwork
 
+- `scripts/github_sync_review.py` now creates a deterministic review snapshot pinned to the canonical project root, GitHub repository, ref, and full commit SHA. It sorts paths, counts add/update/delete/unchanged/local-only actions, fingerprints the reviewed plan, rejects duplicate paths and invalid repository targets, and can revalidate the review context before a future sync confirmation. This is a tested review-model foundation; the Android panel is not yet wired to it.
+
+
 A first, UI-independent implementation of the synchronization algorithms is in [scripts/github_sync_core.py](scripts/github_sync_core.py), with safety/transaction tests in [tests/test_github_sync_core.py](tests/test_github_sync_core.py). It includes Git blob SHA-1 calculation, path and symlink guards, deterministic change planning, versioned manifest handling, staged downloads, backups, post-apply verification, rollback attempts, stable per-project manifest paths, and guards binding each non-empty manifest to one canonical project root and repository URL. The new `validate-github-sync-core.yml` workflow runs Python unit tests only; `validate-android-patch-anchors.yml` is a manual source-only check for the GitHub import and preview debugger patch anchors plus scene fixtures, with no editor build or launch.
 
 **Important:** this is groundwork, not yet connected to the Android Project Manager buttons or GitHub HTTP requests. The new project/repository isolation checks and tests are source changes only and have not been executed. The native Analyze → Review → Sync flow remains incomplete until that integration is added and tested on the Android editor. No Linux Godot/editor test was run for this change.
