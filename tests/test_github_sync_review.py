@@ -34,6 +34,23 @@ class ReviewSnapshotTests(unittest.TestCase):
         with self.assertRaisesRegex(SyncError, "stale"):
             validate_review_snapshot(snapshot, root, "https://github.com/owner/repo", "main", "b" * 40)
 
+    def test_snapshot_rejects_tampered_top_level_context_and_counts(self):
+        temp, root = self.make_project()
+        self.addCleanup(temp.cleanup)
+        snapshot = create_review_snapshot(
+            root, "https://github.com/owner/repo", "main", "a" * 40,
+            [Change("new.txt", "add", git_blob_sha1(b"new"), None, 3)],
+        )
+        tampered_repo = dict(snapshot)
+        tampered_repo["repository_url"] = "https://github.com/other/repo"
+        with self.assertRaisesRegex(SyncError, "context or counts"):
+            validate_review_snapshot(tampered_repo, root, "https://github.com/owner/repo", "main", "a" * 40)
+        tampered_counts = dict(snapshot)
+        tampered_counts["counts"] = dict(snapshot["counts"])
+        tampered_counts["counts"]["add"] = 0
+        with self.assertRaisesRegex(SyncError, "context or counts"):
+            validate_review_snapshot(tampered_counts, root, "https://github.com/owner/repo", "main", "a" * 40)
+
     def test_snapshot_rejects_duplicate_paths_and_noncanonical_url(self):
         temp, root = self.make_project()
         self.addCleanup(temp.cleanup)
