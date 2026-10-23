@@ -154,7 +154,7 @@ void ProjectManager::_github_force_search() {
 \tnormalized = normalized.trim_suffix(".git");
 \tPackedStringArray parts = normalized.split("/", false);
 \tif (parts.size() >= 2 && (query.contains("github.com/") || !query.contains(" "))) {
-\t\t// Use the repository segment, not /tree/<branch> or /issues/<number>.\n\t\tquery = parts[1];
+\t\t// Scope URL and owner/repo searches to the exact owner; URL suffixes are ignored.\n\t\tquery = parts[1] + " user:" + parts[0];
 \t}
 \tgithub_search_query = query;
 \tgithub_search_page = 1;
