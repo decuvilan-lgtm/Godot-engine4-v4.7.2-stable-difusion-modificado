@@ -21,18 +21,16 @@ Godot's FileSystem panel and the scene tabs are different concepts:
 8. **Safe duplicate handling:** if the target path already exists, compare hashes and offer a clear replace/skip/rename choice; do not silently merge all nodes into the active scene.
 9. **Dependencies:** preserve relative paths and import metadata where appropriate. Let Godot's resource importer reimport supported assets. Detect missing external resources and report them instead of silently flattening or dropping references.
 
-## Post-import corrupt-file report (required behavior)
+## Post-import corrupt-file alert (required behavior)
 
-After import finishes and Godot has loaded the project, show one consolidated popup only for files that are genuinely corrupt, truncated, unreadable, or structurally invalid as files/resources. This is an integrity/readability report, not a general script-error or project-diagnostics report.
+This popup has one narrow purpose: tell the user which imported files are genuinely corrupt or unreadable. It is not a general error report and must not duplicate Godot's Output or Debugger.
 
-- Include concrete cases such as a truncated/corrupt image or audio file that cannot be decoded, a damaged binary resource, or a scene/resource file whose contents are corrupted and cannot be parsed.
-- Do not classify ordinary script parse errors (for example, missing quotes/brackets, invalid syntax, or red underlines), warnings, runtime bugs, unresolved design connections, or a valid standalone scene as file corruption. Report these through their normal Godot editor/debugger mechanisms instead.
-- Base classification on evidence from the actual file/resource reader or decoder: corruption/truncation, invalid container/header/format data, or a hard read/parse failure indicating the file contents cannot be consumed. A missing dependency alone is not proof that the existing file itself is corrupt; identify it separately as a missing reference if the report supports that category.
-- For each confirmed corrupt/unreadable file, show its project-relative path and a concise reason supplied by the reader/decoder when available. Deduplicate repeated reports for the same file.
-- Do not interrupt bulk import with one dialog per file. Collect file-integrity failures and present the list once the project is loaded. If no confirmed corrupt/unreadable files are found, do not show this popup.
-- Preserve the original file whenever possible; do not silently repair, replace, or fabricate content. Provide a copyable report, and keep ordinary editor/script diagnostics separate.
-- If the project cannot be loaded at all because a critical project file is corrupt, the editor cannot truthfully wait until normal project loading completes; show a clear recovery/error screen for that case instead of pretending post-load succeeded.
-
+- Show the popup only for confirmed file-integrity/readability failures, such as truncated/corrupt image or audio data, damaged binary resources, or a scene/resource file whose contents cannot be parsed because the file itself is damaged.
+- Do not include script syntax errors, missing quotes/brackets, red underlines, warnings, runtime errors, ordinary load diagnostics, or general project errors. Godot's existing Output and Debugger remain responsible for those.
+- Identify each affected file by project-relative path and, when available, a short reason that specifically describes the corruption/read failure. Do not label a file corrupt based only on a downstream script error or missing reference.
+- Collect these findings during import/loading and display one concise popup after the project opens. If no confirmed corrupt files are found, show no popup.
+- Preserve original files where possible; do not silently repair, replace, or invent file contents. Provide a way to copy the list if useful, without turning it into a general diagnostics console.
+- If a critical corrupt file prevents the project from opening at all, show a focused recovery/error screen for that blocking file rather than a post-load popup.
 
 ## Isolated scenes and import safety (required)
 
