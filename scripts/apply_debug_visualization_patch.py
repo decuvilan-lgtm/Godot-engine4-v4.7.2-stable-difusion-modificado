@@ -126,7 +126,7 @@ def main() -> None:
     replace_once(
         SCENE_CPP,
         '#include "core/config/engine.h"',
-        '#include "core/config/engine.h"\\n#include "core/config/project_settings.h"',
+        '#include "core/config/engine.h"\n#include "core/config/project_settings.h"',
     )
 
     replace_once(
