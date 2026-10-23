@@ -9,17 +9,18 @@ Construir y verificar una versión modificada del **editor real de Godot 4.7.2 p
 - Interfaz táctil adaptada a pantallas de aproximadamente 720 × 1600.
 - La infraestructura Linux/Windows usada por GitHub Actions, si la hay, solo sirve para preparar o validar el APK. **No añadir funciones del producto exclusivas de PC ni presentar pruebas de escritorio como pruebas de Android.**
 
-Rama de trabajo: `work/mobile-ui-preflight`.
+Rama de base estable: `work/mobile-ui-preflight`. Rama actual de implementación sin compilaciones automáticas: `feature/native-editor-integration`.
 
 ## Prioridades de ejecución
 
-Trabajar en este orden y evitar ampliar funciones periféricas antes de comprobar la prioridad actual:
+**No iniciar otra compilación completa de Android durante la fase de implementación.** Una compilación ARM32+ARM64 tarda aproximadamente una hora. Primero terminar y revisar los cambios de código; compilar una sola vez cuando las modificaciones planeadas estén integradas. La prueba final de instalación y uso sigue correspondiendo al usuario en el LG K51.
 
-1. **GitHub: búsqueda e importación reales en Android.** Probar enlace pegado, envío con «Listo» del teclado, botón «Buscar en GitHub», selección del resultado, descarga e importación de un proyecto público.
-2. **Generar un APK nuevo** desde el commit exacto que contiene las correcciones; comprobar que es el editor completo y que contiene ambas arquitecturas. No reutilizar APK antiguos ni confundir un APK intermedio de Gradle con el editor completo.
-3. **Probar en el LG K51.** Confirmar búsqueda, importación, apertura y ejecución del proyecto importado. Registrar por separado cada resultado; una prueba estática no demuestra que funcione en el teléfono.
-4. **Completar la sincronización segura GitHub → Godot** e integrarla en el editor nativo antes de habilitar el botón Sync.
-5. Después, completar importación de escenas con dependencias, clasificación de corrupción real y validación de MCP/vista previa en Android.
+1. Terminar la integración nativa de GitHub: revisión fijada al commit, manifiesto persistente, conflictos, recuperación de cambios locales, transacción y rollback. Sync seguirá deshabilitado hasta cumplir las garantías.
+2. Completar la importación de escenas con dependencias usando los cargadores nativos de Godot; preservar rutas, instancias, escenas heredadas, señales y grupos.
+3. Conectar las alertas de corrupción real al flujo nativo de lectura, sin duplicar Output/Debugger.
+4. Completar y verificar el control MCP del editor y de la vista previa: navegación de UI, escena/nodos, controles de ejecución y juego en ejecución.
+5. Revisar la adaptación móvil y ejecutar pruebas estáticas de todas las modificaciones.
+6. Solo entonces generar un APK ARM32+ARM64 y detenerse para la prueba real en el LG K51.
 
 No repetir listas de mejoras sin implementar trabajo. No afirmar que una función está terminada hasta reunir la evidencia correspondiente.
 
@@ -66,7 +67,7 @@ Existe un clasificador auxiliar; todavía debe conectarse al flujo nativo. Mante
 
 ### MCP y vista previa
 
-Hay una etapa de empaquetado de un complemento MCP revisado para el APK, pero no se debe afirmar que el control de menús, organización de escenas, localización de controles o interacción con un juego en ejecución está listo sin verificarlo en el teléfono y comprobar las herramientas realmente expuestas.
+El paquete MCP endurecido ya incluye herramientas tipadas para inspeccionar y activar controles de la interfaz del editor, abrir/ejecutar escenas, modificar nodos con undo/redo, leer diagnósticos y controlar un juego mediante un puente de ejecución local. La nueva herramienta `inspect_scene_dependencies` usa `ResourceLoader.get_dependencies()` para construir un grafo acotado y de solo lectura, incluyendo recursos binarios cuando el cargador los expone. Esto **inspecciona dependencias; todavía no es el importador nativo de escenas desde GitHub**. Todo el conjunto requiere pruebas de empaquetado y uso real antes de declararse listo.
 
 ## Compilación y comprobación
 
@@ -80,11 +81,11 @@ La aceptación final requiere instalar y probar el APK en Android. Si no se tien
 
 ## Próximos pasos concretos
 
-1. Revisar la corrección de envío con teclado y añadir comprobaciones que detecten que el handler llama a búsqueda, además de validar el anclaje.
-2. Ejecutar la validación estática; resolver fallos reales de workflows y no usar flujos de captura/compilación de escritorio como validación de producto.
-3. Disparar una compilación Android ARM32+ARM64 solo cuando las comprobaciones previas pasen.
-4. Probar el APK resultante en el LG K51: búsqueda por texto, enlace pegado + «Listo», botón de búsqueda, paginación, importación y ejecución de un proyecto de prueba.
-5. Solo después de estabilizar GitHub, integrar la sincronización transaccional en C++/Godot Android, incluidos manifiesto persistente, verificación de huellas, recuperación externa y rollback.
-6. Mantener este README actualizado con evidencia concreta y separar claramente: auxiliar probado, integración compilada, prueba real en teléfono.
+1. Integrar el escritor transaccional de GitHub en el editor nativo y mantener Sync deshabilitado hasta superar sus pruebas.
+2. Conectar el cierre de dependencias de escenas al flujo real de importación de Godot, no limitarse al grafo de inspección MCP.
+3. Conectar el clasificador de corrupción a errores de lectura nativos.
+4. Validar todas las herramientas MCP y los controles de vista previa incluidos en el paquete.
+5. Ejecutar validaciones estáticas sin disparar una compilación Android en cada commit de implementación.
+6. Compilar una sola vez cuando el conjunto esté listo y entregar el APK para la prueba real en el LG K51.
 
 **Principio de trabajo:** avanzar con cambios comprobables, proteger los proyectos del usuario y priorizar el funcionamiento móvil real sobre añadir más funciones.
