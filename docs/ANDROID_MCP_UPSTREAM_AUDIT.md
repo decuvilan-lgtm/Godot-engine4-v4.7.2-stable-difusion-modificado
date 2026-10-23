@@ -6,7 +6,7 @@ Reviewed upstream revision pinned in CI: `5df91076250ece38ab182b2ca8b8a4a5d9a2d9
 
 ## Scope
 
-This is a source-level initial audit of the public upstream addon `GeorgeMee/godot-mcp-android`, which the current packaging workflow checks out from its `main` branch. It is not a device test and does not imply a live MCP client is connected.
+This is a source-level audit of the public upstream addon `GeorgeMee/godot-mcp-android`. The current Android packaging workflow pins revision `5df91076250ece38ab182b2ca8b8a4a5d9a2d938` rather than following `main`. This is not a device test and does not imply a live MCP client is connected.
 
 ## Upstream tool surface observed
 
@@ -102,7 +102,7 @@ The packaging job should continue to assert all of the following:
 
 ## Next MCP hardening task
 
-The pinned upstream `write_file` and `edit_file` tools still overwrite project files directly. Before expanding mutation coverage, add collision-safe recovery copies for existing files, reject directory targets and empty/invalid paths, and test both successful writes and failure paths. Keep recovery data outside the project tree and never upload it. This work remains unimplemented until code and automated tests land.
+The pinned upstream `write_file` and `edit_file` tools still write files directly rather than using the editor's undo manager. The current packaging script adds verified recovery copies under the project-local `.godot_mcp_backups` directory before overwriting existing files. Remaining audit items: explicitly test directory targets and empty/invalid paths, failure-path behavior, restore/recovery UX, and backup retention. The generated protection has not been validated in a live Android editor.
 
 
 ## Updated dual-ABI build result — 2026-10-22
