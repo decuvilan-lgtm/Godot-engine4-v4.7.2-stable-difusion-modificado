@@ -95,10 +95,10 @@ Estas son ampliaciones propias del editor Android y de su complemento MCP; no de
 
 ## Visualización de depuración sin scripts temporales
 
-**Estado: primera integración de código fuente añadida; falta compilación y prueba visual en Android.** El menú de la vista previa incorpora interruptores nativos para formas de colisión, rutas y navegación. Los cambios viajan por el protocolo de depuración a `SceneDebugger` y activan los hints de `SceneTree`; los resultados de la acción se informan en Output y los mensajes inválidos generan errores de depuración. Actions validó el anclaje y la aplicación del parche sobre el código oficial 4.7.2 sin compilar. Esto no prueba todavía el comportamiento visual del APK.
+**Estado: primera opción aislada integrada en el código fuente; falta compilación C++ y prueba visual en Android.** La vista previa incorpora únicamente el interruptor de formas de colisión. Este envía el estado por el protocolo nativo de depuración a `SceneDebugger`, que activa el hint de colisiones de `SceneTree`. Output informa la acción y advierte si no existe una sesión de depuración activa. Actions aplicó y validó estáticamente el parche sobre el código oficial 4.7.2, sin compilar. Esto no prueba todavía el comportamiento visual del APK.
 
 ### Física y colisiones
-- **Implementado en el parche fuente inicial:** interruptor de formas de colisión en la vista previa, conectado al hint nativo de Godot.
+- **Integración de código fuente:** interruptor de formas de colisión en la vista previa, conectado al hint nativo de Godot. Aún sin prueba de compilación o ejecución.
 - **Pendiente:** distinguir áreas/cuerpos, puntos de contacto y normales, RayCast/ShapeCast, capas, máscaras y exclusiones.
 - Formas de colisión 2D/3D y formas activas durante la ejecución.
 - Áreas `Area2D`/`Area3D` y cuerpos StaticBody, RigidBody y CharacterBody.
@@ -107,7 +107,7 @@ Estas son ampliaciones propias del editor Android y de su complemento MCP; no de
 - Capas, máscaras y exclusiones de colisión de los nodos seleccionados.
 
 ### Navegación e IA
-- **Implementado en el parche fuente inicial:** interruptores para depuración nativa de rutas y navegación.
+- **Pendiente; no se exponen todavía en la interfaz.** Se implementarán solo después de terminar y probar la opción de colisiones.
 - **Pendiente:** controles separados para mallas, destinos, agentes, obstáculos y visualización específica de detección de enemigos.
 - Mallas y regiones de navegación, rutas calculadas, destinos y agentes.
 - Obstáculos, trayectorias Path2D/Path3D y seguidores.
@@ -126,8 +126,8 @@ Solo mostrar datos reales de nodos/sistemas existentes; no inventar rutas ni cre
 - Guías, cuadrícula, alineación, zona segura móvil y límites visibles de la UI durante la vista previa.
 
 ### Herramientas del editor 2D y 3D
-- **2D:** cuadrícula/guías, colisiones, límites físicos, pivotes/orígenes, cámaras, rutas y navegación.
-- **3D:** cuerpos y colisiones, contactos/normales cuando sea posible, cámaras/frustum, luces y rangos, ejes/pivotes/orientación, navegación y obstáculos.
+- **2D:** cuadrícula/guías, colisiones, límites físicos, pivotes/orígenes, cámaras, rutas y navegación. Solo las formas de colisión tienen ahora una integración de código fuente parcial.
+- **3D:** cuerpos y colisiones, contactos/normales cuando sea posible, cámaras/frustum, luces y rangos, ejes/pivotes/orientación, navegación y obstáculos. Estas opciones siguen pendientes.
 Si Godot ya ofrece una visualización, exponer un acceso rápido en lugar de duplicarla.
 
 ### Menú de la vista previa: “Visualización de depuración”
@@ -142,11 +142,11 @@ Interruptores independientes para colisiones, áreas de detección, RayCast/Shap
 6. Validar primero anclajes y pruebas estáticas en Actions; después probar proyectos 2D y 3D reales y la vista previa Android. Las pruebas estáticas no prueban el comportamiento visual en el dispositivo.
 
 ### Orden de implementación
-1. Inventariar visualizaciones nativas y su alcance.
-2. Exponer colisiones, formas físicas, contactos y RayCast/ShapeCast.
-3. Añadir navegación, rutas, pivotes, nombres y límites.
-4. Añadir animaciones, cámaras e interfaz.
-5. Probar encendido/apagado sin alterar el comportamiento normal del juego.
+1. Terminar y validar de extremo a extremo el interruptor de formas de colisión (compilación y prueba real de vista previa).
+2. Añadir y validar por separado contactos/normales y RayCast/ShapeCast.
+3. Añadir y validar por separado navegación/rutas.
+4. Continuar con pivotes, nombres, límites, animaciones, cámaras e interfaz, una opción por vez.
+5. Probar cada opción en proyectos 2D y 3D reales antes de comenzar la siguiente.
 
 ## Compilación y comprobación
 
