@@ -185,7 +185,7 @@ def main() -> None:
         '\tmessage_handlers["debug_collision_shapes"] = _msg_debug_collision_shapes;',
     )
 
-    combined = GAME_H.read_text(encoding="utf-8") + GAME_CPP.read_text(encoding="utf-8") + SCENE_H.read_text(encoding="utf-8") + SCENE_CPP.read_text(encoding="utf-8")
+    combined = GAME_H.read_text(encoding="utf-8") + GAME_CPP.read_text(encoding="utf-8") + SCENE_H.read_text(encoding="utf-8") + SCENE_CPP.read_text(encoding="utf-8") + SCENE_TREE_CPP.read_text(encoding="utf-8")
     for token in (
         "set_debug_collision_shapes(bool p_enabled)",
         "scene:debug_collision_shapes",
