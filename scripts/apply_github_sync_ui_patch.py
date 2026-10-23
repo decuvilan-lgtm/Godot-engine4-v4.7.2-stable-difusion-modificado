@@ -108,8 +108,9 @@ def main() -> None:
 	github_analysis_output->clear();
 	github_analysis_output->append_text(TTR("Contacting GitHub…\\n"));
 	github_analyze_button->set_disabled(true);
-	Error err = github_analysis_request->request(url, PackedStringArray(), HTTPClient::METHOD_GET,
-			"Accept: application/vnd.github+json");
+	PackedStringArray headers;
+	headers.push_back("Accept: application/vnd.github+json");
+	Error err = github_analysis_request->request(url, headers, HTTPClient::METHOD_GET);
 	if (err != OK) {
 		github_analyze_button->set_disabled(false);
 		github_analysis_output->append_text(vformat(TTR("Could not start request (error %d)."), err));
