@@ -116,6 +116,52 @@ class GitHubSyncCoreTests(unittest.TestCase):
                 )
             self.assertEqual(local_file.read_text(), "keep me")
 
+    def test_apply_plan_rejects_stale_update_without_mutation(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            root = base / "project"
+            root.mkdir()
+            (root / "project.godot").write_text("config")
+            target = root / "file.txt"
+            target.write_bytes(b"changed after analysis")
+            manifest_path = base / "meta" / "manifest.json"
+            manifest_path.parent.mkdir()
+            manifest_path.write_text(json.dumps({
+                "version": 1, "project_root": str(root.resolve()),
+                "repository_url": "https://github.com/example/project",
+                "tracked_files": {"file.txt": {"sha": blob(b"original")}}
+            }))
+            with self.assertRaisesRegex(SyncError, "changed after analysis"):
+                apply_plan(
+                    root, [Change("file.txt", "update", blob(b"remote"), blob(b"original"), 6)],
+                    lambda _path, _sha: b"remote", manifest_path,
+                    "https://github.com/example/project", "main", "f" * 40,
+                )
+            self.assertEqual(target.read_bytes(), b"changed after analysis")
+
+    def test_apply_plan_rejects_local_file_created_after_analysis(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            root = base / "project"
+            root.mkdir()
+            (root / "project.godot").write_text("config")
+            target = root / "new.txt"
+            target.write_text("user data")
+            manifest_path = base / "meta" / "manifest.json"
+            manifest_path.parent.mkdir()
+            manifest_path.write_text(json.dumps({
+                "version": 1, "project_root": str(root.resolve()),
+                "repository_url": "https://github.com/example/project",
+                "tracked_files": {}
+            }))
+            with self.assertRaisesRegex(SyncError, "appeared after analysis"):
+                apply_plan(
+                    root, [Change("new.txt", "add", blob(b"remote"), None, 6)],
+                    lambda _path, _sha: b"remote", manifest_path,
+                    "https://github.com/example/project", "main", "1" * 40,
+                )
+            self.assertEqual(target.read_text(), "user data")
+
     def test_bad_download_hash_leaves_project_unchanged(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td) / "project"
