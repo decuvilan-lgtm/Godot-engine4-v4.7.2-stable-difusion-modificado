@@ -74,7 +74,7 @@ jobs:
           EOF
 
       - name: Capture Project Manager and editor at desktop, portrait, and narrow sizes
-        if: ${{ inputs.capture_mode == 'both' || inputs.capture_mode == 'project-manager' || inputs.capture_mode == 'editor' }}
+        if: ${{ github.event_name == 'push' || inputs.capture_mode == 'both' || inputs.capture_mode == 'project-manager' || inputs.capture_mode == 'editor' }}
         shell: bash
         run: |
           set -euo pipefail
