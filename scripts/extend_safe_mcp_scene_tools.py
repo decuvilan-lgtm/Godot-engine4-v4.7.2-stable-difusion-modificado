@@ -104,11 +104,11 @@ def replace_once(source: str, old: str, new: str, label: str) -> str:
 def main() -> None:
     if not ADDON.is_dir():
         raise SystemExit("Safe MCP addon must be packaged before extending it.")
-    TOOL.parent.mkdir(parents=True, exist_ok=True)
-    TOOL.write_text(TOOL_SOURCE, encoding="utf-8")
     registry = REGISTRY.read_text(encoding="utf-8")
     if "InspectSceneDependenciesTool" in registry or TOOL.exists():
         raise SystemExit("Dependency inspection patch is already applied or partially applied; refusing duplicate registration.")
+    TOOL.parent.mkdir(parents=True, exist_ok=True)
+    TOOL.write_text(TOOL_SOURCE, encoding="utf-8")
     registry = replace_once(
         registry,
         'const InstallRuntimeGameBridgeTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/install_runtime_game_bridge_tool.gd")',
