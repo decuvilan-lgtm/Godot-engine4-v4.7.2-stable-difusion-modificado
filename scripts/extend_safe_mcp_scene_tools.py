@@ -130,6 +130,10 @@ def main() -> None:
                 archive.write(path, path.relative_to(ROOT / "dist"))
     if "ExecuteScriptTool" in registry or "delete_project" in registry:
         raise SystemExit("Unsafe MCP tool registration detected.")
+    if registry.count("register(InspectSceneDependenciesTool.new(editor_interface))") != 1:
+        raise SystemExit("Native dependency tool must be registered exactly once.")
+    if not TOOL.is_file() or "ResourceLoader.get_dependencies(current)" not in TOOL.read_text(encoding="utf-8"):
+        raise SystemExit("Native dependency tool source is missing or incomplete.")
     if "ResourceLoader.get_dependencies(current)" not in TOOL_SOURCE or "is_safe_project_path(dependency)" not in TOOL_SOURCE:
         raise SystemExit("Native dependency traversal or path validation is missing.")
     with ZipFile(archive_path, "r") as archive:
