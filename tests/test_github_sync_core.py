@@ -81,6 +81,39 @@ class GitHubSyncCoreTests(unittest.TestCase):
         self.assertIn("outside the project", plan[0].reason)
         self.assertEqual(plan[0].local_sha, edited)
 
+    def test_apply_archives_locally_edited_file_deleted_from_remote(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "project"
+            root.mkdir()
+            (root / "project.godot").write_text("config")
+            edited_path = root / "scene.tscn"
+            edited_path.write_bytes(b"edited in Godot")
+            original_sha = blob(b"original")
+            edited_sha = blob(b"edited in Godot")
+            manifest_path = Path(td) / "app-data" / "manifest.json"
+            manifest_path.parent.mkdir()
+            manifest_path.write_text(json.dumps({
+                "version": 1,
+                "project_root": str(root.resolve()),
+                "repository_url": "https://github.com/example/project",
+                "tracked_files": {"scene.tscn": {"sha": original_sha, "size": 8}},
+            }))
+            plan = build_plan(
+                remote_tree={},
+                local_inventory={"scene.tscn": {"git_blob_sha": edited_sha, "size": 15}},
+                previous_manifest={"tracked_files": {"scene.tscn": {"sha": original_sha, "size": 8}}},
+            )
+            result = apply_plan(
+                root, plan, lambda path, sha: b"",
+                manifest_path, "https://github.com/example/project", "main", "a" * 40,
+            )
+            self.assertFalse(edited_path.exists())
+            archived = manifest_path.parent / "preserved-remote-deletions" / result["transaction_id"] / "scene.tscn"
+            self.assertTrue(archived.is_file())
+            self.assertEqual(archived.read_bytes(), b"edited in Godot")
+            saved = json.loads(manifest_path.read_text())
+            self.assertNotIn("scene.tscn", saved["tracked_files"])
+
     def test_manifest_version_is_checked(self):
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "manifest.json"
