@@ -45,4 +45,4 @@ jobs:
         run: python -m unittest -v test_github_sync_review
 
       - name: Report scope
-        run: echo "This workflow runs Python unit tests only. It does not build, launch, or test the Godot editor on Linux."
+        run: echo "This workflow runs Python sync-core and commit-pinned review tests only. It does not build or launch Godot."
