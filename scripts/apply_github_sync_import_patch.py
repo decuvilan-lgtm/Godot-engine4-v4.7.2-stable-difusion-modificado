@@ -81,7 +81,7 @@ void ProjectManager::_apply_github_import() {
 		return;
 	}
 	String url = "https://api.github.com/repos/" + parts[0].uri_encode() + "/" + parts[1].uri_encode() +
-			"/zipball/" + github_review_ref.uri_encode();
+			"/zipball/" + github_analysis_commit_sha.uri_encode();
 	PackedStringArray headers;
 	headers.push_back("Accept: application/vnd.github+json");
 	github_archive_download_pending = true;
@@ -196,6 +196,7 @@ void ProjectManager::_apply_github_archive(const PackedByteArray &p_archive) {
         '\t\t\tgithub_review_valid = true;\n'
         '\t\t\tif (github_sync_apply_button) { github_sync_apply_button->set_disabled(false); }\n')
     replace_once(SOURCE, old_review, new_review)
+    replace_once(SOURCE, "\\t\\t\\tgithub_review_valid = true;\\n", "\\t\\t\\tgithub_review_valid = true;\\n\\t\\t\\tif (github_sync_apply_button) { github_sync_apply_button->set_disabled(false); }\\n")
     print("Enabled native additive GitHub ZIP import after pinned commit review; existing files are preserved and newly created files are rolled back on write failure.")
 
 
