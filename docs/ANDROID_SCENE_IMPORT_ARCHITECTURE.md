@@ -21,17 +21,19 @@ Godot's FileSystem panel and the scene tabs are different concepts:
 8. **Safe duplicate handling:** if the target path already exists, compare hashes and offer a clear replace/skip/rename choice; do not silently merge all nodes into the active scene.
 9. **Dependencies:** preserve relative paths and import metadata where appropriate. Let Godot's resource importer reimport supported assets. Detect missing external resources and report them instead of silently flattening or dropping references.
 
-## Post-import resource error report (required behavior)
+## Post-import corrupt-file report (required behavior)
 
-After the import has finished and Godot has completed loading the imported project, show one consolidated popup if any files or resources failed to load. The popup should say that some files/resources could not be loaded and list each affected path, with a concise error/reason when available. It should not make the user guess which asset failed.
+After import finishes and Godot has loaded the project, show one consolidated popup only for files that are genuinely corrupt, truncated, unreadable, or structurally invalid as files/resources. This is an integrity/readability report, not a general script-error or project-diagnostics report.
 
-- Do not interrupt a large import with one dialog per failure. Collect diagnostics throughout import and project loading, then present the summary once the editor is ready.
-- Include actionable details where available: project-relative path, failure stage (copy/import/resource-load), and Godot's error message. Allow the user to copy the report and open the affected file's folder when possible.
-- If everything loads successfully, do not show an error popup.
-- A missing or unreadable resource must not be silently replaced, omitted, or fabricated. Preserve the source files where possible and report the failure accurately.
-- Keep import-fatal problems separate from post-load warnings: unsafe paths or a failed transaction may require stopping/rolling back; ordinary resource-load failures should be summarized after loading when it is safe to continue.
-- Deduplicate repeated messages for the same resource while retaining distinct causes when they materially differ. Cap popup content for very large failure sets and provide a complete copyable report.
-- The report must identify the exact affected files/resources and must not label a valid standalone scene as an error merely because no scene references it.
+- Include concrete cases such as a truncated/corrupt image or audio file that cannot be decoded, a damaged binary resource, or a scene/resource file whose contents are corrupted and cannot be parsed.
+- Do not classify ordinary script parse errors (for example, missing quotes/brackets, invalid syntax, or red underlines), warnings, runtime bugs, unresolved design connections, or a valid standalone scene as file corruption. Report these through their normal Godot editor/debugger mechanisms instead.
+- Base classification on evidence from the actual file/resource reader or decoder: corruption/truncation, invalid container/header/format data, or a hard read/parse failure indicating the file contents cannot be consumed. A missing dependency alone is not proof that the existing file itself is corrupt; identify it separately as a missing reference if the report supports that category.
+- For each confirmed corrupt/unreadable file, show its project-relative path and a concise reason supplied by the reader/decoder when available. Deduplicate repeated reports for the same file.
+- Do not interrupt bulk import with one dialog per file. Collect file-integrity failures and present the list once the project is loaded. If no confirmed corrupt/unreadable files are found, do not show this popup.
+- Preserve the original file whenever possible; do not silently repair, replace, or fabricate content. Provide a copyable report, and keep ordinary editor/script diagnostics separate.
+- If the project cannot be loaded at all because a critical project file is corrupt, the editor cannot truthfully wait until normal project loading completes; show a clear recovery/error screen for that case instead of pretending post-load succeeded.
+
+
 ## Isolated scenes and import safety (required)
 
 A scene that is not reachable from the main scene is not, by itself, an import error. It may be intentionally standalone, unfinished, experimental, or intended for later manual use. A large import must not pause for human decisions just because a valid scene is not referenced by another scene.
