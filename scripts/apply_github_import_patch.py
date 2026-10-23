@@ -68,7 +68,7 @@ void ProjectManager::_show_github_import_dialog() {
 \t\tcontainer->add_child(github_repo_ref);
 
 \t\tButton *github_search_btn = memnew(Button);
-\t\tgithub_search_btn->set_text(TTRC("Buscar en GitHub"));
+\t\tgithub_search_btn->set_text(TTRC("Buscar en GitHub"));\n\t\tgithub_search_btn->set_custom_minimum_size(Size2(0, 44 * EDSCALE));
 \t\tgithub_search_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_github_import_confirmed));
 \t\tcontainer->add_child(github_search_btn);
 
@@ -85,14 +85,14 @@ void ProjectManager::_show_github_import_dialog() {
 \t\tgithub_repo_results = memnew(OptionButton);
 \t\tresults_container->add_child(github_repo_results);
 \t\tgithub_search_more_btn = memnew(Button);
-\t\tgithub_search_more_btn->set_text(TTRC(\"Recargar siguientes 20\"));
+\t\tgithub_search_more_btn->set_text(TTRC(\"Recargar siguientes 20\"));\n\t\tgithub_search_more_btn->set_custom_minimum_size(Size2(0, 44 * EDSCALE));
 \t\tgithub_search_more_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_github_search_next_page));
 \t\tresults_container->add_child(github_search_more_btn);
 \t\tgithub_results_dialog->add_child(results_container);
 \t\tadd_child(github_results_dialog);
 \t\tgithub_results_dialog->connect("confirmed", callable_mp(this, &ProjectManager::_github_search_result_confirmed));
 \t}
-\tgithub_import_dialog->popup_centered(Size2i(520 * EDSCALE, 0));
+\tconst int github_dialog_width = MAX(280, MIN(520 * EDSCALE, int(get_viewport_rect().size.x * 0.92)));\n\tgithub_import_dialog->popup_centered(Size2i(github_dialog_width, 0));
 }
 
 void ProjectManager::_github_import_submitted(const String &p_text) {
@@ -288,7 +288,8 @@ void ProjectManager::_github_search_completed(int p_result, int p_response_code,
 	if (github_search_more_btn) {
 		github_search_more_btn->set_text(github_search_page >= max_page ? TTR("Volver a los primeros 20") : TTR("Recargar siguientes 20"));
 	}
-	github_results_dialog->popup_centered(Size2i(560 * EDSCALE, 0));
+	const int results_dialog_width = MAX(280, MIN(560 * EDSCALE, int(get_viewport_rect().size.x * 0.92)));
+	github_results_dialog->popup_centered(Size2i(results_dialog_width, 0));
 }
 
 void ProjectManager::_github_search_result_confirmed() {
@@ -336,7 +337,8 @@ void ProjectManager::_show_mcp_install_dialog() {
         add_child(mcp_install_dialog);
         mcp_install_dialog->connect("confirmed", callable_mp(this, &ProjectManager::_install_mcp_addon_confirmed));
     }
-    mcp_install_dialog->popup_centered(Size2i(560 * EDSCALE, 0));
+    const int mcp_dialog_width = MAX(280, MIN(560 * EDSCALE, int(get_viewport_rect().size.x * 0.92)));
+    mcp_install_dialog->popup_centered(Size2i(mcp_dialog_width, 0));
 }
 
 void ProjectManager::_install_mcp_addon_confirmed() {
