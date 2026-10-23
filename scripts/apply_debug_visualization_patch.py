@@ -12,6 +12,7 @@ GAME_H = ROOT / "editor/run/game_view_plugin.h"
 GAME_CPP = ROOT / "editor/run/game_view_plugin.cpp"
 SCENE_H = ROOT / "scene/debugger/scene_debugger.h"
 SCENE_CPP = ROOT / "scene/debugger/scene_debugger.cpp"
+SCENE_TREE_CPP = ROOT / "scene/main/scene_tree.cpp"
 
 
 def replace_once(path: Path, old: str, new: str) -> None:
@@ -23,7 +24,7 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 
 def main() -> None:
-    for path in (GAME_H, GAME_CPP, SCENE_H, SCENE_CPP):
+    for path in (GAME_H, GAME_CPP, SCENE_H, SCENE_CPP, SCENE_TREE_CPP):
         if not path.is_file():
             raise SystemExit(f"Godot 4.7.2 source file not found: {path}")
 
@@ -124,6 +125,28 @@ def main() -> None:
     )
 
     replace_once(
+        SCENE_TREE_CPP,
+        "void SceneTree::set_debug_collisions_hint(bool p_enabled) {\n\tdebug_collisions_hint = p_enabled;\n}\n\nbool SceneTree::is_debugging_collisions_hint() const {\n\treturn debug_collisions_hint;\n}",
+        "void SceneTree::set_debug_collisions_hint(bool p_enabled) {\n"
+        "#ifndef PHYSICS_2D_DISABLED\n"
+        "\tPhysicsServer2D::get_singleton()->debug_set_enabled(p_enabled);\n"
+        "#endif\n"
+        "#ifndef PHYSICS_3D_DISABLED\n"
+        "\tPhysicsServer3D::get_singleton()->debug_set_enabled(p_enabled);\n"
+        "#endif\n"
+        "}\n\nbool SceneTree::is_debugging_collisions_hint() const {\n"
+        "\tbool enabled = false;\n"
+        "#ifndef PHYSICS_2D_DISABLED\n"
+        "\tenabled = enabled || PhysicsServer2D::get_singleton()->debug_is_enabled();\n"
+        "#endif\n"
+        "#ifndef PHYSICS_3D_DISABLED\n"
+        "\tenabled = enabled || PhysicsServer3D::get_singleton()->debug_is_enabled();\n"
+        "#endif\n"
+        "\treturn enabled;\n"
+        "}",
+    )
+
+    replace_once(
         SCENE_H,
         "\tstatic Error _msg_debug_mute_audio(const Array &p_args);",
         "\tstatic Error _msg_debug_mute_audio(const Array &p_args);\n"
@@ -149,8 +172,6 @@ def main() -> None:
         "\tSceneTree *scene_tree = SceneTree::get_singleton();\n"
         "\tERR_FAIL_NULL_V(scene_tree, ERR_UNCONFIGURED);\n"
         "\tconst bool requested = p_args[0];\n"
-        "\t// Force a state transition so physics debug-change callbacks refresh existing shapes.\n"
-        "\tscene_tree->set_debug_collisions_hint(!requested);\n"
         "\tscene_tree->set_debug_collisions_hint(requested);\n"
         "\tconst bool active = scene_tree->is_debugging_collisions_hint();\n"
         "\tERR_FAIL_COND_V_MSG(active != requested, ERR_UNAVAILABLE, \"Collision visualization is unavailable in this build or physics backend.\");\n"
@@ -170,7 +191,10 @@ def main() -> None:
         "scene:debug_collision_shapes",
         "PREVIEW_DEBUG_COLLISIONS",
         "set_debug_collisions_hint(requested)",
-        "set_debug_collisions_hint(!requested)",
+        "PhysicsServer2D::get_singleton()->debug_set_enabled(p_enabled)",
+        "PhysicsServer3D::get_singleton()->debug_set_enabled(p_enabled)",
+        "PhysicsServer2D::get_singleton()->debug_is_enabled()",
+        "PhysicsServer3D::get_singleton()->debug_is_enabled()",
         "p_args[0].get_type() != Variant::BOOL",
         "active != requested",
         "Collision visualization is unavailable in this build or physics backend.",
