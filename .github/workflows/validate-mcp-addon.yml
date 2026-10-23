@@ -1,4 +1,4 @@
-name: Validate Android MCP addon packaging
+name: Disabled legacy Linux MCP validation (Android-only project)
 
 # Validate packaging and parser/load behavior on every integration branch update and pull request.
 on:
@@ -15,6 +15,7 @@ permissions:
 
 jobs:
   package-safe-mcp-addon:
+    if: false # Do not run Linux Godot/headless validation; use Android-targeted validation only.
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
