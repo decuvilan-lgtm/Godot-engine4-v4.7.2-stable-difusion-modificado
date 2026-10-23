@@ -1,0 +1,46 @@
+name: Validate Android source patch anchors (no editor build)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  patch-anchor-validation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout custom project
+        uses: actions/checkout@v4
+
+      - name: Checkout official Godot 4.7.2 source (source inspection only)
+        uses: actions/checkout@v4
+        with:
+          repository: godotengine/godot
+          ref: 4.7.2-stable
+          path: godot-source
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check patch scripts syntax
+        run: python -m py_compile scripts/apply_github_import_patch.py scripts/apply_preview_debug_menu_patch.py scripts/validate_scene_import_fixture.py scripts/github_sync_core.py tests/test_github_sync_core.py
+
+      - name: Validate sync core unit tests
+        working-directory: tests
+        run: python -m unittest -v test_github_sync_core
+
+      - name: Apply and verify GitHub import patch anchors
+        run: python scripts/apply_github_import_patch.py
+
+      - name: Apply and verify preview debugger patch anchors
+        run: python scripts/apply_preview_debug_menu_patch.py
+
+      - name: Validate scene import fixtures
+        run: python scripts/validate_scene_import_fixture.py
+
+      - name: Report scope
+        run: echo "Source patch anchors and Python fixtures only. No Godot editor compilation, launch, or Linux UI tests were performed."
