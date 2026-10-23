@@ -67,17 +67,21 @@ This reconciles the user's rule (“if it was deleted from the repo, delete it f
 
 Store a versioned manifest inside the editor's per-project metadata/cache, not in the game project unless explicitly configured. It records repository URL, branch/ref, resolved commit SHA, normalized tracked paths and Git object IDs, ignore rules, last successful sync time, and the previous transaction ID. The manifest is written only after verification succeeds.
 
-## Tests required before Android compilation
+## Android-first validation (no Linux editor build)
 
-1. Pure path and Git blob-hash unit tests.
-2. Tree parsing: empty repo, nested files, symlinks, submodules, duplicate paths, invalid names, and truncated=true.
-3. Diff cases: add, modify, delete, unchanged, local edit, local-only file, ignored file, branch changed, and stale analysis.
-4. Sync tests against a temporary local fixture: success, HTTP failure, missing blob, disk-full/write failure, cancellation, crash recovery, rollback, and repeated idempotent sync.
-5. Assert remote tracked deletions are actually removed locally.
-6. Assert no operation can escape the selected project root.
-7. UI tests at 1600x720 and 480x800, with keyboard open and long error text.
-8. Build and inspect Linux editor first; only then run ARM32+ARM64 Android compilation and device install.
+All product validation targets the Android editor and the LG K51-class mobile viewport. Do not compile the Linux editor or use Linux screenshots as a release gate.
+
+1. Run Python syntax checks for patch scripts in CI; this is script validation, not a Linux editor build.
+2. Apply the patches to a clean official Godot 4.7.2 source checkout and fail if any anchor is missing or duplicated.
+3. Run unit tests for Git blob hashes, path safety, tree parsing, diff planning, manifest caching, and transaction recovery.
+4. Exercise add/modify/delete/unchanged/local-only/ignored/stale-analysis cases; assert remote tracked deletions are actually removed locally.
+5. Assert no operation can escape the selected Android project root and symlinks are never followed outside it.
+6. Compile the actual Android editor for ARM32 and ARM64, package the full APK, and verify both ABIs, signature, APK contents, and addon assets.
+7. Install and launch on Android 11 / LG K51; test network failures, cancellation, keyboard overlap, and viewport adaptation at 1600x720 and 720x1600 logical orientations as applicable.
+8. Test Analyze -> Review -> Sync -> Verify on a real temporary Android project, including deletion and rollback.
+
+Host-side syntax/unit checks may run in CI, but no Linux Godot editor build or Linux UI screenshot workflow is part of validation.
 
 ## Delivery status
 
-This document defines the intended architecture. It does not claim that the analyzer, manifest, transactional sync, or tests are implemented yet. The native UI and implementation must be added and validated against the actual Godot 4.7.2 source before producing a release APK.
+This document defines the intended architecture. It does not claim that the analyzer, manifest, transactional sync, or tests are implemented yet. The native Android UI and implementation must be added and validated against the actual Godot 4.7.2 source and an Android ARM32+ARM64 build before producing a release APK.
