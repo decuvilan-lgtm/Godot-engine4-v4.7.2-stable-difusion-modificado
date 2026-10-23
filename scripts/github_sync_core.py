@@ -335,6 +335,14 @@ def apply_plan(
             if c.action == "delete":
                 if target.exists():
                     target.unlink()
+            elif c.action == "archive":
+                archive_target = manifest_path.parent / "preserved-remote-deletions" / txid / c.path
+                archive_target.parent.mkdir(parents=True, exist_ok=True)
+                if not target.is_file() or c.local_sha is None or git_blob_sha1(target.read_bytes()) != c.local_sha:
+                    raise SyncError(f"Locally edited file changed during sync: {c.path}")
+                if archive_target.exists():
+                    raise SyncError(f"Archive destination already exists: {c.path}")
+                os.replace(target, archive_target)
             else:
                 target.parent.mkdir(parents=True, exist_ok=True)
                 os.replace(safe_target(staged, c.path), target)
