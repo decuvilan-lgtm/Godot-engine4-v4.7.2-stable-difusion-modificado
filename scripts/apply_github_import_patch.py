@@ -54,7 +54,7 @@ replace_once(HEADER,
 	void _new_project();""")
 replace_once(SOURCE,
     '#include "scene/gui/separator.h"\n#include "scene/main/scene_tree.h"',
-    '#include "core/io/json.h"\n#include "scene/gui/separator.h"\n#include "scene/main/http_request.h"\n#include "scene/main/scene_tree.h"\n#include "platform/android/file_access_android.h"\n#include "modules/zip/zip_reader.h"')
+    '#include "core/io/json.h"\n#include "scene/gui/separator.h"\n#include "scene/main/http_request.h"\n#include "scene/main/scene_tree.h"\n#include "modules/zip/zip_reader.h"\n#ifdef ANDROID\n#include "platform/android/file_access_android.h"\n#endif')
 replace_once(SOURCE,
     """void ProjectManager::_import_project() {
 \tproject_dialog->set_mode(ProjectDialog::MODE_IMPORT);
@@ -401,6 +401,7 @@ void ProjectManager::_show_mcp_install_dialog() {
     mcp_install_dialog->popup_centered(Size2i(mcp_dialog_width, 0));
 }
 
+#ifdef ANDROID
 void ProjectManager::_install_mcp_addon_confirmed() {
     Vector<ProjectList::Item> selected = project_list->get_selected_projects();
     if (selected.size() != 1) {
@@ -562,6 +563,13 @@ void ProjectManager::_install_mcp_addon_confirmed() {
     project_list->refresh_project(project_path);
     _show_error(TTR("MCP addon installed and enabled for the selected project. Open the project to start the plugin."));
 }
+
+
+#else
+void ProjectManager::_install_mcp_addon_confirmed() {
+    _show_error(TTR("MCP addon installation is available only in the Android editor build."));
+}
+#endif
 
 void ProjectManager::_new_project() {""")
 replace_once(SOURCE,
