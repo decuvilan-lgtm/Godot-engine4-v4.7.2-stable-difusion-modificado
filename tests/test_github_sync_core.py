@@ -47,6 +47,19 @@ class GitHubSyncCoreTests(unittest.TestCase):
         self.assertEqual(plan["removed.txt"].action, "delete")
         self.assertEqual(plan["personal.png"].action, "local-only")
 
+    def test_remote_deletion_preserves_locally_modified_tracked_file(self):
+        original = blob(b"last synced")
+        edited = blob(b"user edits")
+        plan = build_plan(
+            remote_tree={},
+            local_inventory={"important.txt": {"git_blob_sha": edited, "size": 10}},
+            previous_manifest={"tracked_files": {"important.txt": {"sha": original, "size": 11}}},
+        )
+        self.assertEqual(len(plan), 1)
+        self.assertEqual(plan[0].action, "local-only")
+        self.assertIn("CONFLICT", plan[0].reason)
+        self.assertEqual(plan[0].local_sha, edited)
+
     def test_manifest_version_is_checked(self):
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "manifest.json"
