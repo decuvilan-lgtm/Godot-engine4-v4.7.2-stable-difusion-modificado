@@ -159,11 +159,10 @@ def build_plan(
             old_sha = old.get("sha")
             local_sha = str(l.get("git_blob_sha")) if l else None
             if l is not None and local_sha != old_sha:
-                # A remote deletion must never erase local edits made since the
-                # last successful sync. Preserve the file and surface a conflict.
+                # Remote removal is authoritative, but preserve edited bytes outside the project.
                 changes.append(Change(
-                    path, "local-only", None, local_sha, int(l.get("size") or 0),
-                    "CONFLICT: remote deleted a tracked file, but local bytes differ from the last synced version; preserved.",
+                    path, "archive", None, local_sha, int(l.get("size") or 0),
+                    "Remote deleted this tracked file; local edits will be moved outside the project to a recovery folder.",
                 ))
             else:
                 changes.append(Change(path, "delete", None, local_sha,
