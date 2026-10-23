@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 from typing import Iterable
 
-from github_sync_core import Change, SyncError, normalize_repo_path
+from github_sync_core import Change, SyncError, git_blob_sha1, normalize_repo_path, safe_target
 
 
 def _canonical_repo_url(url: str) -> str:
@@ -78,18 +78,36 @@ def create_review_snapshot(project_root: Path, repository_url: str, ref_name: st
 
 def validate_review_snapshot(snapshot: dict, project_root: Path, repository_url: str,
                              ref_name: str, commit_sha: str) -> None:
-    """Fail closed if review context changed before sync confirmation."""
+    """Fail closed if review context or any reviewed local path changed."""
     if not isinstance(snapshot, dict) or not isinstance(snapshot.get("fingerprint"), str):
         raise SyncError("Review snapshot is missing its fingerprint.")
-    expected = create_review_snapshot(
-        project_root, repository_url, ref_name, commit_sha,
-        [Change(**row) for row in snapshot.get("changes", [])],
-    )
-    # Compare every context field as well as the fingerprint. A valid fingerprint
-    # over the change rows must not allow edited top-level repo/ref/commit/counts
-    # to be consumed by a future native Sync button.
+    try:
+        rows = snapshot.get("changes", [])
+        if not isinstance(rows, list):
+            raise SyncError("Review changes are invalid; analyze again before syncing.")
+        changes = [Change(**row) for row in rows]
+        expected = create_review_snapshot(project_root, repository_url, ref_name, commit_sha, changes)
+    except (TypeError, KeyError, ValueError) as exc:
+        raise SyncError("Review rows are invalid; analyze again before syncing.") from exc
+
+    # Check context and derived counts, not only the fingerprint.
     for key in ("project_root", "repository_url", "ref", "commit_sha", "changes", "counts"):
         if snapshot.get(key) != expected.get(key):
             raise SyncError("Review plan context or counts were modified; analyze again before syncing.")
     if snapshot["fingerprint"] != expected["fingerprint"]:
         raise SyncError("Review plan was modified or is stale; analyze again before syncing.")
+
+    # A project path alone is not enough: files can be edited after Analyze.
+    # Compare every reviewed path to the exact local blob captured in the plan.
+    root = Path(expected["project_root"])
+    for row in expected["changes"]:
+        path = row["path"]
+        try:
+            target = safe_target(root, path)
+            if row["local_sha"] is None:
+                if target.exists():
+                    raise SyncError(f"Local file appeared after review: {path}; analyze again.")
+            elif not target.is_file() or git_blob_sha1(target.read_bytes()) != row["local_sha"]:
+                raise SyncError(f"Local file changed after review: {path}; analyze again.")
+        except OSError as exc:
+            raise SyncError(f"Cannot revalidate reviewed local file {path}: {exc}") from exc
