@@ -102,6 +102,9 @@ jobs:
       - name: Apply GitHub import integration
         run: python "$GITHUB_WORKSPACE/scripts/apply_github_import_patch.py"
 
+      - name: Apply preview debugger menu integration
+        run: python "$GITHUB_WORKSPACE/scripts/apply_preview_debug_menu_patch.py"
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
