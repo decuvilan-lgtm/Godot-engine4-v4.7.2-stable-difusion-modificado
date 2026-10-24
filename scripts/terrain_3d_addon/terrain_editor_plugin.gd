@@ -34,6 +34,7 @@ var cursor_material: StandardMaterial3D
 var stroke_timer := 0.0
 var import_dialog: FileDialog
 var export_dialog: FileDialog
+var texture_dialog: FileDialog
 var status_label: Label
 
 func _enter_tree() -> void:
@@ -61,6 +62,8 @@ func _exit_tree() -> void:
 		import_dialog.queue_free()
 	if export_dialog:
 		export_dialog.queue_free()
+	if texture_dialog:
+		texture_dialog.queue_free()
 
 func _build_panel() -> void:
 	panel = VBoxContainer.new()
@@ -109,6 +112,10 @@ func _build_panel() -> void:
 	for layer_name in ["Hierba", "Roca", "Arena", "Nieve"]:
 		layer_picker.add_item(layer_name)
 	content.add_child(layer_picker)
+	var texture_button := Button.new()
+	texture_button.text = "Cargar textura para la capa elegida"
+	texture_button.pressed.connect(_open_layer_texture)
+	content.add_child(texture_button)
 	grid_snap = CheckButton.new()
 	grid_snap.text = "Ajustar pincel a cuadrícula"
 	grid_snap.button_pressed = false
@@ -203,6 +210,14 @@ func _build_panel() -> void:
 	export_dialog.add_filter("*.png", "PNG heightmap")
 	export_dialog.file_selected.connect(_export_heightmap)
 	add_child(export_dialog)
+
+	texture_dialog = FileDialog.new()
+	texture_dialog.title = "Asignar textura a la capa elegida"
+	texture_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	texture_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	texture_dialog.add_filter("*.png,*.jpg,*.jpeg,*.webp", "Textura de terreno")
+	texture_dialog.file_selected.connect(_import_layer_texture)
+	add_child(texture_dialog)
 
 func _add_section(parent: Control, text: String) -> void:
 	var label := Label.new()
@@ -635,6 +650,33 @@ func _export_heightmap(path: String) -> void:
 		_set_status("Heightmap exportado: " + output_path)
 	else:
 		_set_status("No se pudo guardar el heightmap (error %d)." % err)
+
+func _open_layer_texture() -> void:
+	texture_dialog.popup_centered(Vector2i(640, 480))
+
+func _import_layer_texture(path: String) -> void:
+	var terrain = _get_terrain()
+	if terrain == null:
+		_set_status("Crea o selecciona un terreno antes de asignar texturas.")
+		return
+	var image := Image.new()
+	var err := image.load(path)
+	if err != OK:
+		_set_status("No se pudo abrir la textura (error %d)." % err)
+		return
+	# Cap imported texture dimensions to keep memory use manageable on the LG K51.
+	if image.get_width() > 512 or image.get_height() > 512:
+		image.resize(512, 512, Image.INTERPOLATE_BILINEAR)
+	var texture := ImageTexture.create_from_image(image)
+	var selected_layer := layer_picker.selected
+	var previous: Texture2D = terrain.get_layer_texture(selected_layer)
+	var undo_redo := EditorInterface.get_editor_undo_redo()
+	undo_redo.create_action("Asignar textura de terreno")
+	undo_redo.add_do_method(terrain, "set_layer_texture", selected_layer, texture)
+	undo_redo.add_undo_method(terrain, "set_layer_texture", selected_layer, previous)
+	undo_redo.add_do_reference(texture)
+	undo_redo.commit_action()
+	_set_status("Textura asignada a la capa seleccionada. Guarda la escena para conservarla.")
 
 func _set_status(message: String) -> void:
 	if status_label:
