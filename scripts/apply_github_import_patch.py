@@ -792,7 +792,7 @@ replace_once(SCENE_DEBUGGER_HEADER,
     "static Error _msg_debug_mute_audio(const Array &p_args);\n\tstatic Error _msg_set_debug_navigation(const Array &p_args);\n\tstatic Error _msg_set_debug_avoidance(const Array &p_args);")
 replace_once(SCENE_DEBUGGER_SOURCE,
     '#include "servers/rendering/rendering_server.h"',
-    '#include "scene/2d/path_2d.h"\n#include "scene/3d/path_3d.h"\n#include "servers/rendering/rendering_server.h"\n#include "servers/navigation_2d/navigation_server_2d.h"\n#include "servers/navigation_3d/navigation_server_3d.h"')
+    '#include "core/templates/list.h"\n#include "scene/2d/path_2d.h"\n#include "scene/3d/path_3d.h"\n#include "servers/rendering/rendering_server.h"\n#include "servers/navigation_2d/navigation_server_2d.h"\n#include "servers/navigation_3d/navigation_server_3d.h"')
 replace_once(SCENE_DEBUGGER_SOURCE,
     "Error SceneDebugger::_msg_debug_mute_audio(const Array &p_args) {",
     """Error SceneDebugger::_msg_set_debug_navigation(const Array &p_args) {
