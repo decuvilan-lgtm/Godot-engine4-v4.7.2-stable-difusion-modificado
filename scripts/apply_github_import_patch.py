@@ -118,26 +118,50 @@ void ProjectManager::_github_search_button_pressed() {
 \t\t_show_error(TTR("Enter a repository name, owner/repository, or GitHub URL to search."));
 \t\treturn;
 \t}
-\tif (query.begins_with("https://github.com/")) {
+\tconst bool github_url = query.begins_with("https://github.com/") || query.begins_with("http://github.com/") || query.begins_with("https://www.github.com/") || query.begins_with("http://www.github.com/") || query.begins_with("github.com/") || query.begins_with("www.github.com/");
+\tif (query.begins_with("https://www.github.com/")) {
+\t\tquery = query.trim_prefix("https://www.github.com/");
+\t} else if (query.begins_with("http://www.github.com/")) {
+\t\tquery = query.trim_prefix("http://www.github.com/");
+\t} else if (query.begins_with("https://github.com/")) {
 \t\tquery = query.trim_prefix("https://github.com/");
 \t} else if (query.begins_with("http://github.com/")) {
 \t\tquery = query.trim_prefix("http://github.com/");
+\t} else if (query.begins_with("www.github.com/")) {
+\t\tquery = query.trim_prefix("www.github.com/");
 \t} else if (query.begins_with("github.com/")) {
 \t\tquery = query.trim_prefix("github.com/");
 \t} else if (query.contains("://") || query.begins_with("www.")) {
-\t\t_show_error(TTR("Use github.com/owner/repository or enter a search query."));
+\t\t_show_error(TTR("Use a github.com repository link or enter a search query."));
 \t\treturn;
 \t}
-\tquery = query.trim_suffix("/");
-\tquery = query.trim_suffix(".git");
-\tif (query.contains("?") || query.contains("#")) {
-\t\t_show_error(TTR("Remove query parameters or fragments before searching."));
+\t// Browser-copied GitHub links often include a tab, branch path, query, or fragment.
+\t// For search fallback, reduce these links to owner/repository; direct import stays strict.
+\tif (github_url) {
+\t\tint query_pos = query.find("?");
+\t\tint fragment_pos = query.find("#");
+\t\tif (query_pos >= 0) {
+\t\t\tquery = query.substr(0, query_pos);
+\t\t}
+\t\tif (fragment_pos >= 0) {
+\t\t\tquery = query.substr(0, fragment_pos);
+\t\t}
+\t\tquery = query.trim_suffix("/");
+\t\tquery = query.trim_suffix(".git");
+\t\tPackedStringArray url_parts = query.split("/", false);
+\t\tif (url_parts.size() < 2 || url_parts[0].is_empty() || url_parts[1].is_empty()) {
+\t\t\t_show_error(TTR("For a GitHub link, include an account and repository name."));
+\t\t\treturn;
+\t\t}
+\t\tquery = url_parts[0] + "/" + url_parts[1];
+\t} else if (query.contains("/") && (query.contains("?") || query.contains("#"))) {
+\t\t_show_error(TTR("For owner/repository searches, remove query parameters and fragments."));
 \t\treturn;
 \t}
 \tif (query.contains("/")) {
 \t\tPackedStringArray parts = query.split("/", false);
 \t\tif (parts.size() != 2 || parts[0].is_empty() || parts[1].is_empty() || parts[0].contains(" ") || parts[1].contains(" ")) {
-\t\t\t_show_error(TTR("For a repository URL, use only github.com/owner/repository."));
+\t\t\t_show_error(TTR("For a repository search, use owner/repository without extra path segments."));
 \t\t\treturn;
 \t\t}
 \t}
