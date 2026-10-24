@@ -60,6 +60,8 @@ jobs:
         run: python scripts/apply_github_sync_patch.py
       - name: Validate GitHub sync source
         run: python scripts/validate_github_sync_source.py
+      - name: Validate 3D terrain editor source
+        run: python scripts/validate_terrain_3d_source.py
       - name: Apply Android startup/loading overlay patch
         run: python scripts/apply_android_startup_patch.py
       - name: Validate Android startup/loading overlay source
