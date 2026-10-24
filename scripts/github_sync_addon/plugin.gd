@@ -156,6 +156,17 @@ func _on_zip_downloaded(result: int, response_code: int, _headers: PackedStringA
 		status_label.text = "GitHub no entregó el ZIP (HTTP %d). Revisa conexión, repositorio y referencia." % response_code
 		sync_dialog.popup_centered()
 		return
+	var archive_file := FileAccess.open(zip_path, FileAccess.READ)
+	if archive_file == null:
+		status_label.text = "No se pudo leer el ZIP descargado."
+		sync_dialog.popup_centered()
+		return
+	var archive_size := archive_file.get_length()
+	archive_file.close()
+	if archive_size <= 0 or archive_size > MAX_ARCHIVE_BYTES:
+		status_label.text = "El ZIP está vacío o supera el límite de 200 MiB para proteger el almacenamiento del teléfono."
+		sync_dialog.popup_centered()
+		return
 	var err := _stage_archive()
 	if err != OK:
 		status_label.text = "No se pudo preparar el ZIP (error %d). No se modificó el proyecto." % err
