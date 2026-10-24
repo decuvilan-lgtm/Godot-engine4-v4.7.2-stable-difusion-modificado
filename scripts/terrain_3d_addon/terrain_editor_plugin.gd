@@ -15,6 +15,7 @@ var brush_strength: HSlider
 var flatten_height: SpinBox
 var height_scale: SpinBox
 var paint_color: ColorPickerButton
+var layer_picker: OptionButton
 var grid_snap: CheckButton
 var foliage_count: SpinBox
 var continuous_stroke: CheckButton
@@ -94,7 +95,7 @@ func _build_panel() -> void:
 
 	_add_section(content, "Herramientas de edición")
 	mode_picker = OptionButton.new()
-	for mode in ["Elevar", "Bajar", "Suavizar", "Aplanar", "Pintar color"]:
+	for mode in ["Elevar", "Bajar", "Suavizar", "Aplanar", "Pintar color", "Pintar capa de material"]
 		mode_picker.add_item(mode)
 	content.add_child(mode_picker)
 	brush_radius = _add_slider(content, "Radio del pincel", 4.0, 0.5, 24.0, 0.5)
@@ -104,6 +105,10 @@ func _build_panel() -> void:
 	paint_color.color = Color(0.24, 0.48, 0.20)
 	paint_color.text = "Color del terreno"
 	content.add_child(paint_color)
+	layer_picker = OptionButton.new()
+	for layer_name in ["Hierba", "Roca", "Arena", "Nieve"]:
+		layer_picker.add_item(layer_name)
+	content.add_child(layer_picker)
 	grid_snap = CheckButton.new()
 	grid_snap.text = "Ajustar pincel a cuadrícula"
 	grid_snap.button_pressed = false
@@ -485,7 +490,26 @@ func _apply_brush(terrain, world_position: Vector3) -> void:
 				if distance <= radius:
 					var weight := 1.0 - smoothstep(0.0, radius, distance)
 					new_colors[index] = new_colors[index].lerp(paint_color.color, strength * weight)
-		_commit_terrain_change(terrain, "Pintar terreno", "set_vertex_colors", old_colors, new_colors)
+		_commit_terrain_change(terrain, "Pintar color del terreno", "set_vertex_colors", old_colors, new_colors)
+		return
+	if mode == 5:
+		var old_weights: PackedColorArray = terrain.layer_weights.duplicate()
+		var new_weights: PackedColorArray = old_weights.duplicate()
+		var selected_layer := layer_picker.selected
+		for z in range(terrain.grid_depth):
+			for x in range(terrain.grid_width):
+				var index: int = terrain.get_height_index(x, z)
+				var vertex: Vector3 = terrain.get_vertex_local_position(x, z)
+				var distance := Vector2(vertex.x - local.x, vertex.z - local.z).length()
+				if distance > radius:
+					continue
+				var amount := strength * (1.0 - smoothstep(0.0, radius, distance))
+				var weights := [old_weights[index].r, old_weights[index].g, old_weights[index].b, old_weights[index].a]
+				for channel in range(4):
+					weights[channel] = lerpf(weights[channel], 1.0 if channel == selected_layer else 0.0, amount)
+				var total: float = maxf(0.001, weights[0] + weights[1] + weights[2] + weights[3])
+				new_weights[index] = Color(weights[0] / total, weights[1] / total, weights[2] / total, weights[3] / total)
+		_commit_terrain_change(terrain, "Pintar capa de material", "set_layer_weights", old_weights, new_weights)
 		return
 
 	var old_heights: PackedFloat32Array = terrain.heights.duplicate()
