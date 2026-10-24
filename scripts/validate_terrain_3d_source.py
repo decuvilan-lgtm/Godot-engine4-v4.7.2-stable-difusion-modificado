@@ -34,6 +34,7 @@ for token, label in [
     ("Suavizar", "smooth brush"),
     ("Aplanar", "flatten brush"),
     ("Pintar color", "vertex-color painting"),
+    ("Pintar capa de material", "four paintable terrain material layers"),
     ("_commit_terrain_change", "terrain edits use editor undo/redo"),
     ("Importar heightmap", "heightmap import UI"),
     ("Exportar heightmap", "heightmap export UI"),
@@ -48,6 +49,9 @@ for token, label in [
     ("create_trimesh_shape", "terrain collision generation"),
     ("set_heights", "editable height data"),
     ("set_vertex_colors", "editable vertex color data"),
+    ("set_layer_weights", "editable four-channel material weights"),
+    ("NoiseTexture2D", "procedural texture generation for material layers"),
+    ("@export_storage var heights", "terrain heights persist in saved scenes"),
     ("create_foliage", "procedural foliage placement"),
 ]:
     require(token in data, label)
