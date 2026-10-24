@@ -519,11 +519,12 @@ func _apply_changes() -> void:
 			var staged_path := staged_root.path_join(relative)
 			DirAccess.make_dir_recursive_absolute(local_path.get_base_dir())
 			var incoming_connections := PackedStringArray()
-			if relative.ends_with(".tscn") and FileAccess.file_exists(local_path):
-				var previous_connections := _read_scene_connections(local_path)
+			if relative.ends_with(".tscn"):
 				incoming_connections = _read_scene_connections(staged_path)
-				if previous_connections != incoming_connections:
-					connection_change = "CONEXIONES CAMBIADAS (%d antes, %d después)" % [previous_connections.size(), incoming_connections.size()]
+				if FileAccess.file_exists(local_path):
+					var previous_connections := _read_scene_connections(local_path)
+					if previous_connections != incoming_connections:
+						connection_change = "CONEXIONES CAMBIADAS (%d antes, %d después)" % [previous_connections.size(), incoming_connections.size()]
 			operation_error = _copy_file_streaming(staged_path, local_path)
 			if operation_error == OK:
 				if operation.kind == "add":
