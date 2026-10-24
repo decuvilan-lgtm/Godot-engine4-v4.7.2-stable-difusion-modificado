@@ -86,14 +86,16 @@ jobs:
       - name: Confirm compile output exists (no APK packaging)
         shell: pwsh
         run: |
-          $binRoot = "godot-source/bin"
-          if (-not (Test-Path $binRoot)) { throw "Godot bin output directory was not created." }
-          $candidates = Get-ChildItem -Path $binRoot -Recurse -File |
-            Where-Object { $_.Name -match "godot.*android.*arm32|android.*editor.*arm32" -and $_.Length -gt 0 }
-          if (-not $candidates -or $candidates.Count -eq 0) {
-            Get-ChildItem -Path $binRoot -Recurse -File | Select-Object -First 30 FullName,Length | Format-Table -AutoSize
-            throw "ARM32 native editor output was not found. Refusing to report a successful compile without a non-empty binary."
+          $binary = "godot-source/platform/android/java/lib/libs/tools/debug/armeabi-v7a/libgodot_android.so"
+          if (-not (Test-Path $binary) -or (Get-Item $binary).Length -le 0) {
+            Write-Host "Files under Godot bin:"
+            if (Test-Path "godot-source/bin") {
+              Get-ChildItem -Path "godot-source/bin" -Recurse -File |
+                Where-Object { $_.Extension -in @(".so", ".a") } |
+                Select-Object -First 30 FullName,Length | Format-Table -AutoSize
+            }
+            throw "The expected non-empty ARM32 editor shared library was not found at $binary. Object files (.o) do not count as compile output."
           }
-          $binary = $candidates | Select-Object -First 1
-          Write-Host "Verified native ARM32 output: $($binary.FullName) ($($binary.Length) bytes)"
-          "GODOT_ARM32_BINARY=$($binary.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          $file = Get-Item $binary
+          Write-Host "Verified ARM32 editor shared library: $($file.FullName) ($($file.Length) bytes)"
+          "GODOT_ARM32_BINARY=$($file.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
