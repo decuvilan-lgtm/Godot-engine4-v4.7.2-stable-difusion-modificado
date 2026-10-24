@@ -42,6 +42,7 @@ for token, label in [
     ("_commit_terrain_change", "terrain edits use editor undo/redo"),
     ("Importar heightmap", "heightmap import UI"),
     ("Exportar heightmap", "heightmap export UI"),
+    ("var minimum := INF", "heightmap export normalizes to the actual height range"),
     ("Distribuir árboles", "foliage scatter UI"),
     ("Regenerar colisiones", "collision rebuild UI"),
     ("Ajustar pincel a cuadrícula", "optional brush snapping"),
