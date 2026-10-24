@@ -6,6 +6,7 @@ import sys
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ROOT = REPO_ROOT / "godot-source"
 SOURCE = ROOT / "editor/project_manager/project_dialog.cpp"
+MANAGER_SOURCE = ROOT / "editor/project_manager/project_manager.cpp"
 ADDON = REPO_ROOT / "scripts/github_sync_addon"
 TERRAIN_ADDON = REPO_ROOT / "scripts/terrain_3d_addon"
 
@@ -145,3 +146,81 @@ SOURCE.write_text(source, encoding="utf-8")
 print("PASS: generated embedded sync addon header")
 print("PASS: ZIP-installed projects receive and enable the GitHub sync editor plugin")
 print("Note: this is source validation only; C++/GDScript runtime and Android behavior remain unverified.")
+
+manager_source = MANAGER_SOURCE.read_text(encoding="utf-8")
+manager_source = replace_once(
+    manager_source,
+    '#include "project_manager.h"\n',
+    '#include "project_manager.h"\n#include "editor/github_sync_addon_data.h"\n',
+    "include embedded addons in Project Manager",
+)
+manager_anchor = '\t\tprint_line("Editing project: " + path);'
+manager_insertion = """\t\t// Make the in-editor tools available to existing projects too, before the editor process starts.
+\t\t// Existing addon files are left untouched; this only fills missing files and enables the plugins.
+\t\tconst String sync_addon_dir = path.path_join("addons/github_sync");
+\t\tconst String terrain_addon_dir = path.path_join("addons/terrain_3d");
+\t\tRef<DirAccess> addon_directory = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
+\t\tError addon_install_error = addon_directory->make_dir_recursive(sync_addon_dir);
+\t\tif (addon_install_error == OK) {
+\t\t\taddon_install_error = addon_directory->make_dir_recursive(terrain_addon_dir);
+\t\t}
+\t\tauto write_addon_if_missing = [](const String &p_path, const String &p_content) -> Error {
+\t\t\tif (FileAccess::exists(p_path)) {
+\t\t\t\treturn OK;
+\t\t\t}
+\t\t\tRef<FileAccess> file = FileAccess::open(p_path, FileAccess::WRITE);
+\t\t\tif (file.is_null()) {
+\t\t\t\treturn FileAccess::get_open_error();
+\t\t\t}
+\t\t\tfile->store_string(p_content);
+\t\t\treturn file->get_error();
+\t\t};
+\t\tif (addon_install_error == OK) {
+\t\t\taddon_install_error = write_addon_if_missing(sync_addon_dir.path_join("plugin.gd"), String::utf8(GitHubSyncAddonData::PLUGIN_GD));
+\t\t}
+\t\tif (addon_install_error == OK) {
+\t\t\taddon_install_error = write_addon_if_missing(sync_addon_dir.path_join("plugin.cfg"), String::utf8(GitHubSyncAddonData::PLUGIN_CFG));
+\t\t}
+\t\tif (addon_install_error == OK) {
+\t\t\taddon_install_error = write_addon_if_missing(terrain_addon_dir.path_join("terrain_editor_plugin.gd"), String::utf8(GitHubSyncAddonData::TERRAIN_PLUGIN_GD));
+\t\t}
+\t\tif (addon_install_error == OK) {
+\t\t\taddon_install_error = write_addon_if_missing(terrain_addon_dir.path_join("terrain_data.gd"), String::utf8(GitHubSyncAddonData::TERRAIN_DATA_GD));
+\t\t}
+\t\tif (addon_install_error == OK) {
+\t\t\taddon_install_error = write_addon_if_missing(terrain_addon_dir.path_join("plugin.cfg"), String::utf8(GitHubSyncAddonData::TERRAIN_PLUGIN_CFG));
+\t\t}
+\t\tif (addon_install_error == OK) {
+\t\t\tConfigFile project_cfg;
+\t\t\taddon_install_error = project_cfg.load(conf);
+\t\t\tif (addon_install_error == OK) {
+\t\t\t\tPackedStringArray enabled_plugins = project_cfg.get_value("editor_plugins", "enabled", PackedStringArray());
+\t\t\t\tbool plugins_changed = false;
+\t\t\t\tconst String sync_plugin = "res://addons/github_sync/plugin.cfg";
+\t\t\t\tconst String terrain_plugin = "res://addons/terrain_3d/plugin.cfg";
+\t\t\t\tif (!enabled_plugins.has(sync_plugin)) {
+\t\t\t\t\tenabled_plugins.push_back(sync_plugin);
+\t\t\t\t\tplugins_changed = true;
+\t\t\t\t}
+\t\t\t\tif (!enabled_plugins.has(terrain_plugin)) {
+\t\t\t\t\tenabled_plugins.push_back(terrain_plugin);
+\t\t\t\t\tplugins_changed = true;
+\t\t\t\t}
+\t\t\t\tif (plugins_changed) {
+\t\t\t\t\tproject_cfg.set_value("editor_plugins", "enabled", enabled_plugins);
+\t\t\t\t\taddon_install_error = project_cfg.save(conf);
+\t\t\t\t}
+\t\t\t}
+\t\t}
+\t\tif (addon_install_error != OK) {
+\t\t\tERR_PRINT(vformat("Could not install the custom editor addons in project '%s' (error %d). The project will still open.", path, addon_install_error));
+\t\t}
+"""
+manager_source = replace_once(
+    manager_source,
+    manager_anchor,
+    manager_insertion + manager_anchor,
+    "install custom addons before launching any existing project",
+)
+MANAGER_SOURCE.write_text(manager_source, encoding="utf-8")
+print("PASS: existing projects receive missing custom addons before the editor process launches")
