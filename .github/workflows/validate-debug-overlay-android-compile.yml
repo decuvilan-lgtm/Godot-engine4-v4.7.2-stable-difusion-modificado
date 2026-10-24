@@ -12,6 +12,8 @@ on:
       - "scripts/github_sync_addon/**"
       - "scripts/apply_android_startup_patch.py"
       - "scripts/validate_android_startup_patch.py"
+      - "scripts/validate_terrain_3d_source.py"
+      - "scripts/terrain_3d_addon/**"
       - ".github/workflows/validate-debug-overlay-android-compile.yml"
   pull_request:
     branches:
@@ -85,6 +87,9 @@ jobs:
 
       - name: Validate GitHub sync source
         run: python scripts/validate_github_sync_source.py
+
+      - name: Validate 3D terrain editor source
+        run: python scripts/validate_terrain_3d_source.py
 
       - name: Apply Android startup/loading overlay patch
         run: python scripts/apply_android_startup_patch.py
