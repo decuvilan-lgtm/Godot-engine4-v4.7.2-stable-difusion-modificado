@@ -152,6 +152,9 @@ func _start_download() -> void:
 	remote_commit_sha = ""
 	request = HTTPRequest.new()
 	request.timeout = 90.0
+	# GitHub documents a 7 MiB maximum for recursive tree responses; bound JSON in-memory use.
+	request.body_size_limit = 8 * 1024 * 1024
+	request.download_chunk_size = 16384
 	request.request_completed.connect(_on_incremental_request_completed)
 	add_child(request)
 	status_label.text = "Consultando la referencia de GitHub…"
@@ -380,13 +383,16 @@ func _git_blob_sha1(path: String) -> String:
 	if size > MAX_FILE_BYTES:
 		file.close()
 		return ""
-	var bytes := file.get_buffer(size)
-	file.close()
 	var context := HashingContext.new()
 	if context.start(HashingContext.HASH_SHA1) != OK:
+		file.close()
 		return ""
-	context.update(("blob %d" % bytes.size()).to_utf8_buffer() + PackedByteArray([0]))
-	context.update(bytes)
+	# Git hashes a blob as: "blob <byte-count>\\0" + file bytes.
+	context.update(("blob %d" % size).to_utf8_buffer() + PackedByteArray([0]))
+	while file.get_position() < size:
+		var remaining := size - file.get_position()
+		context.update(file.get_buffer(mini(remaining, 65536)))
+	file.close()
 	return context.finish().hex_encode()
 
 func _ensure_sync_plugin_enabled(config_path: String) -> int:
