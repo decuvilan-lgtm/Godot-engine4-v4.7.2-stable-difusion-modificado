@@ -567,6 +567,40 @@ The Windows workflow `.github/workflows/validate-debug-overlay-source.yml` now c
 - Support undo/redo, collision generation, and sensible rendering/performance behavior.
 - Provide a dedicated, touch-friendly editor workspace/tooling rather than requiring the user to write scripts for routine terrain editing.
 
+
+### Native 3D terrain editor — implementation direction and cursor controls
+
+**Status: approved direction; implementation has not yet been started.** Godot 4.7.2 has 3D meshes, GridMap, CSG and procedural geometry, but its built-in editor feature list does not provide a general native terrain sculpt/paint workspace. Community terrain tools exist, including Terrain3D, but the goal here is a carefully integrated native editor feature rather than assuming an add-on is already part of this modified build. References: [Godot 4.7 feature list](https://docs.godotengine.org/en/4.7/about/list_of_features.html), [Terrain3D Asset Library entry](https://godotengine.org/asset-library/asset/3892).
+
+#### Core editing tools
+1. Create a terrain in the 3D editor, choose dimensions/resolution, and see a clear preview before committing.
+2. Sculpt with raise, lower, smooth and flatten brushes; show brush radius, strength, target point and a visible footprint before applying changes.
+3. Paint terrain colors/material layers, then add foliage/object scatter with density, scale, rotation and surface alignment.
+4. Generate/update collision, save/reopen terrain data, support undo/redo, and avoid destructive edits to unrelated nodes/resources.
+5. Add heightmap import/export and advanced features only after the core terrain workflow is stable; erosion, caves and holes are later-stage work.
+
+#### Mobile precision cursor (new requirement)
+- Add an optional **virtual joystick to move an editor cursor over the 3D world**, instead of requiring a finger to hit the exact terrain pixel.
+- Project the cursor from the editor camera into the world with a ray query; resolve the precise hit point and surface normal against the terrain. The cursor must remain visible and show a ring/footprint representing brush radius.
+- Show a clear pre-edit preview for sculpting, painting, and object placement; support press/hold for continuous brush strokes and a separate apply/confirm action where useful.
+- Keep camera orbit/pan/zoom separate from cursor movement. Provide a quick way to recenter the cursor and switch back to direct touch/desktop mouse input.
+- Do not edit when the cursor is over UI, when no valid terrain surface is hit, or while a modal dialog blocks editing. Show invalid-target feedback instead of silently editing another object.
+- Include snap/grid options where sensible, plus undo/redo and a visible last-action indicator. All controls must fit a narrow 720px mobile viewport and remain usable without hiding the terrain preview.
+
+#### Implementation order and acceptance gates
+1. Inspect Godot 4.7.2 editor viewport, gizmo/input routing, resource serialization, undo/redo, mesh and collision APIs before choosing source insertion points.
+2. Build a minimal native terrain resource/node plus editor plugin/tool entry point; create and save a small heightfield and support raise/lower, smooth, flatten.
+3. Implement the viewport cursor and virtual joystick as an input abstraction that can also accept mouse/touch input. Validate ray hits and UI blocking before enabling destructive brush actions.
+4. Add undo/redo, collision regeneration, material/color painting, and then foliage/object placement.
+5. Add heightmap workflows and performance work only after functional gates pass. Profile before optimizing; do not remove features or reduce visual quality as a blanket fix.
+6. Validate patch application and source checks first; native compilation next; runtime/editor integration and Android-device testing are separate milestones. Avoid rebuilding a full APK solely for the already-passed native compile check.
+
+#### Scope and risk controls
+- This is a substantial editor feature, not a one-line toggle. Keep it modular and land incremental, reviewable changes rather than a giant unverified source rewrite.
+- Prefer a heightfield-based first implementation; arbitrary caves/overhangs require a different volumetric representation and are not part of the first milestone.
+- Keep the LG K51 / Android 11 / ARM32 target in mind, but do not claim performance compatibility without measurements on the device.
+- The joystick controls the cursor in world space indirectly; a camera ray determines the exact hit point. The cursor is an editor interaction tool, not a runtime-game control.
+
 ### Proposed implementation order
 1. **Small native vertical slice:** create a terrain resource/node and editor tool that can sculpt a heightfield with raise/lower, smooth, and flatten brushes; save/reopen the result and support undo/redo.
 2. **Texture and color painting:** multiple material layers, brush size/strength, and persistent paint data.
@@ -579,11 +613,13 @@ The Windows workflow `.github/workflows/validate-debug-overlay-source.yml` now c
 - Keep the interface usable on a narrow mobile screen and provide conservative defaults suitable for the LG K51 / Android 11 / ARM32 target.
 - Do not trade away existing editor features or visual quality as a blanket performance fix. Optimize based on measurements.
 - A completed source patch, successful Windows source checks, a successful Android native compile, a packaged APK, and a successful on-device test are separate milestones and must be recorded separately.
-- **No terrain implementation or terrain test has started as part of this documentation update.** The initial Android ARM32 native compile completed successfully; a corrected workflow check is now validating the exact shared-library output, because the previous file check was too broad.
+- **No terrain implementation or terrain test has started as part of this documentation update.** The Android ARM32 native compile and the corrected exact shared-library output check both completed successfully.
 
-### Current test being awaited — 2026-10-24
+### Validation results and deliberately deferred tests — 2026-10-24
 - **PASS — [Latest source-only debug overlay checks, run 40068088797](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40068088797)** on commit `4871bae`, including validation of the corrected output-check workflow.
 - **PASS — [ARM32 native editor compile, no APK, run 40065262042](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40065262042)** on commit `09c9cf0`: SCons completed and linked `libgodot.android.editor.arm32.so`, then moved it into the Android editor library path. This is a native C++ compile, **not** an APK build or device test.
 - **Issue found and corrected:** the run’s final verification step matched the first non-empty filename containing `android.editor.arm32`, which was an object file (`core_bind.android.editor.arm32.o`) rather than the actual shared library. The compile log shows the shared-library link and move succeeded, but the checker was too permissive. Commit `4459c7a` changes the check to require the exact non-empty `platform/android/java/lib/libs/tools/debug/armeabi-v7a/libgodot_android.so` output. The corrected Windows run is [40068062633](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40068062633) on commit `4459c7a`; **PASS**. The strict output check found the exact non-empty ARM32 shared library `platform/android/java/lib/libs/tools/debug/armeabi-v7a/libgodot_android.so` (178,086,104 bytes).
-- **Still not proven:** packaged APK, installation/launch on LG K51, and runtime behavior of all five debug toggles.
+- **Explicitly deferred by the project owner:** generating a new full APK solely for this check. Do not start APK packaging or ask for an install test just to validate the current native compile.
+- **Pending, not blocking the next development work:** runtime behavior of all five debug toggles in an actual running preview, installation/launch of a future full APK on the LG K51 / Android 11 / ARM32, and end-to-end verification of recent GitHub fallback URL handling. Keep these marked pending until a later planned device build; do not claim they are verified.
+- **No Linux tests/builds are authorized for this workflow.** The successful native compile was run on Windows.
 
