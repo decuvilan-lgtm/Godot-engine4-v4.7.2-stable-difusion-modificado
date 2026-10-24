@@ -88,8 +88,13 @@ func _rebuild_mesh() -> void:
 	if vertex_colors.size() != grid_width * grid_depth:
 		vertex_colors.resize(grid_width * grid_depth)
 		for i in range(vertex_colors.size()):
-			vertex_colors[i] = Color(0.32, 0.48, 0.25, 1.0)
+			vertex_colors[i] = Color.WHITE
+	if layer_weights.size() != grid_width * grid_depth:
+		layer_weights.resize(grid_width * grid_depth)
+		for i in range(layer_weights.size()):
+			layer_weights[i] = Color(1.0, 0.0, 0.0, 0.0)
 	var st := SurfaceTool.new()
+	st.set_custom_format(0, SurfaceTool.CUSTOM_RGBA8_UNORM)
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for z in range(grid_depth - 1):
 		for x in range(grid_width - 1):
@@ -107,13 +112,61 @@ func _rebuild_mesh() -> void:
 	st.generate_normals()
 	mesh = st.commit()
 	if terrain_material == null:
-		terrain_material = StandardMaterial3D.new()
-		terrain_material.vertex_color_use_as_albedo = true
-		terrain_material.roughness = 1.0
+		terrain_material = _create_terrain_material()
 	set_surface_override_material(0, terrain_material)
+
+func _create_terrain_material() -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+render_mode diffuse_burley, specular_schlick_ggx;
+uniform sampler2D grass_texture : repeat_enable;
+uniform sampler2D rock_texture : repeat_enable;
+uniform sampler2D sand_texture : repeat_enable;
+uniform sampler2D snow_texture : repeat_enable;
+uniform vec3 grass_tint : source_color = vec3(0.25, 0.46, 0.18);
+uniform vec3 rock_tint : source_color = vec3(0.38, 0.39, 0.40);
+uniform vec3 sand_tint : source_color = vec3(0.68, 0.56, 0.34);
+uniform vec3 snow_tint : source_color = vec3(0.88, 0.92, 0.96);
+varying vec4 terrain_weights;
+void vertex() {
+	terrain_weights = CUSTOM0;
+}
+void fragment() {
+	vec4 w = max(terrain_weights, vec4(0.0));
+	w /= max(dot(w, vec4(1.0)), 0.0001);
+	vec2 tiled_uv = UV * 12.0;
+	vec3 grass = texture(grass_texture, tiled_uv).rgb * grass_tint;
+	vec3 rock = texture(rock_texture, tiled_uv * 1.7).rgb * rock_tint;
+	vec3 sand = texture(sand_texture, tiled_uv * 0.7).rgb * sand_tint;
+	vec3 snow = texture(snow_texture, tiled_uv * 1.2).rgb * snow_tint;
+	ALBEDO = (grass * w.r + rock * w.g + sand * w.b + snow * w.a) * COLOR.rgb;
+	ROUGHNESS = 0.92;
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	material.set_shader_parameter("grass_texture", _make_noise_texture(11, 0.035))
+	material.set_shader_parameter("rock_texture", _make_noise_texture(37, 0.09))
+	material.set_shader_parameter("sand_texture", _make_noise_texture(59, 0.055))
+	material.set_shader_parameter("snow_texture", _make_noise_texture(83, 0.025))
+	return material
+
+func _make_noise_texture(seed_value: int, frequency: float) -> NoiseTexture2D:
+	var noise := FastNoiseLite.new()
+	noise.seed = seed_value
+	noise.frequency = frequency
+	noise.fractal_octaves = 3
+	var texture := NoiseTexture2D.new()
+	texture.width = 128
+	texture.height = 128
+	texture.seamless = true
+	texture.noise = noise
+	return texture
 
 func _add_vertex(st: SurfaceTool, x: int, z: int, color_index: int) -> void:
 	st.set_color(vertex_colors[color_index])
+	st.set_custom(0, layer_weights[color_index])
 	st.set_uv(Vector2(float(x) / float(grid_width - 1), float(z) / float(grid_depth - 1)))
 	st.add_vertex(get_vertex_local_position(x, z))
 
