@@ -158,6 +158,7 @@ func _on_zip_downloaded(result: int, response_code: int, _headers: PackedStringA
 		return
 	var archive_file := FileAccess.open(zip_path, FileAccess.READ)
 	if archive_file == null:
+		_cleanup_staging()
 		status_label.text = "No se pudo leer el ZIP descargado."
 		sync_dialog.popup_centered()
 		return
