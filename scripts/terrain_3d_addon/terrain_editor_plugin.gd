@@ -242,9 +242,14 @@ func _create_terrain() -> void:
 	var terrain = terrain_script.new()
 	terrain.name = "Terrain3D_%d" % (root.get_child_count() + 1)
 	terrain.set_meta(TERRAIN_META, true)
-	root.add_child(terrain)
-	terrain.owner = root
-	terrain.initialize_grid(int(terrain_width.value), int(terrain_depth.value), cell_size.value)
+	var undo_redo := EditorInterface.get_editor_undo_redo()
+	undo_redo.create_action("Crear terreno 3D")
+	undo_redo.add_do_method(root, "add_child", terrain)
+	undo_redo.add_do_method(terrain, "set_owner", root)
+	undo_redo.add_do_method(terrain, "initialize_grid", int(terrain_width.value), int(terrain_depth.value), cell_size.value)
+	undo_redo.add_undo_method(root, "remove_child", terrain)
+	undo_redo.add_do_reference(terrain)
+	undo_redo.commit_action()
 	EditorInterface.get_selection().clear()
 	EditorInterface.get_selection().add_node(terrain)
 	_set_status("Terreno creado. Usa el pincel en la vista 3D o el joystick de este panel.")
@@ -281,8 +286,13 @@ func _create_cursor() -> void:
 	cursor_material.no_depth_test = true
 
 func _update_cursor_mesh(position: Vector3) -> void:
+	var scene := EditorInterface.get_edited_scene_root()
 	if cursor_mesh == null or not is_instance_valid(cursor_mesh):
 		_create_cursor()
+	if scene and cursor_mesh.get_parent() != scene:
+		if cursor_mesh.get_parent():
+			cursor_mesh.get_parent().remove_child(cursor_mesh)
+		scene.add_child(cursor_mesh)
 	var immediate := ImmediateMesh.new()
 	immediate.surface_begin(Mesh.PRIMITIVE_LINE_STRIP, cursor_material)
 	var radius := brush_radius.value
