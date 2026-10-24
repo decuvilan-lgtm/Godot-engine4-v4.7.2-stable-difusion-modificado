@@ -567,9 +567,24 @@ func _regenerate_collision() -> void:
 
 func _scatter_foliage() -> void:
 	var terrain = _get_terrain()
-	if terrain:
-		terrain.create_foliage(int(foliage_count.value), int(Time.get_unix_time_from_system()))
-		_set_status("Vegetación distribuida. Guarda la escena para conservarla.")
+	if terrain == null:
+		_set_status("Crea o selecciona un terreno antes de distribuir árboles.")
+		return
+	var old_foliage := terrain.get_node_or_null("TerrainFoliage")
+	var seed_value := int(Time.get_unix_time_from_system())
+	var new_foliage: Node3D = terrain.create_foliage(int(foliage_count.value), seed_value)
+	var undo_redo := EditorInterface.get_editor_undo_redo()
+	undo_redo.create_action("Distribuir vegetación")
+	if old_foliage:
+		undo_redo.add_do_method(terrain, "remove_child", old_foliage)
+		undo_redo.add_undo_method(terrain, "add_child", old_foliage)
+		undo_redo.add_do_reference(old_foliage)
+	undo_redo.add_do_method(terrain, "add_child", new_foliage)
+	undo_redo.add_do_method(terrain, "set_foliage_owner", new_foliage)
+	undo_redo.add_undo_method(terrain, "remove_child", new_foliage)
+	undo_redo.add_do_reference(new_foliage)
+	undo_redo.commit_action()
+	_set_status("Vegetación distribuida. Deshacer/Rehacer también restaura la distribución.");
 
 func _open_import_heightmap() -> void:
 	import_dialog.popup_centered(Vector2i(640, 480))
