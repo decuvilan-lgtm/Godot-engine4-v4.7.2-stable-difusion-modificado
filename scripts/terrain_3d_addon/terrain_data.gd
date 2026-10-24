@@ -48,6 +48,23 @@ func set_vertex_colors(values: PackedColorArray) -> void:
 	vertex_colors = values.duplicate()
 	_rebuild_mesh()
 
+func get_layer_texture(layer_index: int) -> Texture2D:
+	if terrain_material == null:
+		return null
+	var names := ["grass_texture", "rock_texture", "sand_texture", "snow_texture"]
+	if layer_index < 0 or layer_index >= names.size():
+		return null
+	return terrain_material.get_shader_parameter(names[layer_index])
+
+func set_layer_texture(layer_index: int, texture: Texture2D) -> void:
+	if terrain_material == null:
+		terrain_material = _create_terrain_material()
+	var names := ["grass_texture", "rock_texture", "sand_texture", "snow_texture"]
+	if layer_index < 0 or layer_index >= names.size():
+		return
+	terrain_material.set_shader_parameter(names[layer_index], texture)
+	set_surface_override_material(0, terrain_material)
+
 func set_layer_weights(values: PackedColorArray) -> void:
 	if values.size() != grid_width * grid_depth:
 		push_error("Terrain layer-weight array size does not match the grid.")
