@@ -12,7 +12,7 @@ A source patch now adds a **Debug** dropdown to the existing editor run bar. It 
 - Visible Avoidance
 - Debug CanvasItem Redraws
 
-The toggles default to off when no project preference exists and persist via Godot's existing `debug_options` project metadata. Since these are launch-time arguments, the user must restart the running preview after changing an option. This does not yet provide live injection of debug flags into an already-running game. Source-only; no patch application, C++ build, Android UI check, or device test has been run for this addition.
+The toggles default to off when no project preference exists and persist via Godot's existing `debug_options` project metadata. **Visible Collision Shapes now calls `EditorDebuggerNode::set_debug_collisions()` when toggled**, using Godot's existing remote-debugger protocol to update active editor-debugged games immediately. The Paths, Navigation, Avoidance and CanvasItem Redraw entries remain launch-time options and still require a restart; live protocol support for those is not yet implemented. Source-only; no patch application, C++ build, Android UI check, or device test has been run for this addition.
 
 
 The goal is broad, auditable access to the Godot editor from a compatible MCP client, including obscure and rarely used controls. Do not decide that a section is out of scope because it appears unimportant.
