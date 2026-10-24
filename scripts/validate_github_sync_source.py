@@ -31,8 +31,9 @@ for token, label in [
     ("_build_change_plan()", "previews the change set before writing"),
     ("_show_preview()", "presents the change preview"),
     ("_apply_changes()", "applies only after explicit confirmation"),
-    ("_rollback_operations(transaction_root)", "attempts rollback when applying changes fails"),
-    ("transaction_root := OS.get_user_data_dir()", "creates transaction backups outside the project"),
+    ("GitHub is the source of truth", "applies GitHub files directly as the source of truth"),
+    ("No se crearon copias.", "reports retryable sync failure without creating backups"),
+    ("Deliberately create no backup or transaction copies", "documents the no-backup mobile-storage policy"),
     ("_save_manifest()", "persists baseline for later deletions"),
     ('str(parsed.get("repository", "")) == active_repo', "only same-repository baseline permits deletion"),
     ("MAX_ARCHIVE_BYTES", "limits downloaded archive size on mobile"),
@@ -43,13 +44,14 @@ for token, label in [
     ("_ensure_sync_plugin_enabled(staged_project)", "keeps the editor plugin enabled when project.godot changes"),
     ('relative.begins_with("addons/github_sync/")', "sync cannot overwrite its own addon"),
     ('relative.begins_with("addons/terrain_3d/")', "sync cannot overwrite the terrain addon"),
-    ("RESCUE_DIR", "rescue directory is outside the project"),
-    ("DirAccess.copy_absolute(local_path, rescue_copy)", "modified local files are copied to rescue before overwrite/delete"),
+    ("Copias de rescate" not in gd, "does not create permanent rescue copies"),
+    ("transaction_root" not in gd, "does not create transaction backup copies"),
+    ("DirAccess.copy_absolute" not in gd, "does not copy local files during synchronization"),
     ('"delete"', "handles files removed from upstream"),
     ("EditorInterface.get_resource_filesystem().scan()", "rescans the editor filesystem after synchronization"),
 ]:
     require(token in gd, label)
-require("No sube archivos." in gd and "never uploads local files" in config.read_text(encoding="utf-8").lower(),
+require("no se crearon copias" in gd.lower() and "never uploads local files" in config.read_text(encoding="utf-8").lower(),
         "one-way sync is documented as no-upload")
 patcher_text = patcher.read_text(encoding="utf-8")
 require("TERRAIN_DATA_GD" in patcher_text and "terrain_plugin_setting" in patcher_text and "editor_plugins" in patcher_text,
