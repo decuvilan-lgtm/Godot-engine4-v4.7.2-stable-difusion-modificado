@@ -86,7 +86,7 @@ jobs:
       - name: Confirm compile output exists (no APK packaging)
         shell: pwsh
         run: |
-          $binary = Get-ChildItem -Path "godot-source/bin" -Recurse -File | Where-Object { $_.Name -match "godot.*android.*arm64|android.*editor.*arm64" } | Select-Object -First 1
+          $binary = Get-ChildItem -Path "godot-source/bin" -Recurse -File | Where-Object { $_.Name -match "godot.*android.*arm32|android.*editor.*arm32" } | Select-Object -First 1
           if (-not $binary) {
             Write-Host "SCons completed, but no filename matched the broad ARM32 output pattern; inspect the preceding SCons log for the authoritative output path."
           } else {
