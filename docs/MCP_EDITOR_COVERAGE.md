@@ -91,9 +91,9 @@ This is a **generic UI bridge**, not proof that every Godot action is accessible
 
 ## Open menu and debug-option inspection — source added, not yet validated
 
-The generated `inspect_editor_ui` tool now includes open `PopupMenu` windows in its traversal and lists each menu item's index, label, separator/disabled state, and checkable/checked state. Combined with `activate_editor_ui_control`, this gives the agent a more reliable path to discover and toggle built-in editor menu options—such as collision/debug visualization options—without asking the user to add a temporary script.
+The generated `inspect_editor_ui` tool now includes open `PopupMenu` windows in its traversal and lists each menu item's index, label, separator/disabled state, and checkable/checked state. `activate_editor_ui_control` now accepts `checked_value` for checkable menu entries: it leaves an already-correct setting alone, activates only when the state differs, and checks the resulting state. Together these changes give the agent a more reliable path to discover and set built-in editor menu options—such as collision/debug visualization options—without asking the user to add a temporary script.
 
-**Scope limit:** this is generic menu-level access, not a guarantee that every collision overlay, viewport mode, or hidden submenu is reachable. The popup traversal and check-state reporting are source-only and still need Godot parser/runtime and Android-device verification. The next implementation pass should inventory the actual target editor's debug menus, then add dedicated typed actions for options that are not reliably exposed through the generic UI tree.
+**Scope limit:** this is generic menu-level access, not a guarantee that every collision overlay, viewport mode, or hidden submenu is reachable. The popup traversal, check-state reporting, and idempotent menu-setting behavior are source-only and still need Godot parser/runtime and Android-device verification. The next implementation pass should inventory the actual target editor's debug menus, then add dedicated typed actions for options that are not reliably exposed through the generic UI tree.
 
 ## Scene UI and preview-control bridge — source added, not yet validated
 
