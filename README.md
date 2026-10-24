@@ -1,16 +1,15 @@
 # Godot 4.7.2 Android Editor — GitHub import (ARM32 + ARM64)
 
 
-## GitHub → local project synchronization — implementation started (2026-10-24)
+## GitHub → local project synchronization — incremental implementation (2026-10-24)
 
-- Added scripts/github_sync_addon/plugin.gd and plugin.cfg: a one-way, in-editor **Sincronizar GitHub** toolbar action for public repositories. It downloads a ZIP from GitHub, stages files, shows a change preview, and applies only after confirmation. It never uploads local files.
-- The sync tracks a baseline outside the project. Baselines are tied to repository identity, so switching to a different GitHub repository cannot authorize deletions from the previous repository. ZIP downloads, entry count, individual file size, and total staged bytes have mobile-oriented limits; ZIP entries outside the expected top-level folder are rejected. It only deletes files that were tracked by a previous successful sync and are now absent upstream.
-- **Mobile storage policy:** no rescue copies, transaction copies, or rollback copies are created. GitHub changes are applied directly only after the preview is confirmed. If applying changes fails partway through, the UI explains that the user can synchronize again; the downloaded ZIP and extracted staging are cleaned on success, failure, preview cancellation, or plugin unload.
-- It preserves the project display name and the sync/terrain plugin entries when upstream changes project.godot; it excludes .godot/, .git/, and its own injected addons from the upstream file set.
-- Added scripts/apply_github_sync_patch.py, which embeds the addon into the native Godot source and installs/enables it for ZIP-installed projects, plus scripts/validate_github_sync_source.py. The Windows source-validation and ARM32 native-compile workflows now apply this integration.
-- **Existing projects:** the patched Project Manager provisions missing sync/terrain addon files and enables both plugins before launching an existing project; it leaves existing addon files untouched. This path is covered by source validation but has not been tested in the Android UI.
-- **Verification status:** [Windows source-only checks passed](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40076510541) on commit `bbde557b`. The ARM32 native compile is queued/running separately. GDScript parser/runtime validation and Android UI behavior remain pending. No APK was packaged.
-
+- The in-project Sincronizar GitHub action is one-way and supports public repositories only. It resolves the requested branch/tag to a commit, reads the Git tree, and downloads only files that are new or whose upstream content changed. File requests are pinned to the resolved commit so a moving branch cannot mix contents from two revisions.
+- The plugin compares Git blob SHA-1 IDs, verifies every downloaded file against its tree metadata, and previews additions, updates, and deletions before applying. Truncated trees, unsafe paths, invalid metadata, per-file sizes above 16 MiB, more than 6,000 tree entries, or more than 100 MiB of staged changed content abort before project files are applied.
+- The manifest is stored outside the project and tied to repository identity. Only files tracked in a previous successful manifest may be deleted. The previous ZIP/SHA-256 manifest is migrated with a one-time content comparison; subsequent runs use upstream Git blob IDs and avoid downloading unchanged files.
+- Mobile storage policy: no rescue copies, transaction copies, or rollback copies are created. Changes are applied directly only after preview confirmation. If applying changes fails partway through, re-sync is the recovery strategy; temporary changed files are removed on success, failure, preview cancellation, or plugin unload.
+- The sync excludes .git/, .godot/, and the injected sync/terrain addons from upstream overwrite/deletion. When upstream changes project.godot, the plugin preserves the chosen display name and keeps both editor plugins enabled.
+- scripts/apply_github_sync_patch.py embeds the addon into the native Godot source and provisions it for installed projects. scripts/validate_github_sync_source.py checks the incremental design and safety constraints. These are source checks, not proof of GDScript runtime or Android-device behavior.
+- Still unverified: GDScript parsing/runtime inside Godot, real network requests on Android, repeat-sync and deletion behavior, and LG K51 performance. No APK was packaged for this change.
 
 ## Android startup/loading screen — source patch added (2026-10-24)
 
@@ -228,20 +227,21 @@ Commit `894b99d89c5659f00a6b0a64a4b52517c5c6166e` adds `generate_android_binarie
 **Status: source implementation present; Android editor runtime not yet verified.** This branch now includes a one-way **Sincronizar GitHub** toolbar action inside an open project, separate from the Project Manager's existing public-repository import/search flow.
 
 ### Implemented in source
-- Accepts a public GitHub repository URL or `owner/repository`, with an optional branch/tag/SHA reference.
-- Downloads the selected repository archive, applies mobile-oriented archive/file/count limits, rejects unsafe archive paths, and stages the files before any project changes.
-- Tracks a per-project baseline outside the project, tied to repository identity.
+- Accepts a public GitHub repository URL or owner/repository, with an optional branch/tag/SHA reference.
+- Resolves the reference to a commit, fetches its Git tree, and downloads only new/changed files; each raw file URL is pinned to that commit.
+- Uses Git blob SHA-1 identifiers for comparison and validates downloaded file size and hash before planning changes. It aborts on truncated trees or invalid paths instead of treating a partial listing as complete.
+- Bounds the tree to 6,000 entries, each downloaded file to 16 MiB, and total changed-file staging to 100 MiB.
+- Tracks upstream blob IDs in a per-project manifest outside the project, tied to repository identity. A one-time migration handles old ZIP/SHA-256 manifests; subsequent syncs use the incremental baseline.
 - Shows a change preview for additions, updates, and tracked files deleted upstream; applies changes only after explicit confirmation.
 - Keeps synchronization one-way: local files are never uploaded or pushed to GitHub.
-- Keeps the injected sync and terrain addons out of upstream overwrite/deletion and preserves their enabled plugin entries when updating `project.godot`.
-- Creates **no rescue, transaction, rollback, or duplicate file copies**. If applying a batch fails partway through, the user can synchronize again; this is the explicitly chosen mobile-storage tradeoff.
-- Removes the downloaded ZIP and extracted staging after success, no-op sync, errors, preview cancellation/window close, and plugin unload.
+- Keeps injected sync and terrain addons out of upstream overwrite/deletion and preserves their enabled plugin entries when updating project.godot.
+- Creates no rescue, transaction, rollback, or duplicate file copies. If applying a batch fails partway through, the user can synchronize again; this is the explicitly chosen mobile-storage tradeoff.
 
-### Not yet implemented or not yet verified
-- Incremental per-file downloading: the current implementation downloads a repository ZIP to compare its current contents, so it is not yet optimized for very large repositories or tiny changes.
-- Authenticated accounts/private repositories, OAuth, and multi-account repository browsing are intentionally out of scope; only public repositories are supported.
-- GDScript parsing inside the actual editor, end-to-end sync interactions, deletion behavior across repeated retries, and Android device behavior remain unverified.
-- Source validation and native C++ compilation do not establish that the editor plugin loads or that its controls work on the LG K51. Do not mark the feature runtime-verified until those tests exist.
+### Not yet verified / limits
+- Authenticated accounts/private repositories, OAuth, and multi-account repository browsing remain out of scope; only public repositories are supported.
+- GitHub trees marked truncated are rejected safely; very large repositories over the safety bounds need a future paginated/subtree strategy rather than partial sync.
+- GDScript parsing inside the actual editor, real Android network requests, repeat-sync and deletion behavior, and LG K51 device behavior remain unverified.
+- Source validation and native C++ compilation do not establish that the editor plugin loads or works on-device. Do not mark the feature runtime-verified until those tests exist.
 
 ### Intended user flow
 1. Open a project in Godot and press **Sincronizar GitHub**.
@@ -263,7 +263,7 @@ Commit `894b99d89c5659f00a6b0a64a4b52517c5c6166e` adds `generate_android_binarie
 ## Known scope and next verification
 
 - The current target APK is ARM64 / `arm64-v8a` only; ARM32 support remains a goal requiring research and validation.
-- The current GitHub button supports public repository import only; multi-account browsing, authentication, Analyze, incremental synchronization, and rescue handling are future work.
+- The current sync supports public repositories; authenticated accounts and multi-account browsing remain future work. Incremental changed-file downloading is implemented in source but awaits runtime validation.
 - Build success and static APK checks do not prove that the APK installs or that the GitHub button works at runtime.
 - After the corrected build, verify the artifact contains the complete editor APK, install it on a compatible Android device, open Project Manager, test a public repository import, and record the exact result. If install fails, capture the Android installer error or `adb install` output.
 
