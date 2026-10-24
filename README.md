@@ -27,7 +27,7 @@ Performance work must therefore be measurement-led:
 - Added a **Debug** menu directly to Godot's existing run bar, alongside the play/pause/stop controls, so the common runtime overlays are reachable without opening the Debug menu or adding temporary scripts.
 - Options: **Visible Collision Shapes** (2D/3D collision shapes and raycasts), **Visible Paths**, **Visible Navigation**, **Visible Avoidance**, and **Debug CanvasItem Redraws**.
 - Every option defaults to **off** for a new project. Existing per-project preferences are respected. The menu writes Godot's existing `debug_options` project metadata, which the run launcher already reads.
-- Important behavior: these are launch-time debug flags. Change the selection and restart the running preview for it to take effect; toggling while a game is already running does not inject a new debug flag into that process.
+- **Visible Collision Shapes is wired for live toggling** through Godot's existing remote-debugger message, so the running editor-debugged game should react immediately without restarting. The other entries still use launch-time metadata and need a restart; live switching for paths/navigation/avoidance/canvas redraw remains pending.
 - This is a source patch only. It has not been applied to a fresh Godot checkout, compiled, or checked on the LG K51. Do not treat the menu as verified until the source patch and Android UI are validated.
 
 ### Missing editor controls — current implementation step
