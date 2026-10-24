@@ -1,0 +1,27 @@
+name: Source-only debug overlay checks
+
+on:
+  push:
+    branches:
+      - feature/github-sync-and-safe-mcp
+  pull_request:
+    branches:
+      - feature/github-sync-and-safe-mcp
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-checks:
+    # Windows runner avoids running tests in a Linux environment and does not compile Godot.
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate patcher and overlay wiring
+        run: python scripts/validate_debug_overlay_patch.py
