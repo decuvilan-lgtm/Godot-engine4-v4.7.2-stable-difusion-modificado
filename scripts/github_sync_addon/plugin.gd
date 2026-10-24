@@ -169,6 +169,8 @@ func _start_request(state: String, url: String, destination: String = "") -> voi
 		return
 	request_state = state
 	request.download_file = destination
+	# JSON tree responses are capped at 8 MiB; file downloads may use the full 16 MiB file budget.
+	request.body_size_limit = MAX_FILE_BYTES + 1024 * 1024 if not destination.is_empty() else 8 * 1024 * 1024
 	var headers := PackedStringArray(["Accept: application/vnd.github+json", "User-Agent: Godot-GitHub-Sync"])
 	var err := request.request(url, headers)
 	if err != OK:
