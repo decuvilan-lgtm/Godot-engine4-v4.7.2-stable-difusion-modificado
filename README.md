@@ -1,6 +1,34 @@
 # Godot 4.7.2 Android Editor — GitHub import (ARM32 + ARM64)
 
-## Current continuation status — 2026-10-23
+## Current continuation status — 2026-10-24
+
+### Important correction: GitHub import/search was already working
+
+**The project owner confirms that the GitHub functionality had already worked. Do not describe GitHub as a broken feature or imply that the recent URL-normalization work made the core Git integration work for the first time.** The existing GitHub import/search flow is established functionality; the latest edits are narrow follow-up improvements to the explicit search fallback and to handling browser-copied URLs (such as `www.github.com`, repository subpages like `/tree/main`, and query/fragment metadata).
+
+The recent fallback edits are **not yet rebuilt or verified on-device**, so they must not be presented as a verified improvement. Keep that distinction clear:
+- **Existing GitHub functionality:** previously working according to the project owner.
+- **Recent search-fallback URL handling changes:** source-only; Android behavior not yet confirmed.
+- **Full APK/device status:** use the dated build history below; do not infer a current APK from source commits alone.
+
+### Performance requirement clarified by the project owner
+
+**The goal is a smoother, more responsive editor and game preview—not reducing features, disabling capabilities, arbitrarily limiting background work, or lowering quality as a blanket fix.** The user specifically reports that running the game preview itself can lag on the LG K51 / Android 11.
+
+Performance work must therefore be measurement-led:
+- Profile frame time and frame pacing while the editor is idle, while editing a scene, and while the game preview is running.
+- Separate editor UI/input latency from game-rendering time, import/shader-compilation stutters, and CPU/GPU contention between the editor and preview.
+- Reproduce the issue on the target Android device before changing renderer, scheduling, cache, quality, or feature behavior.
+- Prefer fixing unnecessary work, repeated redraws, stalls, synchronization, or expensive paths while retaining features and intended visual quality.
+- Do not call the editor “optimized” until comparable before/after measurements show an improvement and the same preview features still work.
+
+### Source changes in this continuation
+
+- **GitHub behavior:** core import/search already worked before the latest follow-up. The explicit **“Buscar en GitHub”** handler and URL normalization are refinements, not the original implementation or proof of a newly fixed core feature.
+- **Workflow safety:** workflows are configured for manual dispatch only to avoid automatically launching Linux-runner checks on source edits. Do not launch Linux tests/builds; the owner explicitly asked not to run tests on Linux.
+- **Not yet verified:** the latest fallback C++ patch has not been applied to a fresh Godot source checkout, compiled, packaged into a new APK, or exercised on the LG K51. Preview smoothness has not yet been measured or improved; no rendering quality or editor feature has been deliberately removed.
+
+
 
 ### Performance requirement clarified by the project owner
 
@@ -25,7 +53,7 @@ Performance work must therefore be measurement-led:
 
 This entry supersedes older “next step” notes below whenever they conflict with the current priorities.
 
-1. **Review GitHub search/import source path first.** The search fallback handler now normalizes common browser-copied GitHub URLs (`github.com` and `www.github.com`), strips query/fragment metadata, and reduces repository subpages such as `/tree/branch` to `owner/repository` before searching. Direct URL import remains strict and separate. This is a source change only; it has not been compiled or tested on Android. Continue reviewing API URL encoding, result selection, pagination, ZIP download, and error handling.
+1. **Preserve the distinction between existing GitHub functionality and follow-up changes.** The project owner confirms GitHub import/search already worked. Recent source-only edits refine the explicit search fallback for copied URLs; they have not been compiled or tested on Android. ** The search fallback handler now normalizes common browser-copied GitHub URLs (`github.com` and `www.github.com`), strips query/fragment metadata, and reduces repository subpages such as `/tree/branch` to `owner/repository` before searching. Direct URL import remains strict and separate. This is a source change only; it has not been compiled or tested on Android. Continue reviewing API URL encoding, result selection, pagination, ZIP download, and error handling.
 2. **Keep the native C++ patch unclaimed until compiled.** The new fallback handler is source-only. Do not describe it as working on Android until a complete editor APK containing the change is built and the UI is exercised.
 3. **Do not run Linux tests or automatically launch Linux CI.** The Android build workflow remains manual-dispatch only. No new Linux test/build was started for this continuation.
 4. **Treat preview lag as a separate performance task.** The user reports lag in the running-game preview on the LG K51 / Android 11. First obtain comparable on-device frame-time/frame-pacing evidence and determine whether the bottleneck is the editor, the game renderer, import/shader work, or resource contention. Do not “fix” this by stripping features, imposing arbitrary resource caps, or lowering visual quality.
