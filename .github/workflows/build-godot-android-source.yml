@@ -1,10 +1,11 @@
 name: Build Godot Android Editor (source pipeline)
 
+# Deliberately manual only: do not launch Linux-runner validation/builds on every source edit.
 on:
   workflow_dispatch:
     inputs:
       run_type:
-        description: "Manual run: build and validate the ARM64-only Android editor, or validate only the import patch"
+        description: "Manual run: build and validate the ARM32+ARM64 Android editor, or validate only the import patch"
         type: choice
         required: true
         default: full-android-build
@@ -21,7 +22,7 @@ concurrency:
 
 jobs:
   build-android-editor:
-    if: ${{ inputs.run_type == 'full-android-build' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_type == 'full-android-build' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -34,6 +35,66 @@ jobs:
           repository: godotengine/godot
           ref: 4.7.2-stable
           path: godot-source
+
+      - name: Give the custom editor a distinct Android package ID
+        shell: bash
+        working-directory: godot-source
+        run: |
+          set -euo pipefail
+          GRADLE_FILE="platform/android/java/editor/build.gradle"
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("platform/android/java/editor/build.gradle")
+          s = p.read_text(encoding="utf-8")
+          old = 'applicationIdSuffix ".debug"'
+          new = 'applicationIdSuffix ".debug.prilcustom"'
+          if s.count(old) != 1:
+              raise SystemExit(f"Expected exactly one default editor package suffix; found {s.count(old)}")
+          p.write_text(s.replace(old, new, 1), encoding="utf-8")
+          print("Custom package suffix configured: .debug.prilcustom")
+          PY
+
+      - name: Checkout reviewed public MCP addon
+        uses: actions/checkout@v4
+        with:
+          repository: GeorgeMee/godot-mcp-android
+          ref: 5df91076250ece38ab182b2ca8b8a4a5d9a2d938
+          path: godot-mcp-android-source
+
+      - name: Package and harden MCP addon
+        run: python scripts/package_safe_mcp_android.py
+
+      - name: Embed MCP addon source files in Android editor assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          ASSET_DIR="$GITHUB_WORKSPACE/godot-source/platform/android/java/editor/src/main/assets/mcp-addon"
+          mkdir -p "$ASSET_DIR"
+          cp -R "$GITHUB_WORKSPACE/dist/addons/godot_mcp_android/." "$ASSET_DIR/"
+          test -s "$ASSET_DIR/plugin.cfg"
+          test -s "$ASSET_DIR/scripts/protocol/mcp_tool_registry.gd"
+          if find "$ASSET_DIR" -name 'execute_script_tool.gd' -o -iname '*delete_project*' | grep -q .; then
+            echo "Unsafe MCP files found in Android assets."
+            exit 1
+          fi
+          echo "Embedded MCP addon files: $(find "$ASSET_DIR" -type f | wc -l)"
+          # Also bundle the addon as one ZIP asset. The Android editor's res:// namespace
+          # does not expose raw APK assets, so the native installer reads this via AssetManager.
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZIP_DEFLATED, ZipFile
+          root = Path("dist/addons/godot_mcp_android")
+          archive = Path("godot-source/platform/android/java/editor/src/main/assets/mcp-addon.zip")
+          with ZipFile(archive, "w", ZIP_DEFLATED) as zf:
+              for path in sorted(root.rglob("*")):
+                  if path.is_file():
+                      zf.write(path, path.relative_to(root.parent).as_posix())
+          with ZipFile(archive) as zf:
+              names = zf.namelist()
+              assert "godot_mcp_android/plugin.cfg" in names
+              assert "godot_mcp_android/scripts/protocol/mcp_tool_registry.gd" in names
+          print(f"Created verified MCP bundle: {archive} ({archive.stat().st_size} bytes)")
+          PY
 
       - name: Apply GitHub import integration
         run: python "$GITHUB_WORKSPACE/scripts/apply_github_import_patch.py"
@@ -56,17 +117,19 @@ jobs:
         working-directory: godot-source
         run: python misc/scripts/install_swappy_android.py
 
-      - name: Compile Android editor engine for ARM64 only
+      - name: Compile Android editor engine for ARM32 and ARM64
         working-directory: godot-source
         run: |
           set -euo pipefail
+          # Build both native ABIs before packaging the combined editor APK.
+          scons platform=android target=editor arch=arm32 production=yes dev_mode=yes module_text_server_fb_enabled=yes swappy=yes cache_path="${{ github.workspace }}/.scons-cache" -j2
           scons platform=android target=editor arch=arm64 production=yes dev_mode=yes module_text_server_fb_enabled=yes swappy=yes generate_android_binaries=yes cache_path="${{ github.workspace }}/.scons-cache" -j2
 
       - name: Generate Android Editor APK
         working-directory: godot-source/platform/android/java
         run: ./gradlew --no-daemon generateGodotEditor
 
-      - name: Locate, stage, and validate ARM64-only APK
+      - name: Locate, stage, and validate ARM32+ARM64 APK
         shell: bash
         run: |
           set -euo pipefail
@@ -89,8 +152,8 @@ jobs:
             exit 1
           fi
 
-          cp "$APK" "$GITHUB_WORKSPACE/godot-editor-arm64.apk"
-          APK="$GITHUB_WORKSPACE/godot-editor-arm64.apk"
+          cp "$APK" "$GITHUB_WORKSPACE/godot-editor-arm32-arm64.apk"
+          APK="$GITHUB_WORKSPACE/godot-editor-arm32-arm64.apk"
 
           BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
           AAPT="$BUILD_TOOLS/aapt"
@@ -103,13 +166,19 @@ jobs:
           unzip -t "$APK"
           "$AAPT" dump badging "$APK" | tee apk-badging.txt
 
-          echo "=== Enforce ARM64-only native code ==="
+          echo "=== Enforce ARM32 and ARM64 native code ==="
           NATIVE_LINE="$(grep '^native-code:' apk-badging.txt || true)"
           echo "$NATIVE_LINE"
-          if [ "$NATIVE_LINE" != "native-code: 'arm64-v8a'" ]; then
-            echo "ERROR: APK must contain only arm64-v8a; found: $NATIVE_LINE"
-            exit 1
-          fi
+          python - <<'PY'
+          from pathlib import Path
+          text = Path("apk-badging.txt").read_text(encoding="utf-8")
+          line = next((item for item in text.splitlines() if item.startswith("native-code:")), "")
+          found = set(line.replace("native-code:", "").replace("'", "").split())
+          expected = {"armeabi-v7a", "arm64-v8a"}
+          if found != expected:
+              raise SystemExit(f"Expected exactly {sorted(expected)}; found {sorted(found)} in {line!r}")
+          print("Verified native ABIs:", ", ".join(sorted(found)))
+          PY
 
           echo "=== Verify APK signature ==="
           "$APKSIGNER" verify --verbose --print-certs "$APK"
@@ -117,14 +186,41 @@ jobs:
           echo "=== Verify ZIP alignment ==="
           "$ZIPALIGN" -c -v 4 "$APK"
 
-      - name: Upload ARM64-only Android editor APK
-        if: always() && inputs.run_type == 'full-android-build'
+          echo "=== Verify hardened MCP addon is embedded in the final APK ==="
+          unzip -Z1 "$APK" | grep -Fx 'assets/mcp-addon/plugin.cfg'
+          unzip -Z1 "$APK" | grep -Fx 'assets/mcp-addon/scripts/protocol/mcp_tool_registry.gd'
+          unzip -Z1 "$APK" | grep -Fx 'assets/mcp-addon.zip'
+          unzip -p "$APK" assets/mcp-addon.zip > "$RUNNER_TEMP/mcp-addon.zip"
+          python - <<'PY'
+          from zipfile import ZipFile
+          with ZipFile(__import__("os").environ["RUNNER_TEMP"] + "/mcp-addon.zip") as zf:
+              names = zf.namelist()
+              assert "godot_mcp_android/plugin.cfg" in names
+              assert "godot_mcp_android/scripts/protocol/mcp_tool_registry.gd" in names
+              assert all(not n.startswith("/") and ".." not in n.split("/") for n in names)
+          PY
+          EMBEDDED_REGISTRY="$(unzip -p "$APK" assets/mcp-addon/scripts/protocol/mcp_tool_registry.gd)"
+          if grep -q 'ExecuteScriptTool\|delete_project' <<< "$EMBEDDED_REGISTRY"; then
+            echo "ERROR: unsafe MCP tool registration found inside APK."
+            exit 1
+          fi
+          EMBEDDED_HTTP="$(unzip -p "$APK" assets/mcp-addon/scripts/server/mcp_http_server.gd)"
+          EMBEDDED_WS="$(unzip -p "$APK" assets/mcp-addon/scripts/server/mcp_websocket_server.gd)"
+          grep -Fq 'bind_host = "127.0.0.1"' <<< "$EMBEDDED_HTTP"
+          grep -Fq 'bind_host = "127.0.0.1"' <<< "$EMBEDDED_WS"
+          if grep -Fq 'Access-Control-Allow-Origin: *' <<< "$EMBEDDED_HTTP"; then
+            echo "ERROR: wildcard CORS found inside APK."
+            exit 1
+          fi
+
+      - name: Upload ARM32+ARM64 Android editor APK
+        if: always() && (github.event_name == 'push' || inputs.run_type == 'full-android-build')
         uses: actions/upload-artifact@v4
         with:
-          name: godot-4.7.2-android-editor-arm64-only
+          name: godot-4.7.2-android-editor-arm32-arm64
           if-no-files-found: error
           path: |
-            godot-editor-arm64.apk
+            godot-editor-arm32-arm64.apk
             apk-badging.txt
           retention-days: 30
 
@@ -144,3 +240,27 @@ jobs:
         run: python -m py_compile scripts/apply_github_import_patch.py
       - name: Run import integration patcher
         run: python scripts/apply_github_import_patch.py
+
+  package-safe-mcp-addon:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+      - name: Checkout public Android MCP addon
+        uses: actions/checkout@v4
+        with:
+          repository: GeorgeMee/godot-mcp-android
+          # Pin the reviewed upstream revision for reproducible packaging.
+          ref: 5df91076250ece38ab182b2ca8b8a4a5d9a2d938
+          path: godot-mcp-android-source
+      - name: Package and validate safe MCP addon
+        run: python scripts/package_safe_mcp_android.py
+      - name: Upload safe MCP addon
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-mcp-android-safe
+          path: dist/godot-mcp-android-safe.zip
+          if-no-files-found: error
+          retention-days: 30

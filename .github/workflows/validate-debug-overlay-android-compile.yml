@@ -1,0 +1,130 @@
+name: Compile debug overlays for Android ARM32 (no APK)
+
+on:
+  push:
+    branches:
+      - feature/github-sync-and-safe-mcp
+    paths:
+      - "scripts/apply_github_import_patch.py"
+      - "scripts/validate_debug_overlay_patch.py"
+      - "scripts/apply_github_sync_patch.py"
+      - "scripts/validate_github_sync_source.py"
+      - "scripts/github_sync_addon/**"
+      - "scripts/apply_android_startup_patch.py"
+      - "scripts/validate_android_startup_patch.py"
+      - "scripts/validate_terrain_3d_source.py"
+      - "scripts/terrain_3d_addon/**"
+      - ".github/workflows/validate-debug-overlay-android-compile.yml"
+  pull_request:
+    branches:
+      - feature/github-sync-and-safe-mcp
+    paths:
+      - "scripts/apply_github_import_patch.py"
+      - "scripts/validate_debug_overlay_patch.py"
+      - "scripts/apply_github_sync_patch.py"
+      - "scripts/validate_github_sync_source.py"
+      - "scripts/github_sync_addon/**"
+      - "scripts/apply_android_startup_patch.py"
+      - "scripts/validate_android_startup_patch.py"
+      - "scripts/validate_terrain_3d_source.py"
+      - "scripts/terrain_3d_addon/**"
+      - ".github/workflows/validate-debug-overlay-android-compile.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: godot-debug-overlay-android-arm32-compile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile-native-editor:
+    # Windows runner only: explicitly avoids Linux tests/builds.
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out project patcher
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+
+      - name: Install Android NDK and platform
+        shell: pwsh
+        run: |
+          sdkmanager --install "ndk;28.0.13004108" "platforms;android-35" "build-tools;35.0.0"
+          $ndk = Join-Path $env:ANDROID_HOME "ndk/28.0.13004108"
+          if (-not (Test-Path $ndk)) { throw "Android NDK not found at $ndk" }
+          "ANDROID_NDK_ROOT=$ndk" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "ANDROID_NDK_HOME=$ndk" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Install SCons
+        run: python -m pip install --upgrade pip scons
+
+      - name: Enable long paths for upstream Godot checkout
+        shell: pwsh
+        run: git config --global core.longpaths true
+
+      - name: Check out official Godot 4.7.2 source
+        uses: actions/checkout@v4
+        with:
+          repository: godotengine/godot
+          ref: 4.7.2-stable
+          path: godot-source
+
+      - name: Apply the custom source patch
+        run: python scripts/apply_github_import_patch.py
+
+      - name: Apply GitHub sync editor integration
+        run: python scripts/apply_github_sync_patch.py
+
+      - name: Validate GitHub sync source
+        run: python scripts/validate_github_sync_source.py
+
+      - name: Validate 3D terrain editor source
+        run: python scripts/validate_terrain_3d_source.py
+
+      - name: Apply Android startup/loading overlay patch
+        run: python scripts/apply_android_startup_patch.py
+
+      - name: Validate Android startup/loading overlay source
+        run: python scripts/validate_android_startup_patch.py
+
+      - name: Install Android Swappy dependency
+        working-directory: godot-source
+        run: python misc/scripts/install_swappy_android.py
+
+      - name: Compile ARM32 Android editor native engine only
+        working-directory: godot-source
+        run: scons platform=android target=editor arch=arm32 production=yes dev_mode=yes module_text_server_fb_enabled=yes swappy=yes -j2
+
+      - name: Confirm compile output exists (no APK packaging)
+        shell: pwsh
+        run: |
+          $binary = "godot-source/platform/android/java/lib/libs/tools/debug/armeabi-v7a/libgodot_android.so"
+          if (-not (Test-Path $binary) -or (Get-Item $binary).Length -le 0) {
+            Write-Host "Files under Godot bin:"
+            if (Test-Path "godot-source/bin") {
+              Get-ChildItem -Path "godot-source/bin" -Recurse -File |
+                Where-Object { $_.Extension -in @(".so", ".a") } |
+                Select-Object -First 30 FullName,Length | Format-Table -AutoSize
+            }
+            throw "The expected non-empty ARM32 editor shared library was not found at $binary. Object files (.o) do not count as compile output."
+          }
+          $file = Get-Item $binary
+          Write-Host "Verified ARM32 editor shared library: $($file.FullName) ($($file.Length) bytes)"
+          "GODOT_ARM32_BINARY=$($file.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8

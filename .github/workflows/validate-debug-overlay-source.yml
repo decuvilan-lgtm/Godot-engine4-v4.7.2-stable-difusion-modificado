@@ -1,0 +1,68 @@
+name: Source-only debug overlay checks
+
+on:
+  push:
+    branches:
+      - feature/github-sync-and-safe-mcp
+  pull_request:
+    branches:
+      - feature/github-sync-and-safe-mcp
+  workflow_dispatch:
+
+concurrency:
+  group: godot-debug-overlay-source-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  source-checks:
+    # Windows runner avoids running tests in a Linux environment and does not compile Godot.
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check out only source files touched by the patcher
+        uses: actions/checkout@v4
+        with:
+          repository: godotengine/godot
+          ref: 4.7.2-stable
+          path: godot-source
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            editor/project_manager/project_manager.h
+            editor/project_manager/project_manager.cpp
+            editor/project_manager/project_dialog.cpp
+            platform/android/java/editor/src/main/res/layout/godot_editor_layout.xml
+            platform/android/java/editor/src/main/res/values/themes.xml
+            editor/run/editor_run_bar.h
+            editor/run/editor_run_bar.cpp
+            scene/debugger/scene_debugger.h
+            scene/debugger/scene_debugger.cpp
+            editor/debugger/editor_debugger_node.h
+            editor/debugger/editor_debugger_node.cpp
+            editor/debugger/script_editor_debugger.h
+            editor/debugger/script_editor_debugger.cpp
+            scene/2d/path_2d.h
+            scene/2d/path_2d.cpp
+            scene/3d/path_3d.h
+            scene/3d/path_3d.cpp
+      - name: Validate patcher and overlay wiring
+        run: python scripts/validate_debug_overlay_patch.py
+      - name: Apply patch to clean upstream source
+        run: python scripts/apply_github_import_patch.py
+      - name: Apply GitHub sync editor integration
+        run: python scripts/apply_github_sync_patch.py
+      - name: Validate GitHub sync source
+        run: python scripts/validate_github_sync_source.py
+      - name: Validate 3D terrain editor source
+        run: python scripts/validate_terrain_3d_source.py
+      - name: Apply Android startup/loading overlay patch
+        run: python scripts/apply_android_startup_patch.py
+      - name: Validate Android startup/loading overlay source
+        run: python scripts/validate_android_startup_patch.py
