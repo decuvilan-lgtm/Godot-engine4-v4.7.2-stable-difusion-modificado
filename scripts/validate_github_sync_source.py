@@ -32,6 +32,7 @@ for token, label in [
     ("_save_manifest()", "persists baseline for later deletions"),
     ("_ensure_sync_plugin_enabled(staged_project)", "keeps the editor plugin enabled when project.godot changes"),
     ('relative.begins_with("addons/github_sync/")', "sync cannot overwrite its own addon"),
+    ('relative.begins_with("addons/terrain_3d/")', "sync cannot overwrite the terrain addon"),
     ("RESCUE_DIR", "rescue directory is outside the project"),
     ("DirAccess.copy_absolute(local_path, rescue_copy)", "modified local files are copied to rescue before overwrite/delete"),
     ('"delete"', "handles files removed from upstream"),
@@ -41,6 +42,6 @@ for token, label in [
 require("No sube archivos." in gd and "never uploads local files" in config.read_text(encoding="utf-8").lower(),
         "one-way sync is documented as no-upload")
 patcher_text = patcher.read_text(encoding="utf-8")
-require("GitHubSyncAddonData::PLUGIN_GD" in patcher_text and "editor_plugins" in patcher_text,
-        "installer embeds and enables the plugin for ZIP-installed projects")
+require("TERRAIN_DATA_GD" in patcher_text and "terrain_plugin_setting" in patcher_text and "editor_plugins" in patcher_text,
+        "installer embeds and enables both custom editor addons for ZIP-installed projects")
 print("Source-only checks passed; no C++ compilation, GDScript parse, APK, or device runtime is implied.")
