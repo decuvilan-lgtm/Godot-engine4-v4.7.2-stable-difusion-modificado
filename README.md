@@ -33,7 +33,7 @@ Performance work must therefore be measurement-led:
 ### Latest overlay validation status — 2026-10-24
 
 - **PASS — [Windows source validation run 40060330082](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40060330082):** Python syntax and overlay checks passed, and the patcher applied successfully to a clean, sparse checkout of official Godot 4.7.2 source.
-- **IN PROGRESS — [Windows Android native compile run 40060228767](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40060228767):** targeted only the ARM64 Android editor native engine and was superseded by the ARM32-first workflow. It does **not** run Gradle or generate/package an APK. C++ compile status is not confirmed yet.
+- **Earlier ARM64 native compile run 40060228767:** superseded by the ARM32-first workflow; it did not package an APK.
 - The source-validation path exposed and corrected an upstream-anchor mismatch: official Godot 4.7.2 does not already declare the collision remote-debugger functions assumed by the earlier patch. The patch now adds the collision message end-to-end instead of relying on nonexistent declarations.
 - Windows runner setup issues were addressed: long Git paths are enabled for the full source checkout, and the obsolete Android SDK `tools` package is no longer requested.
 - The Linux-based MCP addon workflow is now manual-dispatch only. Overlay source checks and the compile-only check use Windows runners; do not run Linux tests or build/package a full APK without a separate explicit request.
@@ -583,5 +583,7 @@ The Windows workflow `.github/workflows/validate-debug-overlay-source.yml` now c
 
 ### Current test being awaited — 2026-10-24
 - **PASS — [Source-only debug overlay checks, run 40065262063](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40065262063)** on commit `09c9cf0`.
-- **IN PROGRESS — [Android ARM32 native compile, no APK, run 40065262042](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40065262042)** on commit `09c9cf0`. This compiles the native editor target on a Windows runner and is not a full APK build. Its result is still pending; do not mark the C++ patch as compile-verified until it finishes successfully.
+- **PASS — [ARM32 native editor compile, no APK, run 40065262042](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40065262042)** on commit `09c9cf0`: SCons completed and linked `libgodot.android.editor.arm32.so`, then moved it into the Android editor library path. This is a native C++ compile, **not** an APK build or device test.
+- **Issue found and corrected:** the run’s final verification step matched the first non-empty filename containing `android.editor.arm32`, which was an object file (`core_bind.android.editor.arm32.o`) rather than the actual shared library. The compile log shows the shared-library link and move succeeded, but the checker was too permissive. Commit `4459c7a` changes the check to require the exact non-empty `platform/android/java/lib/libs/tools/debug/armeabi-v7a/libgodot_android.so` output. A new Windows run triggered by that workflow change must pass before considering the strict output verification itself confirmed.
+- **Still not proven:** packaged APK, installation/launch on LG K51, and runtime behavior of all five debug toggles.
 
