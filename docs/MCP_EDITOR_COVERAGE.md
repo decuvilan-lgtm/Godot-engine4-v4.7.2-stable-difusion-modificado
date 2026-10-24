@@ -2,6 +2,19 @@
 
 ## Purpose and acceptance rule
 
+## Run-bar preview debug overlays — source patch added, not yet validated
+
+A source patch now adds a **Debug** dropdown to the existing editor run bar. It exposes the same per-project launch flags used by Godot's existing Debug menu:
+
+- Visible Collision Shapes (2D/3D shapes and raycasts)
+- Visible Paths
+- Visible Navigation
+- Visible Avoidance
+- Debug CanvasItem Redraws
+
+The toggles default to off when no project preference exists and persist via Godot's existing `debug_options` project metadata. Since these are launch-time arguments, the user must restart the running preview after changing an option. This does not yet provide live injection of debug flags into an already-running game. Source-only; no patch application, C++ build, Android UI check, or device test has been run for this addition.
+
+
 The goal is broad, auditable access to the Godot editor from a compatible MCP client, including obscure and rarely used controls. Do not decide that a section is out of scope because it appears unimportant.
 
 This document is an **inventory and implementation plan**, not a claim that coverage already exists. Every entry must eventually be marked `implemented`, `partial`, `unavailable`, or `blocked for safety`, with a tool/action name and a test result. A menu is not covered merely because a similarly named tool exists.
