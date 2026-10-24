@@ -245,6 +245,16 @@ func execute(arguments: Dictionary) -> Dictionary:
 		for word in ["delete", "remove", "erase", "clear", "discard", "revert", "overwrite", "uninstall"]:
 			if item_text.contains(word) and not bool(arguments.get("confirm_destructive", false)):
 				return tool_error("potentially destructive menu action requires confirm_destructive=true")
+		if arguments.has("checked_value"):
+			if not menu.is_item_checkable(menu_index):
+				return tool_error("checked_value requires a checkable PopupMenu item")
+			var wanted_checked := bool(arguments.get("checked_value", false))
+			if menu.is_item_checked(menu_index) == wanted_checked:
+				return {"ok": true, "path": path, "menu_index": menu_index, "menu_item": menu.get_item_text(menu_index), "checked": wanted_checked, "unchanged": true}
+			menu.activate_item(menu_index)
+			if menu.is_item_checked(menu_index) != wanted_checked:
+				return tool_error("menu action did not reach the requested checked state; inspect the menu again")
+			return {"ok": true, "path": path, "menu_index": menu_index, "menu_item": menu.get_item_text(menu_index), "checked": wanted_checked}
 		menu.activate_item(menu_index)
 		return {"ok": true, "path": path, "menu_index": menu_index, "menu_item": menu.get_item_text(menu_index)}
 	if not target is Control:
