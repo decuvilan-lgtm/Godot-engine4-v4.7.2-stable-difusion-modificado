@@ -54,3 +54,7 @@ jobs:
         run: python scripts/validate_debug_overlay_patch.py
       - name: Apply patch to clean upstream source
         run: python scripts/apply_github_import_patch.py
+      - name: Apply GitHub sync editor integration
+        run: python scripts/apply_github_sync_patch.py
+      - name: Validate GitHub sync source
+        run: python scripts/validate_github_sync_source.py
