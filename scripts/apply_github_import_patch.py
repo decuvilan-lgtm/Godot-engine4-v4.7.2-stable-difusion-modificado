@@ -913,8 +913,8 @@ replace_once(RUN_BAR_SOURCE,
     "EditorDebuggerNode::get_singleton()->set_debug_avoidance(enabled);\n\t} else if (p_id == PREVIEW_DEBUG_PATHS) {\n\t\tEditorDebuggerNode::get_singleton()->set_debug_paths(enabled);\n\t} else if (p_id == PREVIEW_DEBUG_CANVAS_REDRAW) {\n\t\tEditorDebuggerNode::get_singleton()->set_debug_canvas_item_redraw(enabled);\n\t}")
 
 
-// Runtime path toggling must refresh Godot's actual built-in Path2D/Path3D
-// debug renderers; merely changing SceneTree::debug_paths_hint is insufficient.
+# Runtime path toggling must refresh Godot's actual built-in Path2D/Path3D
+# debug renderers; merely changing SceneTree::debug_paths_hint is insufficient.
 PATH2D_HEADER = ROOT / "scene/2d/path_2d.h"
 PATH2D_SOURCE = ROOT / "scene/2d/path_2d.cpp"
 PATH3D_HEADER = ROOT / "scene/3d/path_3d.h"
