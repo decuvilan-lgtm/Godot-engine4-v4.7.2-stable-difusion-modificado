@@ -29,7 +29,7 @@ replace_once(THEMES,
 """	<style name="GodotEditorSplashScreenTheme" parent="Theme.SplashScreen.IconBackground">
 		<!-- Keep the native splash and the editor's own loading overlay visually consistent. -->
 		<item name="windowSplashScreenBackground">#10141C</item>
-		<item name="windowSplashScreenAnimatedIcon">@mipmap/themed_icon</item>
+		<item name="windowSplashScreenAnimatedIcon">@mipmap/ic_play_window</item>
 		<item name="windowSplashScreenIconBackgroundColor">#263244</item>
 		<item name="postSplashScreenTheme">@style/GodotEditorTheme</item>
 	</style>""")
@@ -71,7 +71,7 @@ replace_once(LAYOUT,
 			<ImageView
 				android:layout_width="88dp"
 				android:layout_height="88dp"
-				android:src="@mipmap/themed_icon"
+				android:src="@mipmap/ic_play_window"
 				android:contentDescription="Godot Android Editor"/>
 
 			<TextView
