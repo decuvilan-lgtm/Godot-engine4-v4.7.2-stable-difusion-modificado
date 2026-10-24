@@ -27,7 +27,7 @@ Performance work must therefore be measurement-led:
 - Added a **Debug** menu directly to Godot's existing run bar, alongside the play/pause/stop controls, so the common runtime overlays are reachable without opening the Debug menu or adding temporary scripts.
 - Options: **Visible Collision Shapes** (2D/3D collision shapes and raycasts), **Visible Paths**, **Visible Navigation**, **Visible Avoidance**, and **Debug CanvasItem Redraws**.
 - Every option defaults to **off** for a new project. Existing per-project preferences are respected. The menu writes Godot's existing `debug_options` project metadata, which the run launcher already reads.
-- **All five controls now have source-level live-toggle wiring** through the editor's remote-debugger channel. Collision Shapes calls Godot's live physics-server debug switch; Navigation and Avoidance send runtime commands to the navigation servers; CanvasItem Redraws calls `RenderingServer::canvas_item_set_debug_redraw`; and Visible Paths now explicitly refreshes the built-in `Path2D` renderer and creates/updates/hides the `Path3D` debug instance when toggled. Godot documents the `SceneTree` path hint itself as not designed for runtime changes, so the patch does not rely on that hint alone. These C++ changes are not yet compiled or runtime-verified.
+- **All five controls now have source-level live-toggle wiring** through the editor's remote-debugger channel. Collision Shapes calls Godot's live physics-server debug switch; Navigation and Avoidance send runtime commands to the navigation servers; CanvasItem Redraws calls `RenderingServer::canvas_item_set_debug_redraw`; and Visible Paths now explicitly refreshes the built-in `Path2D` renderer and creates/updates/hides the `Path3D` debug instance when toggled. Godot documents the `SceneTree` path hint itself as not designed for runtime changes, so the patch does not rely on that hint alone. The C++ changes now pass the ARM32 native editor compile (run 40065262042); runtime behavior in the running preview is still not verified.
 - This is a source patch only. It has not been applied to a fresh Godot checkout, compiled, or checked on the LG K51. Do not treat the menu as verified until the source patch and Android UI are validated.
 
 ### Latest overlay validation status — 2026-10-24
@@ -552,7 +552,7 @@ Before merging this branch, protect the previously working GitHub import/search 
 
 ### Source-only checks for preview debug overlays
 
-The Windows workflow `.github/workflows/validate-debug-overlay-source.yml` now checks patcher syntax and applies it to a clean official Godot 4.7.2 checkout. A separate Windows workflow, `.github/workflows/validate-debug-overlay-android-compile.yml`, is configured to compile the **ARM32 (`armeabi-v7a`) Android editor native engine first**, matching the LG K51 target—no Gradle APK packaging and no Linux runner. Its result is pending; no in-game runtime behavior is claimed until compilation succeeds and the toggles are exercised in the running preview.
+The Windows workflow `.github/workflows/validate-debug-overlay-source.yml` now checks patcher syntax and applies it to a clean official Godot 4.7.2 checkout. A separate Windows workflow, `.github/workflows/validate-debug-overlay-android-compile.yml`, is configured to compile the **ARM32 (`armeabi-v7a`) Android editor native engine first**, matching the LG K51 target—no Gradle APK packaging and no Linux runner. The native ARM32 compile completed successfully in run 40065262042; a stricter output-file check is being rerun after the first check was found to match an object file. No in-game runtime behavior is claimed until the toggles are exercised in the running preview.
 
 ## Proposed feature — Native 3D terrain editor (documented, not implemented)
 
@@ -579,7 +579,7 @@ The Windows workflow `.github/workflows/validate-debug-overlay-source.yml` now c
 - Keep the interface usable on a narrow mobile screen and provide conservative defaults suitable for the LG K51 / Android 11 / ARM32 target.
 - Do not trade away existing editor features or visual quality as a blanket performance fix. Optimize based on measurements.
 - A completed source patch, successful Windows source checks, a successful Android native compile, a packaged APK, and a successful on-device test are separate milestones and must be recorded separately.
-- **No terrain implementation or terrain test has started as part of this documentation update.** The current active task remains waiting for the Android ARM32 native compile check for the debug-overlay patch.
+- **No terrain implementation or terrain test has started as part of this documentation update.** The initial Android ARM32 native compile completed successfully; a corrected workflow check is now validating the exact shared-library output, because the previous file check was too broad.
 
 ### Current test being awaited — 2026-10-24
 - **PASS — [Source-only debug overlay checks, run 40065262063](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40065262063)** on commit `09c9cf0`.
