@@ -46,13 +46,13 @@ for token, label in [
     ("_ensure_sync_plugin_enabled(staged_project)", "keeps the editor plugin enabled when project.godot changes"),
     ('relative.begins_with("addons/github_sync/")', "sync cannot overwrite its own addon"),
     ('relative.begins_with("addons/terrain_3d/")', "sync cannot overwrite the terrain addon"),
-    ("Copias de rescate" not in gd, "does not create permanent rescue copies"),
-    ("transaction_root" not in gd, "does not create transaction backup copies"),
-    ("DirAccess.copy_absolute" not in gd, "does not copy local files during synchronization"),
     ('"delete"', "handles files removed from upstream"),
     ("EditorInterface.get_resource_filesystem().scan()", "rescans the editor filesystem after synchronization"),
 ]:
     require(token in gd, label)
+require("Copias de rescate" not in gd, "does not create permanent rescue copies")
+require("transaction_root" not in gd, "does not create transaction backup copies")
+require("DirAccess.copy_absolute" not in gd, "does not copy local files during synchronization")
 require("no se crearon copias" in gd.lower() and "never uploads local files" in config.read_text(encoding="utf-8").lower(),
         "one-way sync is documented as no-upload")
 patcher_text = patcher.read_text(encoding="utf-8")
