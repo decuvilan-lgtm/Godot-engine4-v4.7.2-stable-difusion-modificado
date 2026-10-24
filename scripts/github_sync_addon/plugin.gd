@@ -24,10 +24,17 @@ var operations: Array[Dictionary] = []
 var baseline: Dictionary = {}
 var project_root := ""
 var project_key := ""
+const MAX_ARCHIVE_BYTES := 200 * 1024 * 1024
+const MAX_ARCHIVE_FILES := 20000
+const MAX_SINGLE_FILE_BYTES := 16 * 1024 * 1024
+const MAX_TOTAL_STAGED_BYTES := 512 * 1024 * 1024
 
 func _enter_tree() -> void:
 	project_root = ProjectSettings.globalize_path("res://").trim_suffix("/")
-	project_key = str(hash(project_root))
+	var key_context := HashingContext.new()
+	key_context.start(HashingContext.HASH_SHA256)
+	key_context.update(project_root.to_utf8_buffer())
+	project_key = key_context.finish().hex_encode().substr(0, 32)
 	sync_button = Button.new()
 	sync_button.text = "Sincronizar GitHub"
 	sync_button.tooltip_text = "Actualizar este proyecto desde un repositorio público de GitHub. No sube archivos."
@@ -253,7 +260,11 @@ func _load_baseline() -> void:
 	var parsed = JSON.parse_string(file.get_as_text())
 	file.close()
 	if parsed is Dictionary and parsed.get("files", null) is Dictionary:
-		baseline = parsed.files
+		# A baseline from another repository must never authorize deletions here.
+		if str(parsed.get("repository", "")) == active_repo:
+			baseline = parsed.files
+		else:
+			baseline = {}
 
 func _build_change_plan() -> void:
 	_load_baseline()
