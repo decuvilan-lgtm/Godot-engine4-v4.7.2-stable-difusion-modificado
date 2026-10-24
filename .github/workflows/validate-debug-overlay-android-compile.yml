@@ -10,6 +10,8 @@ on:
       - "scripts/apply_github_sync_patch.py"
       - "scripts/validate_github_sync_source.py"
       - "scripts/github_sync_addon/**"
+      - "scripts/apply_android_startup_patch.py"
+      - "scripts/validate_android_startup_patch.py"
       - ".github/workflows/validate-debug-overlay-android-compile.yml"
   pull_request:
     branches:
@@ -83,6 +85,12 @@ jobs:
 
       - name: Validate GitHub sync source
         run: python scripts/validate_github_sync_source.py
+
+      - name: Apply Android startup/loading overlay patch
+        run: python scripts/apply_android_startup_patch.py
+
+      - name: Validate Android startup/loading overlay source
+        run: python scripts/validate_android_startup_patch.py
 
       - name: Install Android Swappy dependency
         working-directory: godot-source
