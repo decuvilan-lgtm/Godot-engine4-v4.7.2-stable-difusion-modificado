@@ -866,8 +866,7 @@ replace_once(SCENE_DEBUGGER_SOURCE,
     'message_handlers["set_debug_avoidance"] = _msg_set_debug_avoidance;',
     'message_handlers["set_debug_avoidance"] = _msg_set_debug_avoidance;\\n\\tmessage_handlers["set_debug_canvas_item_redraw"] = _msg_set_debug_canvas_item_redraw;')
 replace_once(RUN_BAR_SOURCE,
-    "void EditorRunBar::_movie_maker_item_pressed(int p_id) {",
-    """// Placeholder anchor for canvas redraw dispatch is inserted into the existing handler below.
-void EditorRunBar::_movie_maker_item_pressed(int p_id) {""")
+    "EditorDebuggerNode::get_singleton()->set_debug_avoidance(enabled);\\n\\t}",
+    "EditorDebuggerNode::get_singleton()->set_debug_avoidance(enabled);\\n\\t} else if (p_id == PREVIEW_DEBUG_CANVAS_REDRAW) {\\n\\t\\tEditorDebuggerNode::get_singleton()->set_debug_canvas_item_redraw(enabled);\\n\\t}")
 
 print("GitHub import and Android Gallery protection patches applied successfully.")
