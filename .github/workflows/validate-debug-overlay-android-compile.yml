@@ -1,4 +1,4 @@
-name: Compile debug overlays for Android (no APK)
+name: Compile debug overlays for Android ARM32 (no APK)
 
 on:
   push:
@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: godot-debug-overlay-android-compile-${{ github.ref }}
+  group: godot-debug-overlay-android-arm32-compile-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -79,16 +79,16 @@ jobs:
         working-directory: godot-source
         run: python misc/scripts/install_swappy_android.py
 
-      - name: Compile ARM64 Android editor native engine only
+      - name: Compile ARM32 Android editor native engine only
         working-directory: godot-source
-        run: scons platform=android target=editor arch=arm64 production=yes dev_mode=yes module_text_server_fb_enabled=yes swappy=yes -j2
+        run: scons platform=android target=editor arch=arm32 production=yes dev_mode=yes module_text_server_fb_enabled=yes swappy=yes -j2
 
       - name: Confirm compile output exists (no APK packaging)
         shell: pwsh
         run: |
           $binary = Get-ChildItem -Path "godot-source/bin" -Recurse -File | Where-Object { $_.Name -match "godot.*android.*arm64|android.*editor.*arm64" } | Select-Object -First 1
           if (-not $binary) {
-            Write-Host "SCons completed, but no filename matched the broad ARM64 output pattern; inspect the preceding SCons log for the authoritative output path."
+            Write-Host "SCons completed, but no filename matched the broad ARM32 output pattern; inspect the preceding SCons log for the authoritative output path."
           } else {
             Write-Host "Native output: $($binary.FullName) ($($binary.Length) bytes)"
           }
