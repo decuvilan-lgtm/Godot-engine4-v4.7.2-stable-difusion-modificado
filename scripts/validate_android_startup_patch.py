@@ -20,6 +20,7 @@ source = patcher.read_text(encoding="utf-8")
 for token, label in [
     ("windowSplashScreenBackground", "native splash background is explicit"),
     ("windowSplashScreenAnimatedIcon", "native splash uses the app icon"),
+    ("@mipmap/ic_play_window", "startup overlay references an existing upstream editor icon"),
     ("@+id/editor_loading_indicator", "loading overlay keeps the existing readiness hook ID"),
     ("Preparing your workspace", "startup overlay includes a status message"),
     ("onGodotMainLoopStarted", "patch documents the existing overlay hide lifecycle"),
