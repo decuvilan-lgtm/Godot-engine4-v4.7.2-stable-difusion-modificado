@@ -22,6 +22,13 @@ Performance work must therefore be measurement-led:
 - Prefer fixing unnecessary work, repeated redraws, stalls, synchronization, or expensive paths while retaining features and intended visual quality.
 - Do not call the editor “optimized” until comparable before/after measurements show an improvement and the same preview features still work.
 
+### Verification requested — editor sync button, fluency, and startup screen (2026-10-24)
+
+- **In-project Synchronize button: NOT IMPLEMENTED in the current source patch.** The current native GitHub UI is an import/search flow in the Project Manager, which is outside the open project. The planned one-way, incremental GitHub synchronization is documented later in this README but is still a design, not a working feature. Do not claim that a sync button is available while editing. Next implementation must add a persistent, discoverable **Synchronize** action inside the open project's editor UI and connect it to a safe sync workflow (baseline, change preview, conflict/rescue handling, and recoverable writes); do not add a decorative button that does nothing.
+- **Editor/preview fluency: NOT VERIFIED or measured.** The recent ARM32 native compile is compile-only and provides no frame-time or input-latency data. No new APK was built for this check, and no new test was run on the LG K51. Next performance work must measure editor responsiveness and running-preview frame pacing on the device before/after changes, without stripping features or lowering quality as a blanket fix.
+- **Startup/loading screen change: NO IMPLEMENTATION FOUND in the current patcher or the recent source commits inspected.** The current source patcher contains Project Manager GitHub import, Gallery/media protection, MCP installation, and debug-overlay changes; it does not modify the Android splash/loading screen. Therefore there is no evidence that the requested startup-screen change was applied or worked. Mark it pending until a specific source change and a later planned build/device check establish the result.
+- **Important distinction:** the passed Windows ARM32 native compile confirms the shared library exists, not that the editor UI, synchronization, startup screen, or game preview behaves correctly. A new APK solely for this check remains deliberately deferred by the project owner; do not start one without a separate request.
+
 ### Preview/run-bar debug visibility menu — source added, not yet validated
 
 - Added a **Debug** menu directly to Godot's existing run bar, alongside the play/pause/stop controls, so the common runtime overlays are reachable without opening the Debug menu or adding temporary scripts.
