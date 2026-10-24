@@ -447,6 +447,10 @@ func _process(delta: float) -> void:
 	if cursor_update_timer < 0.05:
 		return
 	cursor_update_timer = 0.0
+	if cursor_mesh == null or not is_instance_valid(cursor_mesh):
+		_create_cursor()
+	if terrain_preview == null or not is_instance_valid(terrain_preview):
+		_create_terrain_preview()
 	# Rebuild the expensive trimesh collider once after an edit stroke, not on every dab.
 	if collision_dirty and not stroke_active and not joystick_pressed:
 		if collision_dirty_terrain and is_instance_valid(collision_dirty_terrain):
