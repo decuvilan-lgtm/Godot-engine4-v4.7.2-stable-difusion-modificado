@@ -39,6 +39,8 @@ for token, label in [
     ("Exportar heightmap", "heightmap export UI"),
     ("Distribuir árboles", "foliage scatter UI"),
     ("Regenerar colisiones", "collision rebuild UI"),
+    ("Ajustar pincel a cuadrícula", "optional brush snapping"),
+    ("Enfocar terreno en la vista 3D", "viewport recenter/focus control"),
 ]:
     require(token in plugin, label)
 for token, label in [
