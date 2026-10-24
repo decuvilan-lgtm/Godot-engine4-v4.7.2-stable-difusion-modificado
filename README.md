@@ -553,3 +553,35 @@ Before merging this branch, protect the previously working GitHub import/search 
 ### Source-only checks for preview debug overlays
 
 The Windows workflow `.github/workflows/validate-debug-overlay-source.yml` now checks patcher syntax and applies it to a clean official Godot 4.7.2 checkout. A separate Windows workflow, `.github/workflows/validate-debug-overlay-android-compile.yml`, is configured to compile the **ARM32 (`armeabi-v7a`) Android editor native engine first**, matching the LG K51 target—no Gradle APK packaging and no Linux runner. Its result is pending; no in-game runtime behavior is claimed until compilation succeeds and the toggles are exercised in the running preview.
+
+## Proposed feature — Native 3D terrain editor (documented, not implemented)
+
+**Status: idea documented only. Do not treat this as an existing Godot feature or as code already merged.** The project owner wants a terrain workflow integrated into the Godot editor, designed to remain usable on Android/mobile as well as desktop.
+
+### Intended capabilities
+- Create a 3D terrain and sculpt its height directly in the editor.
+- Brush operations: raise/lower, smooth, flatten, and add visible relief; more advanced erosion or holes/caves can be evaluated later.
+- Paint terrain with multiple textures/material layers and colors.
+- Add and distribute objects such as grass, trees, rocks, and structures, with controls for density, scale, random rotation, and terrain alignment.
+- Import/export heightmaps where practical.
+- Support undo/redo, collision generation, and sensible rendering/performance behavior.
+- Provide a dedicated, touch-friendly editor workspace/tooling rather than requiring the user to write scripts for routine terrain editing.
+
+### Proposed implementation order
+1. **Small native vertical slice:** create a terrain resource/node and editor tool that can sculpt a heightfield with raise/lower, smooth, and flatten brushes; save/reopen the result and support undo/redo.
+2. **Texture and color painting:** multiple material layers, brush size/strength, and persistent paint data.
+3. **Object placement:** paint/distribute foliage and other scenes across the surface.
+4. **Advanced terrain features:** heightmap workflow, more relief tools, and investigate erosion/caves only after the core is stable.
+5. **Performance and device validation:** measure editing responsiveness and runtime rendering on the intended Android device before raising default terrain resolution or adding costly effects.
+
+### Constraints and acceptance criteria
+- Prefer native source integration over depending on an external editor plugin, but keep the implementation modular and review compatibility/licensing before reusing third-party code.
+- Keep the interface usable on a narrow mobile screen and provide conservative defaults suitable for the LG K51 / Android 11 / ARM32 target.
+- Do not trade away existing editor features or visual quality as a blanket performance fix. Optimize based on measurements.
+- A completed source patch, successful Windows source checks, a successful Android native compile, a packaged APK, and a successful on-device test are separate milestones and must be recorded separately.
+- **No terrain implementation or terrain test has started as part of this documentation update.** The current active task remains waiting for the Android ARM32 native compile check for the debug-overlay patch.
+
+### Current test being awaited — 2026-10-24
+- **PASS — [Source-only debug overlay checks, run 40065262063](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40065262063)** on commit `09c9cf0`.
+- **IN PROGRESS — [Android ARM32 native compile, no APK, run 40065262042](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40065262042)** on commit `09c9cf0`. This compiles the native editor target on a Windows runner and is not a full APK build. Its result is still pending; do not mark the C++ patch as compile-verified until it finishes successfully.
+
