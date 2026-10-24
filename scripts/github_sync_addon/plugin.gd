@@ -5,8 +5,8 @@ const PLUGIN_PATH := "res://addons/github_sync/plugin.cfg"
 const TERRAIN_PLUGIN_PATH := "res://addons/terrain_3d/plugin.cfg"
 const MANIFEST_DIR := "github_sync_manifests"
 const MAX_TREE_FILES := 6000
-const MAX_FILE_BYTES := 16 * 1024 * 1024
-const MAX_TOTAL_BYTES := 100 * 1024 * 1024
+const MAX_FILE_BYTES := 256 * 1024 * 1024
+const MAX_TOTAL_BYTES := 1024 * 1024 * 1024
 
 var sync_button: Button
 var sync_dialog: ConfirmationDialog
@@ -169,7 +169,7 @@ func _start_request(state: String, url: String, destination: String = "") -> voi
 		return
 	request_state = state
 	request.download_file = destination
-	# JSON tree responses are capped at 8 MiB; file downloads may use the full 16 MiB file budget.
+	# JSON tree responses are capped at 8 MiB; changed file downloads may use the full 256 MiB file budget.
 	request.body_size_limit = MAX_FILE_BYTES + 1024 * 1024 if not destination.is_empty() else 8 * 1024 * 1024
 	var headers := PackedStringArray(["Accept: application/vnd.github+json", "User-Agent: Godot-GitHub-Sync"])
 	var err := request.request(url, headers)
@@ -475,6 +475,7 @@ func _show_preview() -> void:
 			lines.append("%s  %s%s" % [marker, operation.path, "  [se reemplazará]" if operation.modified else ""])
 	var summary := "Repositorio: %s\nReferencia: %s\n\nAñadir: %d   Actualizar: %d   Eliminar: %d\nLos archivos del repositorio reemplazarán sus versiones locales cuando corresponda.\n\n" % [active_repo, active_ref if not active_ref.is_empty() else "(rama predeterminada)", adds, updates, deletes]
 	summary += "\n".join(lines)
+	summary += "\n\nLas escenas .tscn se actualizan en su misma ruta; no se crean escenas duplicadas. Las conexiones serializadas en la versión de GitHub se conservan tal cual."
 	if operations.size() > lines.size():
 		summary += "\n… y %d cambios más." % (operations.size() - lines.size())
 	if operations.is_empty():
@@ -509,15 +510,11 @@ func _apply_changes() -> void:
 			operation_error = DirAccess.remove_absolute(local_path)
 		else:
 			var staged_path := staged_root.path_join(relative)
-			var bytes := FileAccess.get_file_as_bytes(staged_path)
 			DirAccess.make_dir_recursive_absolute(local_path.get_base_dir())
-			var file := FileAccess.open(local_path, FileAccess.WRITE)
-			if file == null:
-				operation_error = FileAccess.get_open_error()
-			else:
-				file.store_buffer(bytes)
-				operation_error = file.get_error()
-				file.close()
+			# Replace the existing path in place. For .tscn files this preserves the
+			# serialized node paths and signal connections from the exact upstream scene;
+			# no alternate scene file or duplicate instance is created.
+			operation_error = _copy_file_streaming(staged_path, local_path)
 		if operation_error != OK:
 			_cleanup_staging()
 			_show_error("Falló la aplicación de '%s' (error %d). No se crearon copias. Vuelve a sincronizar para aplicar de nuevo los archivos de GitHub." % [relative, operation_error])
@@ -530,6 +527,32 @@ func _apply_changes() -> void:
 	_cleanup_staging()
 	EditorInterface.get_resource_filesystem().scan()
 	_show_notice("Sincronización completada. Se aplicaron los cambios de GitHub directamente; los temporales se eliminaron y no se subió ningún archivo.")
+
+func _copy_file_streaming(source_path: String, destination_path: String) -> int:
+	var source := FileAccess.open(source_path, FileAccess.READ)
+	if source == null:
+		return FileAccess.get_open_error()
+	var expected_size := source.get_length()
+	var destination := FileAccess.open(destination_path, FileAccess.WRITE)
+	if destination == null:
+		var open_error := FileAccess.get_open_error()
+		source.close()
+		return open_error
+	while source.get_position() < expected_size:
+		var chunk := source.get_buffer(mini(65536, expected_size - source.get_position()))
+		if chunk.is_empty():
+			destination.close()
+			source.close()
+			return FAILED
+		destination.store_buffer(chunk)
+		if destination.get_error() != OK:
+			destination.close()
+			source.close()
+			return FAILED
+	destination.close()
+	source.close()
+	return OK
+
 
 func _cleanup_staging() -> void:
 	_remove_tree(staged_root)
