@@ -663,8 +663,8 @@ func _export_heightmap(path: String) -> void:
 		_set_status("No hay terreno para exportar.")
 		return
 	var image := Image.create(terrain.grid_width, terrain.grid_depth, false, Image.FORMAT_L8)
-	var minimum := 0.0
-	var maximum := 0.0
+	var minimum := INF
+	var maximum := -INF
 	for height in terrain.heights:
 		minimum = minf(minimum, height)
 		maximum = maxf(maximum, height)
