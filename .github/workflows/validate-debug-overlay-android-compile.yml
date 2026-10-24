@@ -7,6 +7,9 @@ on:
     paths:
       - "scripts/apply_github_import_patch.py"
       - "scripts/validate_debug_overlay_patch.py"
+      - "scripts/apply_github_sync_patch.py"
+      - "scripts/validate_github_sync_source.py"
+      - "scripts/github_sync_addon/**"
       - ".github/workflows/validate-debug-overlay-android-compile.yml"
   pull_request:
     branches:
@@ -74,6 +77,12 @@ jobs:
 
       - name: Apply the custom source patch
         run: python scripts/apply_github_import_patch.py
+
+      - name: Apply GitHub sync editor integration
+        run: python scripts/apply_github_sync_patch.py
+
+      - name: Validate GitHub sync source
+        run: python scripts/validate_github_sync_source.py
 
       - name: Install Android Swappy dependency
         working-directory: godot-source
