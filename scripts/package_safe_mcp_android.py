@@ -2078,6 +2078,8 @@ func execute(arguments: Dictionary) -> Dictionary:
         raise RuntimeError("inspect_editor_ui must expose open PopupMenu items and their checked state")
     if "get_base_control()" not in activate_ui or "menu.activate_item(menu_index)" not in activate_ui:
         raise RuntimeError("activate_editor_ui_control is missing UI activation")
+    if "menu.is_item_checkable(menu_index)" not in activate_ui or "menu.is_item_checked(menu_index) != wanted_checked" not in activate_ui:
+        raise RuntimeError("activate_editor_ui_control must set checkable menu options to a requested state")
     if "project deletion/removal is permanently blocked" not in activate_ui:
         raise RuntimeError("generic UI activation must permanently block project deletion")
     if "confirm_destructive" not in activate_ui:
