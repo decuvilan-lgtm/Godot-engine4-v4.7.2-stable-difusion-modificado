@@ -32,6 +32,14 @@ for token, label in [
     ("set_debug_collisions(enabled)", "live collision debugger command"),
     ("set_debug_navigation(enabled)", "live navigation debugger command"),
     ("set_debug_avoidance(enabled)", "live avoidance debugger command"),
+    ("set_debug_paths(enabled)", "live path debugger command"),
+    ("set_debug_canvas_item_redraw(enabled)", "live CanvasItem redraw debugger command"),
+    ('_put_msg("scene:set_debug_paths", msg)', "path remote-debugger message"),
+    ('_put_msg("scene:set_debug_canvas_item_redraw", msg)', "CanvasItem redraw remote-debugger message"),
+    ('message_handlers["set_debug_paths"] = _msg_set_debug_paths', "path runtime message handler registration"),
+    ('message_handlers["set_debug_canvas_item_redraw"] = _msg_set_debug_canvas_item_redraw', "CanvasItem redraw runtime message handler registration"),
+    ("canvas_item_set_debug_redraw(bool(p_args[0]))", "RenderingServer live redraw toggle"),
+    ("item->queue_redraw()", "force redraw after live path-hint update"),
     ('_put_msg("scene:set_debug_navigation", msg)', "navigation remote-debugger message"),
     ('_put_msg("scene:set_debug_avoidance", msg)', "avoidance remote-debugger message"),
     ('message_handlers["set_debug_navigation"] = _msg_set_debug_navigation', "navigation runtime message handler registration"),
@@ -39,7 +47,7 @@ for token, label in [
 ]:
     require(token in source, label)
 
-# Prevent documentation from claiming that currently incomplete overlays are live.
+# Keep documentation aligned with the live remote-debugger wiring.
 readme = README.read_text(encoding="utf-8") if README.is_file() else ""
 require("Visible Paths" in readme and "CanvasItem Redraws" in readme,
         "README mentions both deferred overlay limitations")
