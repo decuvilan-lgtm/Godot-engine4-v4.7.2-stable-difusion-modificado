@@ -6,31 +6,10 @@ const TERRAIN_PLUGIN_PATH := "res://addons/terrain_3d/plugin.cfg"
 const MANIFEST_DIR := "github_sync_manifests"
 const STAGE_DIR := "github_sync_stage"
 const RESCUE_DIR := "github_sync_rescue"
-const MAX_ARCHIVE_FILES := 6000
-const MAX_FILE_BYTES := 16777216
-const MAX_TOTAL_BYTES := 104857600
-
-var sync_button: Button
-var sync_dialog: ConfirmationDialog
-var repo_input: LineEdit
-var ref_input: LineEdit
-var status_label: Label
-var preview_dialog: ConfirmationDialog
-var preview_label: RichTextLabel
-var request: HTTPRequest
-var zip_path := "user://github_sync_download.zip"
-var staged_root := "user://github_sync_stage"
-var active_repo := ""
-var active_ref := ""
-var upstream_files: Dictionary = {}
-var operations: Array[Dictionary] = []
-var baseline: Dictionary = {}
-var project_root := ""
-var project_key := ""
 const MAX_ARCHIVE_BYTES := 200 * 1024 * 1024
-const MAX_ARCHIVE_FILES := 20000
-const MAX_SINGLE_FILE_BYTES := 16 * 1024 * 1024
-const MAX_TOTAL_STAGED_BYTES := 512 * 1024 * 1024
+const MAX_ARCHIVE_FILES := 6000
+const MAX_FILE_BYTES := 16 * 1024 * 1024
+const MAX_TOTAL_BYTES := 100 * 1024 * 1024
 
 func _enter_tree() -> void:
 	project_root = ProjectSettings.globalize_path("res://").trim_suffix("/")
@@ -221,12 +200,12 @@ func _stage_archive() -> int:
 		if relative == ".DS_Store":
 			continue
 		var bytes := zip.read_file(entry)
-		if bytes.size() > MAX_SINGLE_FILE_BYTES:
+		if bytes.size() > MAX_FILE_BYTES:
 			zip.close()
 			_remove_tree(staged_root)
 			return ERR_FILE_TOO_BIG
 		total_staged_bytes += bytes.size()
-		if total_staged_bytes > MAX_TOTAL_STAGED_BYTES:
+		if total_staged_bytes > MAX_TOTAL_BYTES:
 			zip.close()
 			_remove_tree(staged_root)
 			return ERR_FILE_TOO_BIG
