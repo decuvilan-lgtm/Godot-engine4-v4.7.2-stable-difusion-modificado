@@ -202,15 +202,9 @@ func apply_heightmap(image: Image, height_scale: float) -> void:
 			next_heights[get_height_index(x, z)] = resized.get_pixel(x, z).get_luminance() * height_scale
 	set_heights(next_heights)
 
-func create_foliage(count: int, seed_value: int = 1701) -> void:
-	var old := get_node_or_null("TerrainFoliage")
-	if old:
-		old.free()
+func create_foliage(count: int, seed_value: int = 1701) -> Node3D:
 	var root := Node3D.new()
 	root.name = "TerrainFoliage"
-	add_child(root)
-	if owner:
-		root.owner = owner
 	var amount := clampi(count, 1, 5000)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
@@ -258,6 +252,13 @@ func create_foliage(count: int, seed_value: int = 1701) -> void:
 	trunk_material.albedo_color = Color(0.28, 0.16, 0.08)
 	trunks.material_override = trunk_material
 	root.add_child(trunks)
-	if owner:
-		canopy.owner = owner
-		trunks.owner = owner
+	return root
+
+func set_foliage_owner(node: Node) -> void:
+	_assign_owner_recursive(node, owner)
+
+func _assign_owner_recursive(node: Node, scene_owner: Node) -> void:
+	if scene_owner:
+		node.owner = scene_owner
+	for child in node.get_children():
+		_assign_owner_recursive(child, scene_owner)
