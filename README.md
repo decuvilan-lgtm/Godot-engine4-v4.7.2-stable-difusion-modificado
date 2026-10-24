@@ -544,4 +544,4 @@ Before merging this branch, protect the previously working GitHub import/search 
 
 ### Source-only checks for preview debug overlays
 
-A Windows GitHub Actions workflow at `.github/workflows/validate-debug-overlay-source.yml` checks the patcher's Python syntax and verifies the live command wiring. The source patch also has explicit runtime refresh calls for both Path2D and Path3D. The next validation must apply the patch to a clean official Godot 4.7.2 checkout and compile the Android editor engine without packaging the APK; no in-game runtime behavior is claimed until a build and device test confirm it.
+The Windows workflow `.github/workflows/validate-debug-overlay-source.yml` now checks patcher syntax and applies it to a clean official Godot 4.7.2 checkout. A separate Windows workflow, `.github/workflows/validate-debug-overlay-android-compile.yml`, is configured to compile the ARM64 Android editor native engine only—no Gradle APK packaging and no Linux runner. Its result is pending; no in-game runtime behavior is claimed until compilation succeeds and the toggles are exercised in the running preview.
