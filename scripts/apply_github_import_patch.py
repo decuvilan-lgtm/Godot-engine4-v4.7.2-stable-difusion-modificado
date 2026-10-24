@@ -639,8 +639,8 @@ if not RUN_BAR_HEADER.is_file() or not RUN_BAR_SOURCE.is_file():
     sys.exit("Godot run-bar source not found; cannot add preview debug controls.")
 
 replace_once(RUN_BAR_SOURCE,
-    '#include "scene/gui/panel_container.h"\\n#include "scene/main/scene_tree.h"',
-    '#include "scene/gui/panel_container.h"\\n#include "scene/gui/popup_menu.h"\\n#include "scene/main/scene_tree.h"')
+    '#include "scene/gui/panel_container.h"\n#include "scene/main/scene_tree.h"',
+    '#include "scene/gui/panel_container.h"\n#include "scene/gui/popup_menu.h"\n#include "scene/main/scene_tree.h"')
 replace_once(RUN_BAR_HEADER,
     "MenuButton *write_movie_button = nullptr;",
     "MenuButton *write_movie_button = nullptr;\n\tMenuButton *preview_debug_button = nullptr;")
