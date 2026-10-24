@@ -699,6 +699,10 @@ replace_once(RUN_BAR_SOURCE,
 \t// Apply immediately to every active editor-debugged game, without restarting it.
 \tif (p_id == PREVIEW_DEBUG_COLLISIONS) {
 \t\tEditorDebuggerNode::get_singleton()->set_debug_collisions(enabled);
+\t} else if (p_id == PREVIEW_DEBUG_NAVIGATION) {
+\t\tEditorDebuggerNode::get_singleton()->set_debug_navigation(enabled);
+\t} else if (p_id == PREVIEW_DEBUG_AVOIDANCE) {
+\t\tEditorDebuggerNode::get_singleton()->set_debug_avoidance(enabled);
 \t}
 }
 
