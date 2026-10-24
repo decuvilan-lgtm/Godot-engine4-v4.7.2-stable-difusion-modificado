@@ -152,6 +152,7 @@ func _on_zip_downloaded(result: int, response_code: int, _headers: PackedStringA
 		request.queue_free()
 		request = null
 	if result != HTTPRequest.RESULT_SUCCESS or response_code != 200 or not FileAccess.file_exists(zip_path):
+		_cleanup_staging()
 		status_label.text = "GitHub no entregó el ZIP (HTTP %d). Revisa conexión, repositorio y referencia." % response_code
 		sync_dialog.popup_centered()
 		return
@@ -163,11 +164,13 @@ func _on_zip_downloaded(result: int, response_code: int, _headers: PackedStringA
 	var archive_size := archive_file.get_length()
 	archive_file.close()
 	if archive_size <= 0 or archive_size > MAX_ARCHIVE_BYTES:
+		_cleanup_staging()
 		status_label.text = "El ZIP está vacío o supera el límite de 200 MiB para proteger el almacenamiento del teléfono."
 		sync_dialog.popup_centered()
 		return
 	var err := _stage_archive()
 	if err != OK:
+		_cleanup_staging()
 		status_label.text = "No se pudo preparar el ZIP (error %d). No se modificó el proyecto." % err
 		sync_dialog.popup_centered()
 		return
@@ -342,6 +345,7 @@ func _show_preview() -> void:
 		# Remember the latest repository/ref even when no writes are required.
 		if not _save_manifest():
 			summary += "\nAviso: no se pudo actualizar el historial local de sincronización."
+		_cleanup_staging()
 		preview_dialog.ok_button_text = "Cerrar"
 		preview_dialog.get_ok_button().disabled = true
 	else:
@@ -373,14 +377,23 @@ func _apply_changes() -> void:
 				operation_error = file.get_error()
 				file.close()
 		if operation_error != OK:
+			_cleanup_staging()
 			_show_error("Falló la aplicación de '%s' (error %d). No se crearon copias. Vuelve a sincronizar para aplicar de nuevo los archivos de GitHub." % [relative, operation_error])
 			return
 
 	if not _save_manifest():
+		_cleanup_staging()
 		_show_error("Los archivos se aplicaron, pero no se pudo actualizar el historial. Vuelve a sincronizar para recalcular los cambios.")
 		return
+	_cleanup_staging()
 	EditorInterface.get_resource_filesystem().scan()
-	_show_notice("Sincronización completada. Se aplicaron los cambios de GitHub directamente; no se crearon copias ni se subió ningún archivo.")
+	_show_notice("Sincronización completada. Se aplicaron los cambios de GitHub directamente; los temporales se eliminaron y no se subió ningún archivo.")
+
+func _cleanup_staging() -> void:
+	_remove_tree(staged_root)
+	var absolute_zip := ProjectSettings.globalize_path(zip_path)
+	if FileAccess.file_exists(zip_path):
+		DirAccess.remove_absolute(absolute_zip)
 
 func _save_manifest() -> bool:
 	var folder := "user://%s" % MANIFEST_DIR
