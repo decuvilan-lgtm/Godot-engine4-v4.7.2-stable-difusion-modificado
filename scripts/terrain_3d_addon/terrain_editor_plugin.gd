@@ -25,6 +25,8 @@ var joystick_pressed := false
 var stroke_active := false
 var cursor_update_timer := 0.0
 var last_viewport_brush_msec := 0
+var collision_dirty := false
+var collision_dirty_terrain: Node
 var cached_terrain: Node
 var cached_scene_root: Node
 var cursor_hit := Vector3.ZERO
@@ -405,6 +407,12 @@ func _process(delta: float) -> void:
 	if cursor_update_timer < 0.05:
 		return
 	cursor_update_timer = 0.0
+	# Rebuild the expensive trimesh collider once after an edit stroke, not on every dab.
+	if collision_dirty and not stroke_active and not joystick_pressed:
+		if collision_dirty_terrain and is_instance_valid(collision_dirty_terrain):
+			collision_dirty_terrain.rebuild_collision()
+		collision_dirty = false
+		collision_dirty_terrain = null
 	var terrain = _get_terrain()
 	if terrain == null:
 		if cursor_mesh:
@@ -567,10 +575,21 @@ func _apply_brush(terrain, world_position: Vector3) -> void:
 func _commit_terrain_change(terrain, action_name: String, method: StringName, old_value: Variant, new_value: Variant) -> void:
 	var undo_redo := EditorInterface.get_editor_undo_redo()
 	undo_redo.create_action(action_name)
-	undo_redo.add_do_method(terrain, method, new_value)
-	undo_redo.add_undo_method(terrain, method, old_value)
+	if method == "set_heights":
+		undo_redo.add_do_method(self, "_set_heights_deferred", terrain, new_value)
+		undo_redo.add_undo_method(self, "_set_heights_deferred", terrain, old_value)
+	else:
+		undo_redo.add_do_method(terrain, method, new_value)
+		undo_redo.add_undo_method(terrain, method, old_value)
 	undo_redo.commit_action()
 	_set_status(action_name + " aplicado. Usa Deshacer/Rehacer para revisar el cambio.")
+
+func _set_heights_deferred(terrain, values: PackedFloat32Array) -> void:
+	if terrain == null or not is_instance_valid(terrain):
+		return
+	terrain.set_heights(values, false)
+	collision_dirty = true
+	collision_dirty_terrain = terrain
 
 func _focus_terrain() -> void:
 	var terrain = _get_terrain()
