@@ -4,7 +4,6 @@ extends EditorPlugin
 const PLUGIN_PATH := "res://addons/github_sync/plugin.cfg"
 const TERRAIN_PLUGIN_PATH := "res://addons/terrain_3d/plugin.cfg"
 const MANIFEST_DIR := "github_sync_manifests"
-const STAGE_DIR := "github_sync_stage"
 const MAX_TREE_FILES := 6000
 const MAX_FILE_BYTES := 16 * 1024 * 1024
 const MAX_TOTAL_BYTES := 100 * 1024 * 1024
@@ -304,11 +303,21 @@ func _finish_downloaded_file() -> void:
 	if not FileAccess.file_exists(staged_path):
 		_fail_sync("GitHub no guardó el archivo descargado '%s'." % relative)
 		return
-	var size := FileAccess.get_file_as_bytes(staged_path).size()
+	var staged_file := FileAccess.open(staged_path, FileAccess.READ)
+	if staged_file == null:
+		_fail_sync("No se pudo leer el archivo descargado '%s'." % relative)
+		return
+	var size := staged_file.get_length()
+	staged_file.close()
 	var metadata: Dictionary = tree_entries[relative]
 	if size != int(metadata.size) or _git_blob_sha1(staged_path) != str(metadata.sha):
 		_fail_sync("La verificación del archivo '%s' falló; se canceló la sincronización." % relative)
 		return
+	if relative == "project.godot":
+		var config_error := _ensure_sync_plugin_enabled(staged_path)
+		if config_error != OK:
+			_fail_sync("No se pudo conservar la configuración de los complementos en project.godot (error %d)." % config_error)
+			return
 	_plan_downloaded_file(relative, staged_path)
 	download_index += 1
 	_download_next_file()
@@ -318,18 +327,28 @@ func _plan_downloaded_file(relative: String, staged_path: String) -> void:
 	var local_exists := FileAccess.file_exists(local_path)
 	var old_sha := str(baseline.get(relative, ""))
 	var remote_sha := str(tree_entries[relative].sha)
-	if legacy_baseline and not old_sha.is_empty():
-		var downloaded_sha256 := FileAccess.get_sha256(staged_path)
-		if not local_exists:
-			operations.append({"kind": "add", "path": relative, "modified": false})
-		elif downloaded_sha256 != old_sha:
-			operations.append({"kind": "update", "path": relative, "modified": FileAccess.get_sha256(local_path) != old_sha})
-		return
 	if not local_exists:
 		operations.append({"kind": "add", "path": relative, "modified": false})
 		return
+	if relative == "project.godot":
+		var local_config_hash := FileAccess.get_sha256(local_path)
+		var staged_config_hash := FileAccess.get_sha256(staged_path)
+		if local_config_hash == staged_config_hash:
+			return
+		if legacy_baseline and not old_sha.is_empty() and staged_config_hash == old_sha:
+			return
+		operations.append({"kind": "update", "path": relative, "modified": old_sha.is_empty() or local_config_hash != old_sha})
+		return
 	var local_sha := _git_blob_sha1(local_path)
 	if local_sha == remote_sha:
+		return
+	if legacy_baseline and not old_sha.is_empty():
+		# Legacy manifests store SHA-256 of the last synced bytes. If the upstream bytes
+		# are unchanged, preserve local edits instead of rewriting an unchanged file.
+		var downloaded_sha256 := FileAccess.get_sha256(staged_path)
+		if downloaded_sha256 == old_sha:
+			return
+		operations.append({"kind": "update", "path": relative, "modified": FileAccess.get_sha256(local_path) != old_sha})
 		return
 	operations.append({"kind": "update", "path": relative, "modified": old_sha.is_empty() or local_sha != old_sha})
 
