@@ -86,9 +86,14 @@ jobs:
       - name: Confirm compile output exists (no APK packaging)
         shell: pwsh
         run: |
-          $binary = Get-ChildItem -Path "godot-source/bin" -Recurse -File | Where-Object { $_.Name -match "godot.*android.*arm32|android.*editor.*arm32" } | Select-Object -First 1
-          if (-not $binary) {
-            Write-Host "SCons completed, but no filename matched the broad ARM32 output pattern; inspect the preceding SCons log for the authoritative output path."
-          } else {
-            Write-Host "Native output: $($binary.FullName) ($($binary.Length) bytes)"
+          $binRoot = "godot-source/bin"
+          if (-not (Test-Path $binRoot)) { throw "Godot bin output directory was not created." }
+          $candidates = Get-ChildItem -Path $binRoot -Recurse -File |
+            Where-Object { $_.Name -match "godot.*android.*arm32|android.*editor.*arm32" -and $_.Length -gt 0 }
+          if (-not $candidates -or $candidates.Count -eq 0) {
+            Get-ChildItem -Path $binRoot -Recurse -File | Select-Object -First 30 FullName,Length | Format-Table -AutoSize
+            throw "ARM32 native editor output was not found. Refusing to report a successful compile without a non-empty binary."
           }
+          $binary = $candidates | Select-Object -First 1
+          Write-Host "Verified native ARM32 output: $($binary.FullName) ($($binary.Length) bytes)"
+          "GODOT_ARM32_BINARY=$($binary.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
