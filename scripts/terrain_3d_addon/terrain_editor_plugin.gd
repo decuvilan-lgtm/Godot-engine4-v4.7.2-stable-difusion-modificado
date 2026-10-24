@@ -23,6 +23,7 @@ var joystick_vector := Vector2.ZERO
 var joystick_pressed := false
 var stroke_active := false
 var cursor_update_timer := 0.0
+var last_viewport_brush_msec := 0
 var cached_terrain: Node
 var cached_scene_root: Node
 var cursor_hit := Vector3.ZERO
@@ -423,6 +424,10 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 				_apply_brush(terrain, cursor_hit)
 				return AFTER_GUI_INPUT_STOP
 	elif event is InputEventMouseMotion and stroke_active and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		var now := Time.get_ticks_msec()
+		if now - last_viewport_brush_msec < 120:
+			return AFTER_GUI_INPUT_STOP
+		last_viewport_brush_msec = now
 		var hit := _raycast_terrain(camera, event.position)
 		if not hit.is_empty():
 			cursor_hit = hit.position
@@ -441,6 +446,10 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 				_apply_brush(terrain, cursor_hit)
 				return AFTER_GUI_INPUT_STOP
 	elif event is InputEventScreenDrag and stroke_active:
+		var now := Time.get_ticks_msec()
+		if now - last_viewport_brush_msec < 120:
+			return AFTER_GUI_INPUT_STOP
+		last_viewport_brush_msec = now
 		var hit := _raycast_terrain(camera, event.position)
 		if not hit.is_empty():
 			cursor_hit = hit.position
