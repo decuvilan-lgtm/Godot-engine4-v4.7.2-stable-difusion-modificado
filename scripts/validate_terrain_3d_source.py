@@ -25,6 +25,8 @@ ast.parse(patcher, filename=str(PATCHER))
 require(True, "terrain embedding patcher has valid Python syntax")
 for token, label in [
     ("CONTAINER_SPATIAL_EDITOR_MENU", "separate 3D editor toolbar entry"),
+    ("_create_terrain_preview", "pre-creation terrain footprint preview"),
+    ("PlaneMesh", "preview mesh follows the chosen terrain dimensions"),
     ('add_control_to_bottom_panel(panel, "Terreno 3D")', "dedicated terrain editor panel"),
     ("joystick_pad.gui_input.connect", "touch joystick input is wired"),
     ("_forward_3d_gui_input", "3D viewport mouse/touch input is handled"),
