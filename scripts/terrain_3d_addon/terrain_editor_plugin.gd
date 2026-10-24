@@ -39,6 +39,9 @@ func _enter_tree() -> void:
 	_build_panel()
 	set_process(true)
 
+func handles(object: Object) -> bool:
+	return object is Node and object.has_meta(TERRAIN_META)
+
 func _exit_tree() -> void:
 	if terrain_button:
 		remove_control_from_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_MENU, terrain_button)
@@ -308,14 +311,14 @@ func _raycast_terrain(camera: Camera3D, screen_position: Vector2) -> Dictionary:
 	var terrain = _get_terrain()
 	if terrain == null or camera == null:
 		return {}
-	var root := EditorInterface.get_edited_scene_root()
-	if root == null or root.get_world_3d() == null:
+	var viewport := EditorInterface.get_editor_viewport_3d(0)
+	if viewport == null or viewport.world_3d == null:
 		return {}
 	var origin := camera.project_ray_origin(screen_position)
 	var direction := camera.project_ray_normal(screen_position)
 	var query := PhysicsRayQueryParameters3D.create(origin, origin + direction * 2000.0)
 	query.collide_with_areas = false
-	var result := root.get_world_3d().direct_space_state.intersect_ray(query)
+	var result := viewport.world_3d.direct_space_state.intersect_ray(query)
 	if result.is_empty():
 		return {}
 	var collider = result.get("collider")
