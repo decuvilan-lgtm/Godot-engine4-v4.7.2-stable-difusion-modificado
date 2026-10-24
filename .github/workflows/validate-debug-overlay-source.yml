@@ -23,6 +23,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Enable long paths for upstream Godot checkout
+        shell: pwsh
+        run: git config --global core.longpaths true
+
       - name: Check out official Godot 4.7.2 source
         uses: actions/checkout@v4
         with:
