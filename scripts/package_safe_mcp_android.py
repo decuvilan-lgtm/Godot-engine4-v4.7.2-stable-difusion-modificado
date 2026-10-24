@@ -2064,6 +2064,8 @@ func execute(arguments: Dictionary) -> Dictionary:
     activate_ui = (ADDON_OUT / "scripts/tools/editor/activate_editor_ui_control_tool.gd").read_text(encoding="utf-8")
     if "get_base_control()" not in inspect_ui or "get_path_to(control)" not in inspect_ui:
         raise RuntimeError("inspect_editor_ui is missing live editor UI traversal")
+    if "node is PopupMenu" not in inspect_ui or "is_item_checkable" not in inspect_ui or "is_item_checked" not in inspect_ui:
+        raise RuntimeError("inspect_editor_ui must expose open PopupMenu items and their checked state")
     if "get_base_control()" not in activate_ui or "menu.activate_item(menu_index)" not in activate_ui:
         raise RuntimeError("activate_editor_ui_control is missing UI activation")
     if "project deletion/removal is permanently blocked" not in activate_ui:
