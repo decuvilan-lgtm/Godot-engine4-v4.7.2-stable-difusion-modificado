@@ -22,6 +22,9 @@ var joystick_pad: Control
 var joystick_vector := Vector2.ZERO
 var joystick_pressed := false
 var stroke_active := false
+var cursor_update_timer := 0.0
+var cached_terrain: Node
+var cached_scene_root: Node
 var cursor_hit := Vector3.ZERO
 var cursor_valid := false
 var cursor_mesh: MeshInstance3D
@@ -254,6 +257,8 @@ func _create_terrain() -> void:
 	var terrain = terrain_script.new()
 	terrain.name = "Terrain3D_%d" % (root.get_child_count() + 1)
 	terrain.set_meta(TERRAIN_META, true)
+	cached_terrain = terrain
+	cached_scene_root = root
 	var undo_redo := EditorInterface.get_editor_undo_redo()
 	undo_redo.create_action("Crear terreno 3D")
 	undo_redo.add_do_method(root, "add_child", terrain)
@@ -267,11 +272,19 @@ func _create_terrain() -> void:
 	_set_status("Terreno creado. Usa el pincel en la vista 3D o el joystick de este panel.")
 
 func _get_terrain():
+	var root := EditorInterface.get_edited_scene_root()
+	if root != cached_scene_root:
+		cached_scene_root = root
+		cached_terrain = null
+	if cached_terrain and is_instance_valid(cached_terrain) and cached_terrain.is_inside_tree() and cached_terrain.has_meta(TERRAIN_META):
+		return cached_terrain
 	var selection := EditorInterface.get_selection().get_selected_nodes()
 	for node in selection:
 		if is_instance_valid(node) and node.has_meta(TERRAIN_META):
-			return node
-	return _find_terrain(EditorInterface.get_edited_scene_root())
+			cached_terrain = node
+			return cached_terrain
+	cached_terrain = _find_terrain(root)
+	return cached_terrain
 
 func _find_terrain(node: Node):
 	if node == null:
