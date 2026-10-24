@@ -11,6 +11,24 @@ const MAX_ARCHIVE_FILES := 6000
 const MAX_FILE_BYTES := 16 * 1024 * 1024
 const MAX_TOTAL_BYTES := 100 * 1024 * 1024
 
+var sync_button: Button
+var sync_dialog: ConfirmationDialog
+var repo_input: LineEdit
+var ref_input: LineEdit
+var status_label: Label
+var preview_dialog: ConfirmationDialog
+var preview_label: RichTextLabel
+var request: HTTPRequest
+var zip_path := "user://github_sync_download.zip"
+var staged_root := "user://github_sync_stage"
+var active_repo := ""
+var active_ref := ""
+var upstream_files: Dictionary = {}
+var operations: Array[Dictionary] = []
+var baseline: Dictionary = {}
+var project_root := ""
+var project_key := ""
+
 func _enter_tree() -> void:
 	project_root = ProjectSettings.globalize_path("res://").trim_suffix("/")
 	var key_context := HashingContext.new()
