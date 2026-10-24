@@ -377,6 +377,13 @@ func _update_joystick_vector(position: Vector2) -> void:
 	joystick_vector = ((position - center) / extent).limit_length(1.0)
 
 func _process(delta: float) -> void:
+	cursor_update_timer += delta
+	stroke_timer += delta
+	# Cap terrain raycasts to 20 Hz on mobile; the cursor remains responsive without
+	# querying physics at the display refresh rate while the editor is otherwise idle.
+	if cursor_update_timer < 0.05:
+		return
+	cursor_update_timer = 0.0
 	var terrain = _get_terrain()
 	if terrain == null:
 		if cursor_mesh:
@@ -397,11 +404,9 @@ func _process(delta: float) -> void:
 		_update_cursor_mesh(cursor_hit)
 	else:
 		cursor_mesh.visible = false
-	if continuous_stroke.button_pressed and joystick_pressed and cursor_valid:
-		stroke_timer += delta
-		if stroke_timer >= 0.12:
-			stroke_timer = 0.0
-			_apply_brush(terrain, cursor_hit)
+	if continuous_stroke.button_pressed and joystick_pressed and cursor_valid and stroke_timer >= 0.12:
+		stroke_timer = 0.0
+		_apply_brush(terrain, cursor_hit)
 
 func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 	var terrain = _get_terrain()
