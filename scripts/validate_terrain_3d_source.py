@@ -37,6 +37,8 @@ for token, label in [
     ("Pintar capa de material", "four paintable terrain material layers"),
     ('for mode in ["Elevar", "Bajar", "Suavizar", "Aplanar", "Pintar color", "Pintar capa de material"]:', "terrain tool selector has valid loop syntax"),
     ("var min_x := clampi(", "brush work is limited to the affected vertex region"),
+    ("_set_heights_deferred", "height edits defer collision rebuilds until the stroke ends"),
+    ("collision_dirty and not stroke_active and not joystick_pressed", "collision rebuild is coalesced after touch/mouse strokes"),
     ("_commit_terrain_change", "terrain edits use editor undo/redo"),
     ("Importar heightmap", "heightmap import UI"),
     ("Exportar heightmap", "heightmap export UI"),
