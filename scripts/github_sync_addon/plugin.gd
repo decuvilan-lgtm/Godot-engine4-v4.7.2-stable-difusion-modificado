@@ -6,6 +6,9 @@ const TERRAIN_PLUGIN_PATH := "res://addons/terrain_3d/plugin.cfg"
 const MANIFEST_DIR := "github_sync_manifests"
 const STAGE_DIR := "github_sync_stage"
 const RESCUE_DIR := "github_sync_rescue"
+const MAX_ARCHIVE_FILES := 6000
+const MAX_FILE_BYTES := 16777216
+const MAX_TOTAL_BYTES := 104857600
 
 var sync_button: Button
 var sync_dialog: ConfirmationDialog
@@ -343,6 +346,9 @@ func _show_preview() -> void:
 		summary += "\n… y %d cambios más." % (operations.size() - lines.size())
 	if operations.is_empty():
 		summary += "\nEl proyecto ya coincide con el repositorio."
+		# Remember the latest repository/ref even when no writes are required.
+		if not _save_manifest():
+			summary += "\nAviso: no se pudo actualizar el historial local de sincronización."
 		preview_dialog.ok_button_text = "Cerrar"
 		preview_dialog.get_ok_button().disabled = true
 	else:
