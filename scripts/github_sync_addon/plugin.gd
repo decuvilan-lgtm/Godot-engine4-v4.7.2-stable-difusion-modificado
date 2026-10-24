@@ -201,12 +201,31 @@ func _stage_archive() -> int:
 			return FileAccess.get_open_error()
 		file.store_buffer(bytes)
 		file.close()
-		upstream_files[relative] = _sha256(bytes)
+		# Keep the injected editor plugin out of the upstream manifest so a sync cannot overwrite itself.
+		if not relative.begins_with("addons/github_sync/"):
+			upstream_files[relative] = _sha256(bytes)
 	zip.close()
 	if not upstream_files.has("project.godot"):
-		# GitHub's ZIP normally wraps the repository in a generated root folder.
-		# A project archive without project.godot is not safe to synchronize.
 		return ERR_FILE_MISSING_DEPENDENCIES
+	# Keep the sync plugin enabled when upstream changes project.godot. Hash the normalized staged
+	# config so the plugin's own enabled entry does not appear as a local conflict on every sync.
+	var staged_project := staged_root.path_join("project.godot")
+	var config_err := _ensure_sync_plugin_enabled(staged_project)
+	if config_err != OK:
+		return config_err
+	upstream_files["project.godot"] = FileAccess.get_sha256(staged_project)
+	return OK
+
+func _ensure_sync_plugin_enabled(config_path: String) -> int:
+	var config := ConfigFile.new()
+	var err := config.load(config_path)
+	if err != OK:
+		return err
+	var enabled: PackedStringArray = config.get_value("editor_plugins", "enabled", PackedStringArray())
+	if not enabled.has(PLUGIN_PATH):
+		enabled.append(PLUGIN_PATH)
+		config.set_value("editor_plugins", "enabled", enabled)
+		return config.save(config_path)
 	return OK
 
 func _manifest_path() -> String:
