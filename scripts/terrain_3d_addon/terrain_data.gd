@@ -79,12 +79,13 @@ func _rebuild_mesh() -> void:
 			var i10 := get_height_index(x + 1, z)
 			var i01 := get_height_index(x, z + 1)
 			var i11 := get_height_index(x + 1, z + 1)
+			# Winding is counter-clockwise from above so generated normals face upward.
 			_add_vertex(st, x, z, i00)
-			_add_vertex(st, x + 1, z, i10)
 			_add_vertex(st, x, z + 1, i01)
 			_add_vertex(st, x + 1, z, i10)
+			_add_vertex(st, x + 1, z, i10)
+			_add_vertex(st, x, z + 1, i01)
 			_add_vertex(st, x + 1, z + 1, i11)
-			_add_vertex(st, x, z + 1, i01)
 	st.generate_normals()
 	mesh = st.commit()
 	if terrain_material == null:
