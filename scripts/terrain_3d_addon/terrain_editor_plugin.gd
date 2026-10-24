@@ -15,6 +15,7 @@ var brush_strength: HSlider
 var flatten_height: SpinBox
 var height_scale: SpinBox
 var paint_color: ColorPickerButton
+var grid_snap: CheckButton
 var foliage_count: SpinBox
 var continuous_stroke: CheckButton
 var joystick_pad: Control
@@ -99,6 +100,14 @@ func _build_panel() -> void:
 	paint_color.color = Color(0.24, 0.48, 0.20)
 	paint_color.text = "Color del terreno"
 	content.add_child(paint_color)
+	grid_snap = CheckButton.new()
+	grid_snap.text = "Ajustar pincel a cuadrícula"
+	grid_snap.button_pressed = false
+	content.add_child(grid_snap)
+	var focus_button := Button.new()
+	focus_button.text = "Enfocar terreno en la vista 3D"
+	focus_button.pressed.connect(_focus_terrain)
+	content.add_child(focus_button)
 	var collision_button := Button.new()
 	collision_button.text = "Regenerar colisiones"
 	collision_button.pressed.connect(_regenerate_collision)
@@ -432,6 +441,9 @@ func _apply_at_cursor() -> void:
 
 func _apply_brush(terrain, world_position: Vector3) -> void:
 	var local := terrain.to_local(world_position)
+	if grid_snap.button_pressed:
+		local.x = roundf(local.x / terrain.cell_size) * terrain.cell_size
+		local.z = roundf(local.z / terrain.cell_size) * terrain.cell_size
 	var radius := brush_radius.value
 	var strength := brush_strength.value
 	var mode := mode_picker.get_selected_id()
@@ -483,6 +495,18 @@ func _commit_terrain_change(terrain, action_name: String, method: StringName, ol
 	undo_redo.add_undo_method(terrain, method, old_value)
 	undo_redo.commit_action()
 	_set_status(action_name + " aplicado. Usa Deshacer/Rehacer para revisar el cambio.")
+
+func _focus_terrain() -> void:
+	var terrain = _get_terrain()
+	var viewport := EditorInterface.get_editor_viewport_3d(0)
+	if terrain == null or viewport == null or viewport.get_camera_3d() == null:
+		_set_status("Selecciona o crea un terreno para enfocarlo.")
+		return
+	var camera := viewport.get_camera_3d()
+	var center := terrain.global_position
+	camera.global_position = center + Vector3(18.0, 18.0, 18.0)
+	camera.look_at(center, Vector3.UP)
+	_set_status("Vista centrada en el terreno.")
 
 func _regenerate_collision() -> void:
 	var terrain = _get_terrain()
