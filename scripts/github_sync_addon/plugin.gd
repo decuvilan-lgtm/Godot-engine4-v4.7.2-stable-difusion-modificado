@@ -365,6 +365,7 @@ func _finish_incremental_plan() -> void:
 	_show_preview()
 
 func _fail_sync(message: String) -> void:
+	_log_sync(message, "error")
 	if request and is_instance_valid(request):
 		if request.request_completed.is_connected(_on_incremental_request_completed):
 			request.request_completed.disconnect(_on_incremental_request_completed)
@@ -500,33 +501,105 @@ func _on_preview_dismissed() -> void:
 func _apply_changes() -> void:
 	if operations.is_empty():
 		return
-	# GitHub is the source of truth: write the staged upstream files directly.
-	# Deliberately create no backup or transaction copies to avoid filling mobile storage.
+	var possible_moves := _detect_possible_moves()
+	_log_sync("Aplicando %d operaciones desde %s @ %s." % [operations.size(), active_repo, remote_commit_sha])
 	for operation in operations:
 		var relative: String = operation.path
 		var local_path := project_root.path_join(relative)
 		var operation_error := OK
+		var connection_change := ""
 		if operation.kind == "delete":
 			operation_error = DirAccess.remove_absolute(local_path)
+			if operation_error == OK:
+				if possible_moves.has(relative):
+					_log_sync("POSIBLE MOVIMIENTO/RENOMBRE: '%s' → '%s' (se elimina la ruta anterior y se instala la nueva)." % [relative, str(possible_moves[relative])])
+				else:
+					_log_sync("ELIMINADO: '%s' ya no existe en el repositorio." % relative)
 		else:
 			var staged_path := staged_root.path_join(relative)
 			DirAccess.make_dir_recursive_absolute(local_path.get_base_dir())
-			# Replace the existing path in place. For .tscn files this preserves the
-			# serialized node paths and signal connections from the exact upstream scene;
-			# no alternate scene file or duplicate instance is created.
+			var incoming_connections := PackedStringArray()
+			if relative.ends_with(".tscn") and FileAccess.file_exists(local_path):
+				var previous_connections := _read_scene_connections(local_path)
+				incoming_connections = _read_scene_connections(staged_path)
+				if previous_connections != incoming_connections:
+					connection_change = "CONEXIONES CAMBIADAS (%d antes, %d después)" % [previous_connections.size(), incoming_connections.size()]
 			operation_error = _copy_file_streaming(staged_path, local_path)
+			if operation_error == OK:
+				if operation.kind == "add":
+					var move_source := ""
+					for old_path in possible_moves:
+						if str(possible_moves[old_path]) == relative:
+							move_source = str(old_path)
+							break
+					if not move_source.is_empty():
+						_log_sync("AÑADIDO como posible movimiento: '%s' (origen: '%s')." % [relative, move_source])
+					else:
+						_log_sync("AÑADIDO: '%s'." % relative)
+				else:
+					_log_sync("SOBRESCRITO: '%s' en su ruta original." % relative)
+				if relative.ends_with(".tscn"):
+					if not connection_change.is_empty():
+						_log_sync("%s en '%s'; revisa las conexiones en el editor/Debugger." % [connection_change, relative], "warning")
+					else:
+						_log_sync("Conexiones de '%s': sin cambios (%d conexiones serializadas)." % [relative, incoming_connections.size()])
 		if operation_error != OK:
+			_log_sync("Falló la aplicación de '%s' (error %d)." % [relative, operation_error], "error")
 			_cleanup_staging()
 			_show_error("Falló la aplicación de '%s' (error %d). No se crearon copias. Vuelve a sincronizar para aplicar de nuevo los archivos de GitHub." % [relative, operation_error])
 			return
-
 	if not _save_manifest():
 		_cleanup_staging()
 		_show_error("Los archivos se aplicaron, pero no se pudo actualizar el historial. Vuelve a sincronizar para recalcular los cambios.")
 		return
 	_cleanup_staging()
 	EditorInterface.get_resource_filesystem().scan()
+	_log_sync("Sincronización completada: %d operaciones aplicadas; temporales eliminados." % operations.size())
 	_show_notice("Sincronización completada. Se aplicaron los cambios de GitHub directamente; los temporales se eliminaron y no se subió ningún archivo.")
+
+func _detect_possible_moves() -> Dictionary:
+	var deleted_by_sha: Dictionary = {}
+	var moves: Dictionary = {}
+	for operation in operations:
+		if operation.kind == "delete":
+			var old_sha := str(baseline.get(str(operation.path), ""))
+			if not old_sha.is_empty():
+				deleted_by_sha[old_sha] = str(operation.path)
+	for operation in operations:
+		if operation.kind != "add":
+			continue
+		var new_sha := str(upstream_files.get(str(operation.path), ""))
+		if not new_sha.is_empty() and deleted_by_sha.has(new_sha):
+			var old_path := str(deleted_by_sha[new_sha])
+			if old_path != str(operation.path):
+				moves[old_path] = str(operation.path)
+				deleted_by_sha.erase(new_sha)
+	return moves
+
+func _read_scene_connections(scene_path: String) -> PackedStringArray:
+	var connections := PackedStringArray()
+	if not scene_path.ends_with(".tscn") or not FileAccess.file_exists(scene_path):
+		return connections
+	var file := FileAccess.open(scene_path, FileAccess.READ)
+	if file == null:
+		return connections
+	while not file.eof_reached():
+		var line := file.get_line().strip_edges()
+		if line.begins_with("[connection "):
+			connections.append(line)
+	file.close()
+	connections.sort()
+	return connections
+
+func _log_sync(message: String, severity: String = "info") -> void:
+	var formatted := "[GitHub Sync] " + message
+	match severity:
+		"warning":
+			push_warning(formatted)
+		"error":
+			push_error(formatted)
+		_:
+			print(formatted)
 
 func _copy_file_streaming(source_path: String, destination_path: String) -> int:
 	var source := FileAccess.open(source_path, FileAccess.READ)
@@ -600,6 +673,7 @@ func _remove_tree(path: String) -> void:
 	directory.list_dir_end()
 
 func _show_error(message: String) -> void:
+	_log_sync(message, "error")
 	var dialog := AcceptDialog.new()
 	dialog.title = "Error de sincronización"
 	dialog.dialog_text = message
@@ -609,6 +683,7 @@ func _show_error(message: String) -> void:
 	dialog.popup_centered()
 
 func _show_notice(message: String) -> void:
+	_log_sync(message)
 	var dialog := AcceptDialog.new()
 	dialog.title = "Sincronización de GitHub"
 	dialog.dialog_text = message
