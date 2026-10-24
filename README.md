@@ -22,9 +22,16 @@ Performance work must therefore be measurement-led:
 - Prefer fixing unnecessary work, repeated redraws, stalls, synchronization, or expensive paths while retaining features and intended visual quality.
 - Do not call the editor “optimized” until comparable before/after measurements show an improvement and the same preview features still work.
 
+### Android Gallery pollution fix — source-only
+
+- ZIP-based project installs now create a root-level `.nomedia` marker **before extracting project assets**, so Android's media scanner should skip image/audio descendants instead of flooding the Gallery with game assets.
+- The patch preserves an existing repository-provided `.nomedia` file and aborts the install before extraction if it cannot establish the marker. This is aimed at project assets, not photos the user explicitly saves elsewhere.
+- **Not yet compiled or tested on the phone.** It should prevent future imports from being indexed; media already indexed from a previous import may remain visible until Android refreshes its media database. The assistant cannot remove those entries from the user's device remotely.
+
 ### Source changes in this continuation
 
 - **GitHub behavior:** core import/search already worked before the latest follow-up. The explicit **“Buscar en GitHub”** handler and URL normalization are refinements, not the original implementation or proof of a newly fixed core feature.
+- **Gallery behavior:** the source patch now adds `.nomedia` to ZIP-installed projects before extraction to keep project assets out of Android Gallery; it is source-only until rebuilt and checked on-device.
 - **Workflow safety:** workflows are configured for manual dispatch only to avoid automatically launching Linux-runner checks on source edits. Do not launch Linux tests/builds; the owner explicitly asked not to run tests on Linux.
 - **Not yet verified:** the latest fallback C++ patch has not been applied to a fresh Godot source checkout, compiled, packaged into a new APK, or exercised on the LG K51. Preview smoothness has not yet been measured or improved; no rendering quality or editor feature has been deliberately removed.
 
