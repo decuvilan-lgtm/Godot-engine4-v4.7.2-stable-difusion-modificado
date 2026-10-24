@@ -97,7 +97,23 @@ func execute(arguments: Dictionary) -> Dictionary:
 func _walk_ui(node: Node, base: Node, filter_text: String, visible_only: bool, max_items: int, output: Array[Dictionary]) -> void:
 	if output.size() >= max_items:
 		return
-	if node is Control:
+	if node is PopupMenu:
+		var menu := node as PopupMenu
+		if (not visible_only or menu.is_visible()):
+			var label := _control_label(menu)
+			var path := str(base.get_path_to(menu))
+			var haystack := (str(menu.name) + " " + label + " " + path + " PopupMenu").to_lower()
+			if filter_text == "" or haystack.contains(filter_text):
+				output.append({
+					"path": path,
+					"name": str(menu.name),
+					"class": menu.get_class(),
+					"label": label,
+					"visible": menu.is_visible(),
+					"disabled": false,
+					"child_count": menu.get_child_count(),
+				})
+	elif node is Control:
 		var control := node as Control
 		if (not visible_only or control.is_visible_in_tree()):
 			var label := _control_label(control)
