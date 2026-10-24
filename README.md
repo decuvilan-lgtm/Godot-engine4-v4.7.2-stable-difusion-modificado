@@ -24,7 +24,7 @@ Performance work must therefore be measurement-led:
 
 ### Missing editor controls — current implementation step
 
-- Extended `inspect_editor_ui` to enumerate open Godot `PopupMenu` controls and expose each item’s label/index, disabled/separator state, and checked state. This is groundwork for discovering and operating built-in debug menu options (including collision visualization) without temporary scripts.
+- Extended `inspect_editor_ui` to enumerate open Godot `PopupMenu` controls and expose each item’s label/index, disabled/separator state, and checked state. `activate_editor_ui_control` now accepts a desired `checked_value` for checkable menu entries, avoids toggling when the requested state is already active, and verifies the resulting state. This is groundwork for operating built-in debug menu options (including collision visualization) without temporary scripts.
 - Extended the packaging script’s static guard so the popup-menu inspection behavior cannot silently disappear from the generated addon.
 - This does **not** mean all editor functions or collision/debug overlays are finished. The change remains source-only; parser/runtime and Android checks are pending. Next: inspect the actual Android editor menu surface and add dedicated typed actions where the generic UI bridge cannot reach an option reliably.
 
