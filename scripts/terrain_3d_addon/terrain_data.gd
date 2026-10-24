@@ -5,10 +5,19 @@ extends MeshInstance3D
 @export var grid_width: int = 65
 @export var grid_depth: int = 65
 @export var cell_size: float = 1.0
-var heights: PackedFloat32Array = PackedFloat32Array()
-var vertex_colors: PackedColorArray = PackedColorArray()
+@export_storage var heights: PackedFloat32Array = PackedFloat32Array()
+@export_storage var vertex_colors: PackedColorArray = PackedColorArray()
+@export_storage var layer_weights: PackedColorArray = PackedColorArray()
 var collision_body: StaticBody3D
-var terrain_material: StandardMaterial3D
+var terrain_material: ShaderMaterial
+
+func _ready() -> void:
+	var existing_collision := get_node_or_null("TerrainCollision")
+	if existing_collision is StaticBody3D:
+		collision_body = existing_collision
+	var existing_material := get_surface_override_material(0)
+	if existing_material is ShaderMaterial:
+		terrain_material = existing_material
 
 func initialize_grid(p_width: int, p_depth: int, p_cell_size: float) -> void:
 	grid_width = clampi(p_width, 9, 257)
@@ -16,8 +25,10 @@ func initialize_grid(p_width: int, p_depth: int, p_cell_size: float) -> void:
 	cell_size = clampf(p_cell_size, 0.1, 16.0)
 	heights.resize(grid_width * grid_depth)
 	vertex_colors.resize(grid_width * grid_depth)
+	layer_weights.resize(grid_width * grid_depth)
 	for i in range(vertex_colors.size()):
-		vertex_colors[i] = Color(0.32, 0.48, 0.25, 1.0)
+		vertex_colors[i] = Color.WHITE
+		layer_weights[i] = Color(1.0, 0.0, 0.0, 0.0)
 	_rebuild_mesh()
 	_rebuild_collision()
 
@@ -35,6 +46,13 @@ func set_vertex_colors(values: PackedColorArray) -> void:
 		push_error("Terrain color array size does not match the grid.")
 		return
 	vertex_colors = values.duplicate()
+	_rebuild_mesh()
+
+func set_layer_weights(values: PackedColorArray) -> void:
+	if values.size() != grid_width * grid_depth:
+		push_error("Terrain layer-weight array size does not match the grid.")
+		return
+	layer_weights = values.duplicate()
 	_rebuild_mesh()
 
 func get_height_index(x: int, z: int) -> int:
