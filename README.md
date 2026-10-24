@@ -8,7 +8,7 @@
 - The sync makes transaction copies of touched files before the first write and attempts rollback if a write or manifest save fails. It preserves the project display name and the sync plugin entry when upstream changes project.godot; it excludes .godot/, .git/, and its own addon from the upstream file set.
 - Added scripts/apply_github_sync_patch.py, which embeds the addon into the native Godot source and installs/enables it for ZIP-installed projects, plus scripts/validate_github_sync_source.py. The Windows source-validation and ARM32 native-compile workflows now apply this integration.
 - **Existing projects:** the patched Project Manager provisions missing sync/terrain addon files and enables both plugins before launching an existing project; it leaves existing addon files untouched. This path is covered by source validation but has not been tested in the Android UI.
-- **Verification status:** [Windows source-only checks passed](https://github.com/decuvilan-lgtm/Godot-engine4-v4-v4.7.2-stable-difusion-modificado/actions/runs/40076510541) on commit `bbde557b`. The ARM32 native compile is queued/running separately. GDScript parser/runtime validation and Android UI behavior remain pending. No APK was packaged.
+- **Verification status:** [Windows source-only checks passed](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40076510541) on commit `bbde557b`. The ARM32 native compile is queued/running separately. GDScript parser/runtime validation and Android UI behavior remain pending. No APK was packaged.
 
 
 ## Android startup/loading screen — source patch added (2026-10-24)
