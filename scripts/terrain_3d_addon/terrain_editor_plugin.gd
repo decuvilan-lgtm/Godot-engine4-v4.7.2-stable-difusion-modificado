@@ -98,7 +98,7 @@ func _build_panel() -> void:
 
 	_add_section(content, "Herramientas de edición")
 	mode_picker = OptionButton.new()
-	for mode in ["Elevar", "Bajar", "Suavizar", "Aplanar", "Pintar color", "Pintar capa de material"]
+	for mode in ["Elevar", "Bajar", "Suavizar", "Aplanar", "Pintar color", "Pintar capa de material"]:
 		mode_picker.add_item(mode)
 	content.add_child(mode_picker)
 	brush_radius = _add_slider(content, "Radio del pincel", 4.0, 0.5, 24.0, 0.5)
@@ -491,14 +491,23 @@ func _apply_brush(terrain, world_position: Vector3) -> void:
 	if grid_snap.button_pressed:
 		local.x = roundf(local.x / terrain.cell_size) * terrain.cell_size
 		local.z = roundf(local.z / terrain.cell_size) * terrain.cell_size
-	var radius := brush_radius.value
-	var strength := brush_strength.value
-	var mode := mode_picker.get_selected_id()
+	var radius: float = brush_radius.value
+	var strength: float = brush_strength.value
+	var mode: int = mode_picker.get_selected_id()
+	var half_x := float(terrain.grid_width - 1) * 0.5
+	var half_z := float(terrain.grid_depth - 1) * 0.5
+	var min_x := clampi(floori((local.x - radius) / terrain.cell_size + half_x), 0, terrain.grid_width - 1)
+	var max_x := clampi(ceili((local.x + radius) / terrain.cell_size + half_x), 0, terrain.grid_width - 1)
+	var min_z := clampi(floori((local.z - radius) / terrain.cell_size + half_z), 0, terrain.grid_depth - 1)
+	var max_z := clampi(ceili((local.z + radius) / terrain.cell_size + half_z), 0, terrain.grid_depth - 1)
+	if min_x > max_x or min_z > max_z:
+		return
+
 	if mode == 4:
 		var old_colors: PackedColorArray = terrain.vertex_colors.duplicate()
 		var new_colors: PackedColorArray = old_colors.duplicate()
-		for z in range(terrain.grid_depth):
-			for x in range(terrain.grid_width):
+		for z in range(min_z, max_z + 1):
+			for x in range(min_x, max_x + 1):
 				var index: int = terrain.get_height_index(x, z)
 				var vertex: Vector3 = terrain.get_vertex_local_position(x, z)
 				var distance := Vector2(vertex.x - local.x, vertex.z - local.z).length()
@@ -507,12 +516,13 @@ func _apply_brush(terrain, world_position: Vector3) -> void:
 					new_colors[index] = new_colors[index].lerp(paint_color.color, strength * weight)
 		_commit_terrain_change(terrain, "Pintar color del terreno", "set_vertex_colors", old_colors, new_colors)
 		return
+
 	if mode == 5:
 		var old_weights: PackedColorArray = terrain.layer_weights.duplicate()
 		var new_weights: PackedColorArray = old_weights.duplicate()
-		var selected_layer := layer_picker.selected
-		for z in range(terrain.grid_depth):
-			for x in range(terrain.grid_width):
+		var selected_layer: int = layer_picker.selected
+		for z in range(min_z, max_z + 1):
+			for x in range(min_x, max_x + 1):
 				var index: int = terrain.get_height_index(x, z)
 				var vertex: Vector3 = terrain.get_vertex_local_position(x, z)
 				var distance := Vector2(vertex.x - local.x, vertex.z - local.z).length()
@@ -529,8 +539,8 @@ func _apply_brush(terrain, world_position: Vector3) -> void:
 
 	var old_heights: PackedFloat32Array = terrain.heights.duplicate()
 	var new_heights: PackedFloat32Array = old_heights.duplicate()
-	for z in range(terrain.grid_depth):
-		for x in range(terrain.grid_width):
+	for z in range(min_z, max_z + 1):
+		for x in range(min_x, max_x + 1):
 			var index: int = terrain.get_height_index(x, z)
 			var vertex: Vector3 = terrain.get_vertex_local_position(x, z)
 			var distance := Vector2(vertex.x - local.x, vertex.z - local.z).length()
