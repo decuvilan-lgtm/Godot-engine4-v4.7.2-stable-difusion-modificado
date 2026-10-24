@@ -21,13 +21,14 @@ func initialize_grid(p_width: int, p_depth: int, p_cell_size: float) -> void:
 	_rebuild_mesh()
 	_rebuild_collision()
 
-func set_heights(values: PackedFloat32Array) -> void:
+func set_heights(values: PackedFloat32Array, update_collision: bool = true) -> void:
 	if values.size() != grid_width * grid_depth:
 		push_error("Terrain height array size does not match the grid.")
 		return
 	heights = values.duplicate()
 	_rebuild_mesh()
-	_rebuild_collision()
+	if update_collision:
+		_rebuild_collision()
 
 func set_vertex_colors(values: PackedColorArray) -> void:
 	if values.size() != grid_width * grid_depth:
@@ -96,6 +97,9 @@ func _add_vertex(st: SurfaceTool, x: int, z: int, color_index: int) -> void:
 	st.set_color(vertex_colors[color_index])
 	st.set_uv(Vector2(float(x) / float(grid_width - 1), float(z) / float(grid_depth - 1)))
 	st.add_vertex(get_vertex_local_position(x, z))
+
+func rebuild_collision() -> void:
+	_rebuild_collision()
 
 func _rebuild_collision() -> void:
 	if collision_body and is_instance_valid(collision_body):
