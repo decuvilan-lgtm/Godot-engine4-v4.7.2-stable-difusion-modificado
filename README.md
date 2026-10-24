@@ -20,6 +20,19 @@ Performance work must therefore be measurement-led:
 - **Not yet verified:** the updated C++ patcher has not been applied to a fresh Godot source checkout, compiled, packaged into an APK, or exercised on the LG K51. The GitHub fallback change is source-only until those checks are performed in an approved environment. Preview smoothness has not yet been measured or improved; no rendering quality or editor feature has been deliberately removed.
 
 
+
+### Continuity log — 2026-10-23 (current working order)
+
+This entry supersedes older “next step” notes below whenever they conflict with the current priorities.
+
+1. **Review GitHub search/import source path first.** Inspect query normalization, GitHub API URL encoding, result selection, pagination, ZIP download, and error handling. Keep direct URL import and the explicit search fallback as separate actions so one cannot silently trigger the wrong flow.
+2. **Keep the native C++ patch unclaimed until compiled.** The new fallback handler is source-only. Do not describe it as working on Android until a complete editor APK containing the change is built and the UI is exercised.
+3. **Do not run Linux tests or automatically launch Linux CI.** The Android build workflow remains manual-dispatch only. No new Linux test/build was started for this continuation.
+4. **Treat preview lag as a separate performance task.** The user reports lag in the running-game preview on the LG K51 / Android 11. First obtain comparable on-device frame-time/frame-pacing evidence and determine whether the bottleneck is the editor, the game renderer, import/shader work, or resource contention. Do not “fix” this by stripping features, imposing arbitrary resource caps, or lowering visual quality.
+5. **Do not merge PR #1 or offer a new APK as verified** until its actual build/package status and required device behavior have been checked.
+
+**Current evidence:** the README and source patch changes are committed on `feature/github-sync-and-safe-mcp`; no new APK, Android-device test, or measured preview-performance improvement is established by this log. Keep source changes, automated checks, APK packaging, and physical-device results recorded as separate evidence categories.
+
 ## Current verified status — 2026-10-22 (supersedes older “not yet tested” notes below)
 
 Work branch: `feature/github-sync-and-safe-mcp`  
