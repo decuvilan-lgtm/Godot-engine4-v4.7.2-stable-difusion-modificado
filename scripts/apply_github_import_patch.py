@@ -904,7 +904,7 @@ Error SceneDebugger::_msg_set_debug_canvas_item_redraw(const Array &p_args) {
 Error SceneDebugger::_msg_debug_mute_audio(const Array &p_args) {""")
 replace_once(SCENE_DEBUGGER_SOURCE,
     '#include "servers/rendering/rendering_server.h"',
-    '#include "servers/rendering/rendering_server.h"\n#include "scene/2d/canvas_item.h"')
+    '#include "servers/rendering/rendering_server.h"\n#include "scene/main/canvas_item.h"')
 replace_once(SCENE_DEBUGGER_SOURCE,
     'message_handlers["set_debug_avoidance"] = _msg_set_debug_avoidance;',
     'message_handlers["set_debug_avoidance"] = _msg_set_debug_avoidance;\n\tmessage_handlers["set_debug_paths"] = _msg_set_debug_paths;\n\tmessage_handlers["set_debug_canvas_item_redraw"] = _msg_set_debug_canvas_item_redraw;')
