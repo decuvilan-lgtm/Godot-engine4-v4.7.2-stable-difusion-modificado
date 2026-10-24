@@ -630,4 +630,98 @@ replace_once(PROJECT_DIALOG,
 
 \t\t\tret = unzGoToFirstFile(pkg);""")
 
+
+# Add built-in run/debug visibility toggles to the editor's run bar. These write
+# the same per-project metadata consumed by EditorRun when launching the preview.
+RUN_BAR_HEADER = ROOT / "editor/run/editor_run_bar.h"
+RUN_BAR_SOURCE = ROOT / "editor/run/editor_run_bar.cpp"
+if not RUN_BAR_HEADER.is_file() or not RUN_BAR_SOURCE.is_file():
+    sys.exit("Godot run-bar source not found; cannot add preview debug controls.")
+
+replace_once(RUN_BAR_HEADER,
+    "MenuButton *write_movie_button = nullptr;",
+    "MenuButton *write_movie_button = nullptr;\n\tMenuButton *preview_debug_button = nullptr;")
+replace_once(RUN_BAR_HEADER,
+    "\tvoid _movie_maker_item_pressed(int p_id);",
+    """\tenum PreviewDebugMenuItem {
+\t\tPREVIEW_DEBUG_COLLISIONS = 0,
+\t\tPREVIEW_DEBUG_PATHS,
+\t\tPREVIEW_DEBUG_NAVIGATION,
+\t\tPREVIEW_DEBUG_AVOIDANCE,
+\t\tPREVIEW_DEBUG_CANVAS_REDRAW,
+\t};
+
+\tvoid _preview_debug_item_pressed(int p_id);
+\tvoid _movie_maker_item_pressed(int p_id);""")
+replace_once(RUN_BAR_SOURCE,
+    "void EditorRunBar::_movie_maker_item_pressed(int p_id) {",
+    """void EditorRunBar::_preview_debug_item_pressed(int p_id) {
+\tif (preview_debug_button == nullptr) {
+\t\treturn;
+\t}
+
+\tPopupMenu *popup = preview_debug_button->get_popup();
+\tint item_index = popup->get_item_index(p_id);
+\tif (item_index < 0) {
+\t\treturn;
+\t}
+
+\tbool enabled = !popup->is_item_checked(item_index);
+\tpopup->set_item_checked(item_index, enabled);
+
+\tconst char *metadata_key = nullptr;
+\tswitch (p_id) {
+\t\tcase PREVIEW_DEBUG_COLLISIONS:
+\t\t\tmetadata_key = "run_debug_collisions";
+\t\t\tbreak;
+\t\tcase PREVIEW_DEBUG_PATHS:
+\t\t\tmetadata_key = "run_debug_paths";
+\t\t\tbreak;
+\t\tcase PREVIEW_DEBUG_NAVIGATION:
+\t\t\tmetadata_key = "run_debug_navigation";
+\t\t\tbreak;
+\t\tcase PREVIEW_DEBUG_AVOIDANCE:
+\t\t\tmetadata_key = "run_debug_avoidance";
+\t\t\tbreak;
+\t\tcase PREVIEW_DEBUG_CANVAS_REDRAW:
+\t\t\tmetadata_key = "run_debug_canvas_redraw";
+\t\t\tbreak;
+\t\tdefault:
+\t\t\treturn;
+\t}
+
+\tEditorSettings::get_singleton()->set_project_metadata("debug_options", metadata_key, enabled);
+}
+
+void EditorRunBar::_movie_maker_item_pressed(int p_id) {""")
+replace_once(RUN_BAR_SOURCE,
+    "\tplay_button = memnew(Button);",
+    """\t// Quick access to Godot's built-in runtime debug overlays. All options
+\t// default to off unless the project already has an explicit preference.
+\tpreview_debug_button = memnew(MenuButton);
+\tmain_hbox->add_child(preview_debug_button);
+\tpreview_debug_button->set_theme_type_variation("RunBarButton");
+\tpreview_debug_button->set_text(TTR("Debug"));
+\tpreview_debug_button->set_tooltip_text(TTR("Show built-in debug overlays in the running game preview."));
+\tPopupMenu *preview_debug_popup = preview_debug_button->get_popup();
+\tpreview_debug_popup->add_check_item(TTRC("Visible Collision Shapes"), PREVIEW_DEBUG_COLLISIONS);
+\tpreview_debug_popup->set_item_tooltip(preview_debug_popup->get_item_index(PREVIEW_DEBUG_COLLISIONS), TTRC("Show 2D/3D collision shapes and raycast nodes in the running game."));
+\tpreview_debug_popup->add_check_item(TTRC("Visible Paths"), PREVIEW_DEBUG_PATHS);
+\tpreview_debug_popup->set_item_tooltip(preview_debug_popup->get_item_index(PREVIEW_DEBUG_PATHS), TTRC("Show curves used by path nodes."));
+\tpreview_debug_popup->add_check_item(TTRC("Visible Navigation"), PREVIEW_DEBUG_NAVIGATION);
+\tpreview_debug_popup->set_item_tooltip(preview_debug_popup->get_item_index(PREVIEW_DEBUG_NAVIGATION), TTRC("Show navigation meshes and polygons."));
+\tpreview_debug_popup->add_check_item(TTRC("Visible Avoidance"), PREVIEW_DEBUG_AVOIDANCE);
+\tpreview_debug_popup->set_item_tooltip(preview_debug_popup->get_item_index(PREVIEW_DEBUG_AVOIDANCE), TTRC("Show avoidance shapes, radiuses, and velocities."));
+\tpreview_debug_popup->add_separator();
+\tpreview_debug_popup->add_check_item(TTRC("Debug CanvasItem Redraws"), PREVIEW_DEBUG_CANVAS_REDRAW);
+\tpreview_debug_popup->set_item_tooltip(preview_debug_popup->get_item_index(PREVIEW_DEBUG_CANVAS_REDRAW), TTRC("Flash 2D items when they request redraws."));
+\tconst String debug_keys[] = {"run_debug_collisions", "run_debug_paths", "run_debug_navigation", "run_debug_avoidance", "run_debug_canvas_redraw"};
+\tfor (int i = 0; i < 5; i++) {
+\t\tpreview_debug_popup->set_item_checked(preview_debug_popup->get_item_index(i), EditorSettings::get_singleton()->get_project_metadata("debug_options", debug_keys[i], false));
+\t}
+\tpreview_debug_popup->connect(SceneStringName(id_pressed), callable_mp(this, &EditorRunBar::_preview_debug_item_pressed));
+
+\tplay_button = memnew(Button);""")
+replace_once(s and Path("unused") or RUN_BAR_SOURCE, "unused", "unused") if False else None
+
 print("GitHub import and Android Gallery protection patches applied successfully.")
