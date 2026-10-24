@@ -135,7 +135,7 @@ func _walk_ui(node: Node, base: Node, filter_text: String, visible_only: bool, m
 		_walk_ui(child, base, filter_text, visible_only, max_items, output)
 
 
-func _control_label(control: Control) -> String:
+func _control_label(control: Node) -> String:
 	if control is PopupMenu:
 		var menu := control as PopupMenu
 		var entries: Array[String] = []
