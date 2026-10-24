@@ -221,12 +221,15 @@ func _ensure_sync_plugin_enabled(config_path: String) -> int:
 	var err := config.load(config_path)
 	if err != OK:
 		return err
+	# Preserve the display name chosen during import while accepting upstream project settings.
+	var local_config := ConfigFile.new()
+	if local_config.load(project_root.path_join("project.godot")) == OK and local_config.has_section_key("application", "config/name"):
+		config.set_value("application", "config/name", local_config.get_value("application", "config/name"))
 	var enabled: PackedStringArray = config.get_value("editor_plugins", "enabled", PackedStringArray())
 	if not enabled.has(PLUGIN_PATH):
 		enabled.append(PLUGIN_PATH)
 		config.set_value("editor_plugins", "enabled", enabled)
-		return config.save(config_path)
-	return OK
+	return config.save(config_path)
 
 func _manifest_path() -> String:
 	return "user://%s/%s.json" % [MANIFEST_DIR, project_key]
@@ -304,56 +307,88 @@ func _apply_changes() -> void:
 		return
 	var stamp := Time.get_datetime_string_from_system().replace(":", "-").replace(" ", "_")
 	var rescue_root := OS.get_user_data_dir().path_join(RESCUE_DIR).path_join(project_key).path_join(stamp)
+	var transaction_root := OS.get_user_data_dir().path_join("github_sync_transactions").path_join(project_key).path_join(stamp)
 	var rescued_any := false
+
+	# Back up every touched existing file before the first mutation. This makes a failed
+	# write recoverable; only locally modified files are retained in the permanent rescue folder.
 	for operation in operations:
 		var relative: String = operation.path
 		var local_path := project_root.path_join(relative)
-		if operation.kind == "delete":
-			if operation.modified:
-				var rescue_path := rescue_root.path_join(relative)
-				DirAccess.make_dir_recursive_absolute(rescue_path.get_base_dir())
-				if DirAccess.copy_absolute(local_path, rescue_path) != OK:
-					_show_error("No se pudo rescatar el archivo antes de eliminarlo: " + relative)
-					return
-				rescued_any = true
-			var remove_err := DirAccess.remove_absolute(local_path)
-			if remove_err != OK:
-				_show_error("No se pudo eliminar el archivo obsoleto: " + relative)
+		if not FileAccess.file_exists(local_path):
+			continue
+		var transaction_copy := transaction_root.path_join(relative)
+		DirAccess.make_dir_recursive_absolute(transaction_copy.get_base_dir())
+		if DirAccess.copy_absolute(local_path, transaction_copy) != OK:
+			_remove_tree(transaction_root)
+			_show_error("No se pudo preparar una copia de seguridad. No se modificó ningún archivo: " + relative)
+			return
+		if operation.modified:
+			var rescue_copy := rescue_root.path_join(relative)
+			DirAccess.make_dir_recursive_absolute(rescue_copy.get_base_dir())
+			if DirAccess.copy_absolute(local_path, rescue_copy) != OK:
+				_remove_tree(transaction_root)
+				_remove_tree(rescue_root)
+				_show_error("No se pudo rescatar el archivo local. No se modificó ningún archivo: " + relative)
 				return
+			rescued_any = true
+
+	for operation in operations:
+		var relative: String = operation.path
+		var local_path := project_root.path_join(relative)
+		var operation_error := OK
+		if operation.kind == "delete":
+			operation_error = DirAccess.remove_absolute(local_path)
 		else:
-			if FileAccess.file_exists(local_path) and operation.modified:
-				var rescue_path := rescue_root.path_join(relative)
-				DirAccess.make_dir_recursive_absolute(rescue_path.get_base_dir())
-				if DirAccess.copy_absolute(local_path, rescue_path) != OK:
-					_show_error("No se pudo rescatar el archivo local antes de actualizarlo: " + relative)
-					return
-				rescued_any = true
 			var staged_path := staged_root.path_join(relative)
 			var bytes := FileAccess.get_file_as_bytes(staged_path)
-			var absolute_parent := local_path.get_base_dir()
-			DirAccess.make_dir_recursive_absolute(absolute_parent)
+			DirAccess.make_dir_recursive_absolute(local_path.get_base_dir())
 			var file := FileAccess.open(local_path, FileAccess.WRITE)
 			if file == null:
-				_show_error("No se pudo escribir el archivo: " + relative)
-				return
-			file.store_buffer(bytes)
-			file.close()
-	_save_manifest()
+				operation_error = FileAccess.get_open_error()
+			else:
+				file.store_buffer(bytes)
+				operation_error = file.get_error()
+				file.close()
+		if operation_error != OK:
+			_rollback_operations(transaction_root)
+			_remove_tree(transaction_root)
+			_show_error("Falló la escritura de '%s' (error %d). Se intentó restaurar el estado anterior." % [relative, operation_error])
+			return
+
+	if not _save_manifest():
+		_rollback_operations(transaction_root)
+		_remove_tree(transaction_root)
+		_show_error("No se pudo guardar el historial. Se intentó restaurar el estado anterior.")
+		return
+	_remove_tree(transaction_root)
 	EditorInterface.get_resource_filesystem().scan()
 	var done := "Sincronización completada. No se subió ningún archivo."
 	if rescued_any:
-		done += "\nCopias de rescate: " + rescue_root
+		done += "\nCopias de rescate de archivos locales modificados: " + rescue_root
 	_show_notice(done)
 
-func _save_manifest() -> void:
+func _rollback_operations(transaction_root: String) -> void:
+	for operation in operations:
+		var relative: String = operation.path
+		var local_path := project_root.path_join(relative)
+		var transaction_copy := transaction_root.path_join(relative)
+		if FileAccess.file_exists(transaction_copy):
+			DirAccess.make_dir_recursive_absolute(local_path.get_base_dir())
+			DirAccess.copy_absolute(transaction_copy, local_path)
+		elif operation.kind == "add" and FileAccess.file_exists(local_path):
+			DirAccess.remove_absolute(local_path)
+
+func _save_manifest() -> bool:
 	var folder := "user://%s" % MANIFEST_DIR
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(folder))
 	var file := FileAccess.open(_manifest_path(), FileAccess.WRITE)
 	if file == null:
-		_show_error("Los archivos se actualizaron, pero no se pudo guardar el historial de sincronización.")
-		return
+		return false
 	file.store_string(JSON.stringify({"repository": active_repo, "ref": active_ref, "files": upstream_files}, "\t"))
+	var save_error := file.get_error()
 	file.close()
+	return save_error == OK
 
 func _sha256(bytes: PackedByteArray) -> String:
 	var context := HashingContext.new()
