@@ -6,6 +6,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1] / "godot-source"
 HEADER = ROOT / "editor/project_manager/project_manager.h"
 SOURCE = ROOT / "editor/project_manager/project_manager.cpp"
+PROJECT_DIALOG = ROOT / "editor/project_manager/project_dialog.cpp"
 
 def replace_once(path: Path, old: str, new: str) -> None:
     content = path.read_text(encoding="utf-8")
@@ -14,7 +15,7 @@ def replace_once(path: Path, old: str, new: str) -> None:
         raise RuntimeError(f"{path.relative_to(ROOT)}: expected one anchor, found {count}: {old[:90]!r}")
     path.write_text(content.replace(old, new, 1), encoding="utf-8")
 
-if not HEADER.is_file() or not SOURCE.is_file():
+if not HEADER.is_file() or not SOURCE.is_file() or not PROJECT_DIALOG.is_file():
     sys.exit("Godot source tree not found; run this script from the repository workflow.")
 
 replace_once(HEADER,
@@ -592,3 +593,39 @@ replace_once(SOURCE,
 
 \t\t\tscan_btn = memnew(Button);""")
 print("GitHub import patch applied successfully to project_manager.h and project_manager.cpp.")
+
+
+# Keep Android's media scanner from indexing images bundled in projects installed
+# from ZIP archives (including public GitHub repositories).
+replace_once(PROJECT_DIALOG,
+    """\t\t\tif (create_dir->is_pressed()) {
+\t\t\t\tRef<DirAccess> d = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
+\t\t\t\tif (!d->dir_exists(path) && d->make_dir(path) != OK) {
+\t\t\t\t\t_set_message(TTRC("Couldn't create project directory, check permissions."), MESSAGE_ERROR);
+\t\t\t\t\treturn;
+\t\t\t\t}
+\t\t\t}
+
+\t\t\tret = unzGoToFirstFile(pkg);""",
+    """\t\t\tif (create_dir->is_pressed()) {
+\t\t\t\tRef<DirAccess> d = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
+\t\t\t\tif (!d->dir_exists(path) && d->make_dir(path) != OK) {
+\t\t\t\t\t_set_message(TTRC("Couldn't create project directory, check permissions."), MESSAGE_ERROR);
+\t\t\t\t\treturn;
+\t\t\t\t}
+\t\t\t}
+
+\t\t\t// Prevent Android Gallery from indexing images bundled in installed projects.
+\t\t\t// Create .nomedia before extracting any assets so it covers all subdirectories.
+\t\t\tif (mode == MODE_INSTALL) {
+\t\t\t\tRef<FileAccess> no_media = FileAccess::open(path.path_join(".nomedia"), FileAccess::WRITE);
+\t\t\t\tif (no_media.is_null()) {
+\t\t\t\t\t_set_message(TTRC("Couldn't protect the imported project from Android Gallery indexing. Check project-folder permissions."), MESSAGE_ERROR);
+\t\t\t\t\tunzClose(pkg);
+\t\t\t\t\treturn;
+\t\t\t\t}
+\t\t\t\tno_media->store_string("Godot project assets are not gallery media.\\\\n");
+\t\t\t\tno_media.unref();
+\t\t\t}
+
+\t\t\tret = unzGoToFirstFile(pkg);""")
