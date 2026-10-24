@@ -737,9 +737,8 @@ replace_once(RUN_BAR_SOURCE,
 \tplay_button = memnew(Button);""")
 
 
-# Extend the existing remote-debugger channel so navigation and avoidance overlays
-# can be switched in a running editor-debugged game. Path curves remain launch-time
-# only: SceneTree documents its path hint as not intended for runtime changes.
+# Extend the remote-debugger channel so physics, navigation, avoidance, and path
+# overlays can be toggled in the running game without restarting the preview.
 SCENE_DEBUGGER_HEADER = ROOT / "scene/debugger/scene_debugger.h"
 SCENE_DEBUGGER_SOURCE = ROOT / "scene/debugger/scene_debugger.cpp"
 EDITOR_DEBUGGER_HEADER = ROOT / "editor/debugger/editor_debugger_node.h"
