@@ -181,21 +181,31 @@ func _stage_archive() -> int:
 	if err != OK:
 		return err
 	var entries := zip.get_files()
-	if entries.is_empty():
+	if entries.is_empty() or entries.size() > MAX_ARCHIVE_FILES:
 		zip.close()
 		return ERR_FILE_CORRUPT
-	var archive_root := entries[0].get_slice("/", 0)
+	var first_file := ""
+	for candidate in entries:
+		if not candidate.ends_with("/"):
+			first_file = candidate
+			break
+	if first_file.is_empty() or not first_file.contains("/"):
+		zip.close()
+		return ERR_FILE_CORRUPT
+	var archive_root := first_file.get_slice("/", 0)
 	var stage_absolute := ProjectSettings.globalize_path(staged_root)
 	DirAccess.make_dir_recursive_absolute(stage_absolute)
 	_remove_tree(staged_root)
 	DirAccess.make_dir_recursive_absolute(stage_absolute)
 	upstream_files.clear()
+	var total_staged_bytes := 0
 	for entry in entries:
 		if entry.ends_with("/"):
 			continue
+		# GitHub ZIPs have one top-level directory; reject entries outside it.
+		if not entry.begins_with(archive_root + "/"):
+			continue
 		var relative := entry.trim_prefix(archive_root + "/")
-		if relative == entry:
-			relative = entry
 		if relative.is_empty() or relative.begins_with("/") or relative.contains("\\"):
 			continue
 		var invalid := false
@@ -208,6 +218,15 @@ func _stage_archive() -> int:
 		if relative == ".DS_Store":
 			continue
 		var bytes := zip.read_file(entry)
+		if bytes.size() > MAX_SINGLE_FILE_BYTES:
+			zip.close()
+			_remove_tree(staged_root)
+			return ERR_FILE_TOO_BIG
+		total_staged_bytes += bytes.size()
+		if total_staged_bytes > MAX_TOTAL_STAGED_BYTES:
+			zip.close()
+			_remove_tree(staged_root)
+			return ERR_FILE_TOO_BIG
 		if bytes.is_empty() and zip.get_files().has(entry):
 			# Empty source files are valid; the write below preserves them.
 			pass
