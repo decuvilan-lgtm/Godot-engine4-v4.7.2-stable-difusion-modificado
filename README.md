@@ -11,6 +11,22 @@
 - **Not yet verified:** the GDScript has not been parsed/executed by Godot and the C++ source patch has not yet passed the new Windows validation/native compile. Do not treat synchronization as ready for phone use until those checks pass, followed by a planned Android UI test. No APK was packaged for this work.
 
 
+## Android startup/loading screen — source patch added (2026-10-24)
+
+- The native Android splash now has an explicit dark background and the themed Godot editor icon.
+- Replaced the lone spinner with a full-screen loading overlay containing the editor icon, title, status text, and spinner. It keeps the existing editor_loading_indicator ID so the current onGodotMainLoopStarted() callback hides the overlay only when the engine main loop starts.
+- This is a source/resource change only. The Windows source workflow checks the patch anchors; Android resource/Gradle compilation and actual startup on the LG K51 are still pending. No APK was packaged.
+
+## Separate 3D terrain editor — initial source implementation (2026-10-24)
+
+- Added a dedicated **Terreno 3D** entry in the 3D editor menu and a scrollable terrain panel designed for narrow/mobile layouts.
+- Implemented a grid-based editable terrain node with mesh and collision generation; raise/lower/smooth/flatten brushes; vertex-color painting; optional grid snapping; brush-radius preview; viewport raycasting; a virtual joystick cursor; continuous joystick strokes; focus/recenter control; undo/redo for terrain creation and brush dabs; heightmap import/export; and procedural low-poly tree distribution.
+- The addon is embedded by the source patcher and enabled for ZIP-installed projects alongside GitHub Sync. The sync flow excludes both injected addons from upstream overwrite/deletion and keeps both plugin entries enabled.
+- **Still pending:** GDScript parse/runtime validation in Godot, terrain viewport testing, measuring performance on the LG K51, grouped undo for a whole continuous stroke, undo/redo for foliage distribution, and true texture-layer painting (the current paint tool edits vertex colors). Existing projects imported before these addons were added do not receive them just by being opened.
+- The source-only workflow now checks the patcher and feature wiring on Windows. The ARM32 native compile is compile-only; neither it nor static token checks prove the GDScript tools work at runtime. No full APK was built for this work.
+
+
+
 ## Current continuation status — 2026-10-24
 
 ### Important correction: GitHub import/search was already working
@@ -37,7 +53,7 @@ Performance work must therefore be measurement-led:
 
 - **In-project Synchronize button: NOT IMPLEMENTED in the current source patch.** The current native GitHub UI is an import/search flow in the Project Manager, which is outside the open project. The planned one-way, incremental GitHub synchronization is documented later in this README but is still a design, not a working feature. Do not claim that a sync button is available while editing. Next implementation must add a persistent, discoverable **Synchronize** action inside the open project's editor UI and connect it to a safe sync workflow (baseline, change preview, conflict/rescue handling, and recoverable writes); do not add a decorative button that does nothing.
 - **Editor/preview fluency: NOT VERIFIED or measured.** The recent ARM32 native compile is compile-only and provides no frame-time or input-latency data. No new APK was built for this check, and no new test was run on the LG K51. Next performance work must measure editor responsiveness and running-preview frame pacing on the device before/after changes, without stripping features or lowering quality as a blanket fix.
-- **Startup/loading screen change: NO IMPLEMENTATION FOUND in the current patcher or the recent source commits inspected.** The current source patcher contains Project Manager GitHub import, Gallery/media protection, MCP installation, and debug-overlay changes; it does not modify the Android splash/loading screen. Therefore there is no evidence that the requested startup-screen change was applied or worked. Mark it pending until a specific source change and a later planned build/device check establish the result.
+- **Startup/loading screen: source patch now added, runtime not verified.** The native splash and editor loading overlay are modified by scripts/apply_android_startup_patch.py; Android resource compilation and a device startup check are still pending.
 - **Important distinction:** the passed Windows ARM32 native compile confirms the shared library exists, not that the editor UI, synchronization, startup screen, or game preview behaves correctly. A new APK solely for this check remains deliberately deferred by the project owner; do not start one without a separate request.
 
 ### Preview/run-bar debug visibility menu — source added, not yet validated
