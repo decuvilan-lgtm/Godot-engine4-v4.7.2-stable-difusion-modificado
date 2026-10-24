@@ -30,6 +30,14 @@ Performance work must therefore be measurement-led:
 - **All five controls now have source-level live-toggle wiring** through the editor's remote-debugger channel. Collision Shapes calls Godot's live physics-server debug switch; Navigation and Avoidance send runtime commands to the navigation servers; CanvasItem Redraws calls `RenderingServer::canvas_item_set_debug_redraw`; and Visible Paths now explicitly refreshes the built-in `Path2D` renderer and creates/updates/hides the `Path3D` debug instance when toggled. Godot documents the `SceneTree` path hint itself as not designed for runtime changes, so the patch does not rely on that hint alone. These C++ changes are not yet compiled or runtime-verified.
 - This is a source patch only. It has not been applied to a fresh Godot checkout, compiled, or checked on the LG K51. Do not treat the menu as verified until the source patch and Android UI are validated.
 
+### Latest overlay validation status — 2026-10-24
+
+- **PASS — [Windows source validation run 40060330082](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40060330082):** Python syntax and overlay checks passed, and the patcher applied successfully to a clean, sparse checkout of official Godot 4.7.2 source.
+- **IN PROGRESS — [Windows Android native compile run 40060228767](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40060228767):** targets only the ARM64 Android editor native engine. It does **not** run Gradle or generate/package an APK. C++ compile status is not confirmed yet.
+- The source-validation path exposed and corrected an upstream-anchor mismatch: official Godot 4.7.2 does not already declare the collision remote-debugger functions assumed by the earlier patch. The patch now adds the collision message end-to-end instead of relying on nonexistent declarations.
+- Windows runner setup issues were addressed: long Git paths are enabled for the full source checkout, and the obsolete Android SDK `tools` package is no longer requested.
+- The Linux-based MCP addon workflow is now manual-dispatch only. Overlay source checks and the compile-only check use Windows runners; do not run Linux tests or build/package a full APK without a separate explicit request.
+
 ### Missing editor controls — current implementation step
 
 - Extended `inspect_editor_ui` to enumerate open Godot `PopupMenu` controls and expose each item’s label/index, disabled/separator state, and checked state. `activate_editor_ui_control` now accepts a desired `checked_value` for checkable menu entries, avoids toggling when the requested state is already active, and verifies the resulting state. This is groundwork for operating built-in debug menu options (including collision visualization) without temporary scripts.
