@@ -120,6 +120,19 @@ func _walk_ui(node: Node, base: Node, filter_text: String, visible_only: bool, m
 
 
 func _control_label(control: Control) -> String:
+	if control is PopupMenu:
+		var menu := control as PopupMenu
+		var entries: Array[String] = []
+		for index in range(menu.get_item_count()):
+			var entry := "%d:%s" % [index, menu.get_item_text(index)]
+			if menu.is_item_separator(index):
+				entry += " [separator]"
+			if menu.is_item_disabled(index):
+				entry += " [disabled]"
+			if menu.is_item_checkable(index):
+				entry += " [checkable=%s]" % str(menu.is_item_checked(index))
+			entries.append(entry)
+		return " | ".join(entries).left(3000)
 	if control is Button:
 		return (control as Button).text
 	if control is Label:
