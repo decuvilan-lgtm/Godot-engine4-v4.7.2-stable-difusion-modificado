@@ -30,6 +30,7 @@ for token, label in [
     ('add_control_to_bottom_panel(panel, "Terreno 3D")', "dedicated terrain editor panel"),
     ("joystick_pad.gui_input.connect", "touch joystick input is wired"),
     ("_forward_3d_gui_input", "3D viewport mouse/touch input is handled"),
+    ("set_input_event_forwarding_always_enabled()", "terrain viewport input remains available without selection-dependent forwarding"),
     ("_raycast_terrain", "cursor uses a 3D raycast"),
     ("Elevar", "raise brush"),
     ("Bajar", "lower brush"),
