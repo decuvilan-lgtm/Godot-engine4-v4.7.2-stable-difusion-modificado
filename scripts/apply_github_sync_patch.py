@@ -7,6 +7,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 ROOT = REPO_ROOT / "godot-source"
 SOURCE = ROOT / "editor/project_manager/project_dialog.cpp"
 ADDON = REPO_ROOT / "scripts/github_sync_addon"
+TERRAIN_ADDON = REPO_ROOT / "scripts/terrain_3d_addon"
 
 def replace_once(content: str, old: str, new: str, label: str) -> str:
     count = content.count(old)
@@ -18,14 +19,20 @@ if not SOURCE.is_file():
     sys.exit("Godot source tree not found; run this after apply_github_import_patch.py.")
 plugin_path = ADDON / "plugin.gd"
 config_path = ADDON / "plugin.cfg"
-if not plugin_path.is_file() or not config_path.is_file():
-    sys.exit("GitHub sync addon files are missing.")
+terrain_plugin_path = TERRAIN_ADDON / "terrain_editor_plugin.gd"
+terrain_data_path = TERRAIN_ADDON / "terrain_data.gd"
+terrain_config_path = TERRAIN_ADDON / "plugin.cfg"
+if not all(p.is_file() for p in (plugin_path, config_path, terrain_plugin_path, terrain_data_path, terrain_config_path)):
+    sys.exit("GitHub sync or terrain addon files are missing.")
 
 plugin = plugin_path.read_text(encoding="utf-8")
 config = config_path.read_text(encoding="utf-8")
+terrain_plugin = terrain_plugin_path.read_text(encoding="utf-8")
+terrain_data = terrain_data_path.read_text(encoding="utf-8")
+terrain_config = terrain_config_path.read_text(encoding="utf-8")
 # Delimiter is intentionally long and checked so addon source cannot terminate the C++ raw string.
 delimiter = "GHGODOTSYNC"
-for value in (plugin, config):
+for value in (plugin, config, terrain_plugin, terrain_data, terrain_config):
     if f"){delimiter}\"" in value:
         raise RuntimeError("Addon content collides with the generated C++ raw-string delimiter.")
 
@@ -36,6 +43,9 @@ generated_header.write_text(
     "namespace GitHubSyncAddonData {\n"
     f'static const char *PLUGIN_GD = R"{delimiter}({plugin}){delimiter}";\n'
     f'static const char *PLUGIN_CFG = R"{delimiter}({config}){delimiter}";\n'
+    f'static const char *TERRAIN_PLUGIN_GD = R"{delimiter}({terrain_plugin}){delimiter}";\n'
+    f'static const char *TERRAIN_DATA_GD = R"{delimiter}({terrain_data}){delimiter}";\n'
+    f'static const char *TERRAIN_PLUGIN_CFG = R"{delimiter}({terrain_config}){delimiter}";\n'
     "}\n",
     encoding="utf-8",
 )
@@ -85,6 +95,20 @@ insertion = """\t\terr = cfg.save(project_godot);
 \t\t\taddon_err = write_sync_addon_file(addon_dir_path.path_join("plugin.gd"), String::utf8(GitHubSyncAddonData::PLUGIN_GD));
 \t\t\tif (addon_err == OK) {
 \t\t\t\taddon_err = write_sync_addon_file(addon_dir_path.path_join("plugin.cfg"), String::utf8(GitHubSyncAddonData::PLUGIN_CFG));
+\t\t\tconst String terrain_addon_dir_path = path.path_join("addons/terrain_3d");
+\t\t\tif (addon_err == OK) {
+\t\t\t\tRef<DirAccess> terrain_addon_dir = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
+\t\t\t\taddon_err = terrain_addon_dir->make_dir_recursive(terrain_addon_dir_path);
+\t\t\t}
+\t\t\tif (addon_err == OK) {
+\t\t\t\taddon_err = write_sync_addon_file(terrain_addon_dir_path.path_join("terrain_editor_plugin.gd"), String::utf8(GitHubSyncAddonData::TERRAIN_PLUGIN_GD));
+\t\t\t}
+\t\t\tif (addon_err == OK) {
+\t\t\t\taddon_err = write_sync_addon_file(terrain_addon_dir_path.path_join("terrain_data.gd"), String::utf8(GitHubSyncAddonData::TERRAIN_DATA_GD));
+\t\t\t}
+\t\t\tif (addon_err == OK) {
+\t\t\t\taddon_err = write_sync_addon_file(terrain_addon_dir_path.path_join("plugin.cfg"), String::utf8(GitHubSyncAddonData::TERRAIN_PLUGIN_CFG));
+\t\t\t}
 \t\t\t}
 \t\t\tif (addon_err != OK) {
 \t\t\t\tdialog_error->set_text(vformat(TTR("Couldn't install GitHub sync addon (error %d)."), addon_err));
@@ -93,12 +117,21 @@ insertion = """\t\terr = cfg.save(project_godot);
 \t\t\t}
 \t\t\tPackedStringArray enabled_plugins = cfg.get_value("editor_plugins", "enabled", PackedStringArray());
 \t\t\tconst String plugin_setting = "res://addons/github_sync/plugin.cfg";
+\t\t\tconst String terrain_plugin_setting = "res://addons/terrain_3d/plugin.cfg";
+\t\t\tbool plugins_changed = false;
 \t\t\tif (!enabled_plugins.has(plugin_setting)) {
 \t\t\t\tenabled_plugins.push_back(plugin_setting);
+\t\t\t\tplugins_changed = true;
+\t\t\t}
+\t\t\tif (!enabled_plugins.has(terrain_plugin_setting)) {
+\t\t\t\tenabled_plugins.push_back(terrain_plugin_setting);
+\t\t\t\tplugins_changed = true;
+\t\t\t}
+\t\t\tif (plugins_changed) {
 \t\t\t\tcfg.set_value("editor_plugins", "enabled", enabled_plugins);
 \t\t\t\taddon_err = cfg.save(project_godot);
 \t\t\t\tif (addon_err != OK) {
-\t\t\t\t\tdialog_error->set_text(vformat(TTR("GitHub sync addon was copied, but it could not be enabled (error %d)."), addon_err));
+\t\t\t\t\tdialog_error->set_text(vformat(TTR("Editor addons were copied, but could not be enabled (error %d)."), addon_err));
 \t\t\t\t\tdialog_error->popup_centered();
 \t\t\t\t\treturn;
 \t\t\t\t}
