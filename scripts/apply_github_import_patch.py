@@ -833,83 +833,83 @@ replace_once(SCENE_DEBUGGER_SOURCE,
 # engine's existing path debug rendering implementation.
 replace_once(EDITOR_DEBUGGER_HEADER,
     "void set_debug_avoidance(bool p_enabled);",
-    "void set_debug_avoidance(bool p_enabled);\\n\\tvoid set_debug_paths(bool p_enabled);\\n\\tvoid set_debug_canvas_item_redraw(bool p_enabled);")
+    "void set_debug_avoidance(bool p_enabled);\n\tvoid set_debug_paths(bool p_enabled);\n\tvoid set_debug_canvas_item_redraw(bool p_enabled);")
 replace_once(EDITOR_DEBUGGER_SOURCE,
     "void EditorDebuggerNode::set_debug_collisions(bool p_enabled) {",
     """void EditorDebuggerNode::set_debug_paths(bool p_enabled) {
-\\t_for_all(tabs, [&](ScriptEditorDebugger *dbg) {
-\\t\\tdbg->set_debug_paths(p_enabled);
-\\t});
+\t_for_all(tabs, [&](ScriptEditorDebugger *dbg) {
+\t\tdbg->set_debug_paths(p_enabled);
+\t});
 }
 
 void EditorDebuggerNode::set_debug_canvas_item_redraw(bool p_enabled) {
-\\t_for_all(tabs, [&](ScriptEditorDebugger *dbg) {
-\\t\\tdbg->set_debug_canvas_item_redraw(p_enabled);
-\\t});
+\t_for_all(tabs, [&](ScriptEditorDebugger *dbg) {
+\t\tdbg->set_debug_canvas_item_redraw(p_enabled);
+\t});
 }
 
 void EditorDebuggerNode::set_debug_collisions(bool p_enabled) {""")
 replace_once(SCRIPT_DEBUGGER_HEADER,
     "void set_debug_avoidance(bool p_enable);",
-    "void set_debug_avoidance(bool p_enable);\\n\\tvoid set_debug_paths(bool p_enable);\\n\\tvoid set_debug_canvas_item_redraw(bool p_enable);")
+    "void set_debug_avoidance(bool p_enable);\n\tvoid set_debug_paths(bool p_enable);\n\tvoid set_debug_canvas_item_redraw(bool p_enable);")
 replace_once(SCRIPT_DEBUGGER_SOURCE,
     "void ScriptEditorDebugger::set_debug_collisions(bool p_enable) {",
     """void ScriptEditorDebugger::set_debug_paths(bool p_enable) {
-\\tArray msg = { p_enable };
-\\t_put_msg("scene:set_debug_paths", msg);
+\tArray msg = { p_enable };
+\t_put_msg("scene:set_debug_paths", msg);
 }
 
 void ScriptEditorDebugger::set_debug_canvas_item_redraw(bool p_enable) {
-\\tArray msg = { p_enable };
-\\t_put_msg("scene:set_debug_canvas_item_redraw", msg);
+\tArray msg = { p_enable };
+\t_put_msg("scene:set_debug_canvas_item_redraw", msg);
 }
 
 void ScriptEditorDebugger::set_debug_collisions(bool p_enable) {""")
 replace_once(SCENE_DEBUGGER_HEADER,
     "static Error _msg_set_debug_avoidance(const Array &p_args);",
-    "static Error _msg_set_debug_avoidance(const Array &p_args);\\n\\tstatic Error _msg_set_debug_paths(const Array &p_args);\\n\\tstatic Error _msg_set_debug_canvas_item_redraw(const Array &p_args);")
+    "static Error _msg_set_debug_avoidance(const Array &p_args);\n\tstatic Error _msg_set_debug_paths(const Array &p_args);\n\tstatic Error _msg_set_debug_canvas_item_redraw(const Array &p_args);")
 replace_once(SCENE_DEBUGGER_SOURCE,
     "Error SceneDebugger::_msg_debug_mute_audio(const Array &p_args) {",
     """Error SceneDebugger::_msg_set_debug_paths(const Array &p_args) {
-\\tERR_FAIL_COND_V(p_args.is_empty(), ERR_INVALID_DATA);
-\\tSceneTree *tree = SceneTree::get_singleton();
-\\tERR_FAIL_NULL_V(tree, ERR_UNCONFIGURED);
-\\tconst bool enabled = bool(p_args[0]);
-\\ttree->set_debug_paths_hint(enabled);
-\\t// SceneTree's path hint does not schedule redraws by itself. Refresh every
-\\t// CanvasItem so Path2D curves update immediately without restarting the game.
-\\tList<Node *> pending;
-\\tif (tree->get_root()) {
-\\t\\tpending.push_back(tree->get_root());
-\\t}
-\\twhile (!pending.is_empty()) {
-\\t\\tNode *node = pending.front()->get();
-\\t\\tpending.pop_front();
-\\t\\tif (CanvasItem *item = Object::cast_to<CanvasItem>(node)) {
-\\t\\t\\titem->queue_redraw();
-\\t\\t}
-\\t\\tfor (int i = 0; i < node->get_child_count(); i++) {
-\\t\\t\\tpending.push_back(node->get_child(i));
-\\t\\t}
-\\t}
-\\treturn OK;
+\tERR_FAIL_COND_V(p_args.is_empty(), ERR_INVALID_DATA);
+\tSceneTree *tree = SceneTree::get_singleton();
+\tERR_FAIL_NULL_V(tree, ERR_UNCONFIGURED);
+\tconst bool enabled = bool(p_args[0]);
+\ttree->set_debug_paths_hint(enabled);
+\t// SceneTree's path hint does not schedule redraws by itself. Refresh every
+\t// CanvasItem so Path2D curves update immediately without restarting the game.
+\tList<Node *> pending;
+\tif (tree->get_root()) {
+\t\tpending.push_back(tree->get_root());
+\t}
+\twhile (!pending.is_empty()) {
+\t\tNode *node = pending.front()->get();
+\t\tpending.pop_front();
+\t\tif (CanvasItem *item = Object::cast_to<CanvasItem>(node)) {
+\t\t\titem->queue_redraw();
+\t\t}
+\t\tfor (int i = 0; i < node->get_child_count(); i++) {
+\t\t\tpending.push_back(node->get_child(i));
+\t\t}
+\t}
+\treturn OK;
 }
 
 Error SceneDebugger::_msg_set_debug_canvas_item_redraw(const Array &p_args) {
-\\tERR_FAIL_COND_V(p_args.is_empty(), ERR_INVALID_DATA);
-\\tRenderingServer::get_singleton()->canvas_item_set_debug_redraw(bool(p_args[0]));
-\\treturn OK;
+\tERR_FAIL_COND_V(p_args.is_empty(), ERR_INVALID_DATA);
+\tRenderingServer::get_singleton()->canvas_item_set_debug_redraw(bool(p_args[0]));
+\treturn OK;
 }
 
 Error SceneDebugger::_msg_debug_mute_audio(const Array &p_args) {""")
 replace_once(SCENE_DEBUGGER_SOURCE,
     '#include "servers/rendering/rendering_server.h"',
-    '#include "servers/rendering/rendering_server.h"\\n#include "scene/2d/canvas_item.h"')
+    '#include "servers/rendering/rendering_server.h"\n#include "scene/2d/canvas_item.h"')
 replace_once(SCENE_DEBUGGER_SOURCE,
     'message_handlers["set_debug_avoidance"] = _msg_set_debug_avoidance;',
-    'message_handlers["set_debug_avoidance"] = _msg_set_debug_avoidance;\\n\\tmessage_handlers["set_debug_paths"] = _msg_set_debug_paths;\\n\\tmessage_handlers["set_debug_canvas_item_redraw"] = _msg_set_debug_canvas_item_redraw;')
+    'message_handlers["set_debug_avoidance"] = _msg_set_debug_avoidance;\n\tmessage_handlers["set_debug_paths"] = _msg_set_debug_paths;\n\tmessage_handlers["set_debug_canvas_item_redraw"] = _msg_set_debug_canvas_item_redraw;')
 replace_once(RUN_BAR_SOURCE,
-    "EditorDebuggerNode::get_singleton()->set_debug_avoidance(enabled);\\n\\t}",
-    "EditorDebuggerNode::get_singleton()->set_debug_avoidance(enabled);\\n\\t} else if (p_id == PREVIEW_DEBUG_PATHS) {\\n\\t\\tEditorDebuggerNode::get_singleton()->set_debug_paths(enabled);\\n\\t} else if (p_id == PREVIEW_DEBUG_CANVAS_REDRAW) {\\n\\t\\tEditorDebuggerNode::get_singleton()->set_debug_canvas_item_redraw(enabled);\\n\\t}")
+    "EditorDebuggerNode::get_singleton()->set_debug_avoidance(enabled);\n\t}",
+    "EditorDebuggerNode::get_singleton()->set_debug_avoidance(enabled);\n\t} else if (p_id == PREVIEW_DEBUG_PATHS) {\n\t\tEditorDebuggerNode::get_singleton()->set_debug_paths(enabled);\n\t} else if (p_id == PREVIEW_DEBUG_CANVAS_REDRAW) {\n\t\tEditorDebuggerNode::get_singleton()->set_debug_canvas_item_redraw(enabled);\n\t}")
 
 print("GitHub import and Android Gallery protection patches applied successfully.")
