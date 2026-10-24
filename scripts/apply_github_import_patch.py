@@ -694,6 +694,12 @@ replace_once(RUN_BAR_SOURCE,
 \t}
 
 \tEditorSettings::get_singleton()->set_project_metadata("debug_options", metadata_key, enabled);
+
+\t// Collision overlays support live updates through Godot's remote debugger protocol.
+\t// Apply immediately to every active editor-debugged game, without restarting it.
+\tif (p_id == PREVIEW_DEBUG_COLLISIONS) {
+\t\tEditorDebuggerNode::get_singleton()->set_debug_collisions(enabled);
+\t}
 }
 
 void EditorRunBar::_movie_maker_item_pressed(int p_id) {""")
