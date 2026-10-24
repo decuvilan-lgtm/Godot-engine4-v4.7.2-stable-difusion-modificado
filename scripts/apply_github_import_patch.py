@@ -25,7 +25,7 @@ replace_once(HEADER,
     "ProjectDialog *project_dialog = nullptr;\n\tConfirmationDialog *github_import_dialog = nullptr;\n\tLineEdit *github_repo_url = nullptr;\n\tLineEdit *github_repo_ref = nullptr;\n\tHTTPRequest *github_http_request = nullptr;\n\tHTTPRequest *github_search_request = nullptr;\n\tConfirmationDialog *github_results_dialog = nullptr;\n\tOptionButton *github_repo_results = nullptr;\n\tString github_zip_path;\n\tString github_repo_name;\n\tString github_search_query;\n\tint github_search_page = 1;\n\tint github_search_total_count = 0;\n\tButton *github_search_more_btn = nullptr;\n\tConfirmationDialog *mcp_install_dialog = nullptr;")
 replace_once(HEADER,
     "\tvoid _import_project();\n\tvoid _new_project();",
-    "\tvoid _import_project();\n\tvoid _show_github_import_dialog();\n\tvoid _github_import_confirmed();\n\tvoid _github_import_submitted(const String &p_text);\n\tvoid _github_start_search(int p_page);\n\tvoid _github_search_next_page();\n\tvoid _github_search_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n\tvoid _github_search_result_confirmed();\n\tvoid _github_download_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n\tvoid _show_mcp_install_dialog();\n\tvoid _install_mcp_addon_confirmed();\n\tvoid _new_project();")
+    "\tvoid _import_project();\n\tvoid _show_github_import_dialog();\n\tvoid _github_import_confirmed();\n\tvoid _github_import_submitted(const String &p_text);\n\tvoid _github_search_button_pressed();\n\tvoid _github_start_search(int p_page);\n\tvoid _github_search_next_page();\n\tvoid _github_search_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n\tvoid _github_search_result_confirmed();\n\tvoid _github_download_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n\tvoid _show_mcp_install_dialog();\n\tvoid _install_mcp_addon_confirmed();\n\tvoid _new_project();")
 replace_once(SOURCE,
     '#include "scene/gui/separator.h"\n#include "scene/main/scene_tree.h"',
     '#include "core/io/json.h"\n#include "scene/gui/separator.h"\n#include "scene/main/http_request.h"\n#include "scene/main/scene_tree.h"\n#include "platform/android/file_access_android.h"\n#include "modules/zip/zip_reader.h"')
@@ -69,7 +69,7 @@ void ProjectManager::_show_github_import_dialog() {
 
 \t\tButton *github_search_btn = memnew(Button);
 \t\tgithub_search_btn->set_text(TTRC("Buscar en GitHub"));
-\t\tgithub_search_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_github_import_confirmed));
+\t\tgithub_search_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_github_search_button_pressed));
 \t\tcontainer->add_child(github_search_btn);
 
 \t\tadd_child(github_import_dialog);
@@ -100,6 +100,54 @@ void ProjectManager::_github_import_submitted(const String &p_text) {
 \t\tgithub_repo_url->release_focus();
 \t}
 \t_github_import_confirmed();
+}
+
+// The explicit Search button must search even when the input looks like a direct
+// repository URL. This is the recovery path when URL-based import does not work.
+void ProjectManager::_github_search_button_pressed() {
+\tif (github_search_request) {
+\t\t_show_error(TTR("A GitHub search is already in progress."));
+\t\treturn;
+\t}
+\tif (github_http_request) {
+\t\t_show_error(TTR("A GitHub download is already in progress."));
+\t\treturn;
+\t}
+\tString query = github_repo_url ? github_repo_url->get_text().strip_edges() : String();
+\tif (query.is_empty()) {
+\t\t_show_error(TTR("Enter a repository name, owner/repository, or GitHub URL to search."));
+\t\treturn;
+\t}
+\tif (query.begins_with("https://github.com/")) {
+\t\tquery = query.trim_prefix("https://github.com/");
+\t} else if (query.begins_with("http://github.com/")) {
+\t\tquery = query.trim_prefix("http://github.com/");
+\t} else if (query.begins_with("github.com/")) {
+\t\tquery = query.trim_prefix("github.com/");
+\t} else if (query.contains("://") || query.begins_with("www.")) {
+\t\t_show_error(TTR("Use github.com/owner/repository or enter a search query."));
+\t\treturn;
+\t}
+\tquery = query.trim_suffix("/");
+\tquery = query.trim_suffix(".git");
+\tif (query.contains("?") || query.contains("#")) {
+\t\t_show_error(TTR("Remove query parameters or fragments before searching."));
+\t\treturn;
+\t}
+\tif (query.contains("/")) {
+\t\tPackedStringArray parts = query.split("/", false);
+\t\tif (parts.size() != 2 || parts[0].is_empty() || parts[1].is_empty() || parts[0].contains(" ") || parts[1].contains(" ")) {
+\t\t\t_show_error(TTR("For a repository URL, use only github.com/owner/repository."));
+\t\t\treturn;
+\t\t}
+\t}
+\tgithub_search_query = query;
+\tgithub_search_page = 1;
+\tgithub_search_total_count = 0;
+\tif (github_import_dialog) {
+\t\tgithub_import_dialog->hide();
+\t}
+\t_github_start_search(1);
 }
 
 void ProjectManager::_github_import_confirmed() {
