@@ -35,6 +35,8 @@ for token, label in [
     ("Aplanar", "flatten brush"),
     ("Pintar color", "vertex-color painting"),
     ("Pintar capa de material", "four paintable terrain material layers"),
+    ('for mode in ["Elevar", "Bajar", "Suavizar", "Aplanar", "Pintar color", "Pintar capa de material"]:', "terrain tool selector has valid loop syntax"),
+    ("var min_x := clampi(", "brush work is limited to the affected vertex region"),
     ("_commit_terrain_change", "terrain edits use editor undo/redo"),
     ("Importar heightmap", "heightmap import UI"),
     ("Exportar heightmap", "heightmap export UI"),
