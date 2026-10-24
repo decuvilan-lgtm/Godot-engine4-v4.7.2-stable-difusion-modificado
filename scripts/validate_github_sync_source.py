@@ -17,7 +17,8 @@ addon = ROOT / "scripts/github_sync_addon/plugin.gd"
 config = ROOT / "scripts/github_sync_addon/plugin.cfg"
 require(patcher.is_file() and addon.is_file() and config.is_file(), "sync patcher and addon sources exist")
 ast.parse(patcher.read_text(encoding="utf-8"), filename=str(patcher))
-require(True, "sync patcher has valid Python syntax")
+ast.parse((ROOT / "scripts/apply_github_import_patch.py").read_text(encoding="utf-8"), filename="apply_github_import_patch.py")
+require(True, "sync patcher and existing source patcher have valid Python syntax")
 gd = addon.read_text(encoding="utf-8")
 for token, label in [
     ("Sincronizar GitHub", "visible in-editor sync button"),
@@ -27,6 +28,8 @@ for token, label in [
     ("_show_preview()", "presents the change preview"),
     ("_apply_changes()", "applies only after explicit confirmation"),
     ("_save_manifest()", "persists baseline for later deletions"),
+    ("_ensure_sync_plugin_enabled(staged_project)", "keeps the editor plugin enabled when project.godot changes"),
+    ('relative.begins_with("addons/github_sync/")', "sync cannot overwrite its own addon"),
     ("RESCUE_DIR", "rescue directory is outside the project"),
     ("DirAccess.copy_absolute(local_path, rescue_path)", "modified local files are copied to rescue before overwrite/delete"),
     ('"delete"', "handles files removed from upstream"),
