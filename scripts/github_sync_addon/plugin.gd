@@ -5,7 +5,6 @@ const PLUGIN_PATH := "res://addons/github_sync/plugin.cfg"
 const TERRAIN_PLUGIN_PATH := "res://addons/terrain_3d/plugin.cfg"
 const MANIFEST_DIR := "github_sync_manifests"
 const STAGE_DIR := "github_sync_stage"
-const RESCUE_DIR := "github_sync_rescue"
 const MAX_ARCHIVE_BYTES := 200 * 1024 * 1024
 const MAX_ARCHIVE_FILES := 6000
 const MAX_FILE_BYTES := 16 * 1024 * 1024
@@ -61,7 +60,7 @@ func _build_dialogs() -> void:
 	var root := VBoxContainer.new()
 	root.custom_minimum_size = Vector2(420, 0)
 	var info := Label.new()
-	info.text = "Solo lee GitHub. Antes de escribir muestra los cambios; los archivos locales modificados se rescatan fuera del proyecto."
+	info.text = "Solo aplica los archivos de GitHub al proyecto. No crea copias ni sube archivos."
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(info)
 	repo_input = LineEdit.new()
@@ -322,7 +321,6 @@ func _show_preview() -> void:
 	var adds := 0
 	var updates := 0
 	var deletes := 0
-	var rescued := 0
 	var lines := PackedStringArray()
 	for operation in operations:
 		match operation.kind:
@@ -332,12 +330,10 @@ func _show_preview() -> void:
 				updates += 1
 			"delete":
 				deletes += 1
-		if operation.modified:
-			rescued += 1
 		if lines.size() < 80:
 			var marker := "A" if operation.kind == "add" else ("D" if operation.kind == "delete" else "U")
-			lines.append("%s  %s%s" % [marker, operation.path, "  [copia de rescate]" if operation.modified else ""])
-	var summary := "Repositorio: %s\nReferencia: %s\n\nAñadir: %d   Actualizar: %d   Eliminar: %d\nArchivos locales que se rescatarán fuera del proyecto: %d\n\n" % [active_repo, active_ref if not active_ref.is_empty() else "(rama predeterminada)", adds, updates, deletes, rescued]
+			lines.append("%s  %s%s" % [marker, operation.path, "  [se reemplazará]" if operation.modified else ""])
+	var summary := "Repositorio: %s\nReferencia: %s\n\nAñadir: %d   Actualizar: %d   Eliminar: %d\nLos archivos del repositorio reemplazarán sus versiones locales cuando corresponda.\n\n" % [active_repo, active_ref if not active_ref.is_empty() else "(rama predeterminada)", adds, updates, deletes]
 	summary += "\n".join(lines)
 	if operations.size() > lines.size():
 		summary += "\n… y %d cambios más." % (operations.size() - lines.size())
@@ -357,34 +353,8 @@ func _show_preview() -> void:
 func _apply_changes() -> void:
 	if operations.is_empty():
 		return
-	var stamp := Time.get_datetime_string_from_system().replace(":", "-").replace(" ", "_")
-	var rescue_root := OS.get_user_data_dir().path_join(RESCUE_DIR).path_join(project_key).path_join(stamp)
-	var transaction_root := OS.get_user_data_dir().path_join("github_sync_transactions").path_join(project_key).path_join(stamp)
-	var rescued_any := false
-
-	# Back up every touched existing file before the first mutation. This makes a failed
-	# write recoverable; only locally modified files are retained in the permanent rescue folder.
-	for operation in operations:
-		var relative: String = operation.path
-		var local_path := project_root.path_join(relative)
-		if not FileAccess.file_exists(local_path):
-			continue
-		var transaction_copy := transaction_root.path_join(relative)
-		DirAccess.make_dir_recursive_absolute(transaction_copy.get_base_dir())
-		if DirAccess.copy_absolute(local_path, transaction_copy) != OK:
-			_remove_tree(transaction_root)
-			_show_error("No se pudo preparar una copia de seguridad. No se modificó ningún archivo: " + relative)
-			return
-		if operation.modified:
-			var rescue_copy := rescue_root.path_join(relative)
-			DirAccess.make_dir_recursive_absolute(rescue_copy.get_base_dir())
-			if DirAccess.copy_absolute(local_path, rescue_copy) != OK:
-				_remove_tree(transaction_root)
-				_remove_tree(rescue_root)
-				_show_error("No se pudo rescatar el archivo local. No se modificó ningún archivo: " + relative)
-				return
-			rescued_any = true
-
+	# GitHub is the source of truth: write the staged upstream files directly.
+	# Deliberately create no backup or transaction copies to avoid filling mobile storage.
 	for operation in operations:
 		var relative: String = operation.path
 		var local_path := project_root.path_join(relative)
@@ -403,33 +373,14 @@ func _apply_changes() -> void:
 				operation_error = file.get_error()
 				file.close()
 		if operation_error != OK:
-			_rollback_operations(transaction_root)
-			_remove_tree(transaction_root)
-			_show_error("Falló la escritura de '%s' (error %d). Se intentó restaurar el estado anterior." % [relative, operation_error])
+			_show_error("Falló la aplicación de '%s' (error %d). No se crearon copias. Vuelve a sincronizar para aplicar de nuevo los archivos de GitHub." % [relative, operation_error])
 			return
 
 	if not _save_manifest():
-		_rollback_operations(transaction_root)
-		_remove_tree(transaction_root)
-		_show_error("No se pudo guardar el historial. Se intentó restaurar el estado anterior.")
+		_show_error("Los archivos se aplicaron, pero no se pudo actualizar el historial. Vuelve a sincronizar para recalcular los cambios.")
 		return
-	_remove_tree(transaction_root)
 	EditorInterface.get_resource_filesystem().scan()
-	var done := "Sincronización completada. No se subió ningún archivo."
-	if rescued_any:
-		done += "\nCopias de rescate de archivos locales modificados: " + rescue_root
-	_show_notice(done)
-
-func _rollback_operations(transaction_root: String) -> void:
-	for operation in operations:
-		var relative: String = operation.path
-		var local_path := project_root.path_join(relative)
-		var transaction_copy := transaction_root.path_join(relative)
-		if FileAccess.file_exists(transaction_copy):
-			DirAccess.make_dir_recursive_absolute(local_path.get_base_dir())
-			DirAccess.copy_absolute(transaction_copy, local_path)
-		elif operation.kind == "add" and FileAccess.file_exists(local_path):
-			DirAccess.remove_absolute(local_path)
+	_show_notice("Sincronización completada. Se aplicaron los cambios de GitHub directamente; no se crearon copias ni se subió ningún archivo.")
 
 func _save_manifest() -> bool:
 	var folder := "user://%s" % MANIFEST_DIR
