@@ -1,5 +1,25 @@
 # Godot 4.7.2 Android Editor — GitHub import (ARM32 + ARM64)
 
+## Current continuation status — 2026-10-23
+
+### Performance requirement clarified by the project owner
+
+**The goal is a smoother, more responsive editor and game preview—not reducing features, disabling capabilities, arbitrarily limiting background work, or lowering quality as a blanket fix.** Preserve Godot's editor and preview functionality. The user specifically reports that running the game preview itself can lag on the LG K51 / Android 11.
+
+Performance work must therefore be measurement-led:
+- Profile frame time and frame pacing while the editor is idle, while editing a scene, and while the game preview is running.
+- Separate editor UI/input latency from game-rendering time, import/shader-compilation stutters, and CPU/GPU contention between the editor and preview.
+- Reproduce the issue on the target Android device before changing renderer, scheduling, cache, quality, or feature behavior.
+- Prefer fixing unnecessary work, repeated redraws, stalls, synchronization, or expensive paths while retaining features and intended visual quality.
+- Do not call the editor “optimized” until comparable before/after measurements show an improvement and the same preview features still work.
+
+### Source changes in this continuation
+
+- **GitHub search fallback:** the Project Manager's explicit **“Buscar en GitHub”** button now has a separate handler. It performs a repository search even when the field contains a direct GitHub URL or `owner/repository`, instead of silently reusing the direct-download callback. Pressing the Android keyboard's submit action still follows the direct import path; the separate button is the search fallback.
+- **Workflow safety:** automatic push-triggered workflows were removed. Android build/validation workflows are now **manual-dispatch only**, to avoid automatically launching Linux-runner checks whenever source files are edited. No Linux tests were intentionally run for these changes.
+- **Not yet verified:** the updated C++ patcher has not been applied to a fresh Godot source checkout, compiled, packaged into an APK, or exercised on the LG K51. The GitHub fallback change is source-only until those checks are performed in an approved environment. Preview smoothness has not yet been measured or improved; no rendering quality or editor feature has been deliberately removed.
+
+
 ## Current verified status — 2026-10-22 (supersedes older “not yet tested” notes below)
 
 Work branch: `feature/github-sync-and-safe-mcp`  
