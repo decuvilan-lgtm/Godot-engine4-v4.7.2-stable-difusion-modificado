@@ -75,72 +75,47 @@ func _exit_tree() -> void:
 func _build_panel() -> void:
 	panel = VBoxContainer.new()
 	panel.name = "Terrain3DEditorPanel"
-	panel.custom_minimum_size = Vector2(260, 0)
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_child(scroll)
-	var content := VBoxContainer.new()
-	content.custom_minimum_size = Vector2(240, 0)
-	content.add_theme_constant_override("separation", 6)
-	scroll.add_child(content)
+	panel.custom_minimum_size = Vector2(280, 0)
+	var tabs := TabContainer.new()
+	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.add_child(tabs)
+	var home := _make_tab_page(tabs, "Inicio")
+	var sculpt := _make_tab_page(tabs, "Esculpir")
+	var paint := _make_tab_page(tabs, "Pintar")
+	var foliage := _make_tab_page(tabs, "Vegetación")
+	var maps := _make_tab_page(tabs, "Heightmaps")
 
 	var title := Label.new()
-	title.text = "TERRENO 3D"
+	title.text = "EDITOR DE TERRENO 3D"
 	title.add_theme_font_size_override("font_size", 18)
-	content.add_child(title)
+	home.add_child(title)
 	var intro := Label.new()
-	intro.text = "Crea, esculpe y pinta el terreno directamente en la vista 3D. Usa el joystick para mover el cursor."
+	intro.text = "Al abrir esta pestaña se crea una base cuadrada editable en la escena. Las herramientas están separadas para mantener una interfaz cómoda en móvil."
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	content.add_child(intro)
-
-	_add_section(content, "Crear terreno")
-	terrain_width = _add_spin(content, "Resolución X", 65, 9, 257, 8)
-	terrain_depth = _add_spin(content, "Resolución Z", 65, 9, 257, 8)
-	cell_size = _add_spin(content, "Tamaño de celda", 1.0, 0.1, 16.0, 0.1)
+	home.add_child(intro)
+	_add_section(home, "Dimensiones")
+	terrain_width = _add_spin(home, "Resolución X", 65, 9, 257, 8)
+	terrain_depth = _add_spin(home, "Resolución Z", 65, 9, 257, 8)
+	cell_size = _add_spin(home, "Tamaño de celda", 1.0, 0.1, 16.0, 0.1)
 	resolution_preview_label = Label.new()
 	resolution_preview_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	content.add_child(resolution_preview_label)
+	home.add_child(resolution_preview_label)
 	terrain_width.value_changed.connect(_update_terrain_preview)
 	terrain_depth.value_changed.connect(_update_terrain_preview)
 	cell_size.value_changed.connect(_update_terrain_preview)
 	var create_button := Button.new()
-	create_button.text = "Crear terreno editable"
+	create_button.text = "Crear otro terreno"
 	create_button.pressed.connect(_create_terrain)
-	content.add_child(create_button)
-
-	_add_section(content, "Herramientas de edición")
-	mode_picker = OptionButton.new()
-	for mode in ["Elevar", "Bajar", "Suavizar", "Aplanar", "Pintar color", "Pintar capa de material"]:
-		mode_picker.add_item(mode)
-	content.add_child(mode_picker)
-	brush_radius = _add_slider(content, "Radio del pincel", 4.0, 0.5, 24.0, 0.5)
-	brush_strength = _add_slider(content, "Intensidad", 0.35, 0.01, 1.0, 0.01)
-	flatten_height = _add_spin(content, "Altura objetivo", 0.0, -100.0, 100.0, 0.25)
-	paint_color = ColorPickerButton.new()
-	paint_color.color = Color(0.24, 0.48, 0.20)
-	paint_color.text = "Color del terreno"
-	content.add_child(paint_color)
-	layer_picker = OptionButton.new()
-	for layer_name in ["Hierba", "Roca", "Arena", "Nieve"]:
-		layer_picker.add_item(layer_name)
-	content.add_child(layer_picker)
-	var texture_button := Button.new()
-	texture_button.text = "Cargar textura para la capa elegida"
-	texture_button.pressed.connect(_open_layer_texture)
-	content.add_child(texture_button)
-	grid_snap = CheckButton.new()
-	grid_snap.text = "Ajustar pincel a cuadrícula"
-	grid_snap.button_pressed = false
-	content.add_child(grid_snap)
+	home.add_child(create_button)
 	var focus_button := Button.new()
 	focus_button.text = "Enfocar terreno en la vista 3D"
 	focus_button.pressed.connect(_focus_terrain)
-	content.add_child(focus_button)
+	home.add_child(focus_button)
 	var collision_button := Button.new()
 	collision_button.text = "Regenerar colisiones"
 	collision_button.pressed.connect(_regenerate_collision)
-	content.add_child(collision_button)
+	home.add_child(collision_button)
 	var undo_row := HBoxContainer.new()
 	var undo_button := Button.new()
 	undo_button.text = "Deshacer"
@@ -152,9 +127,20 @@ func _build_panel() -> void:
 	redo_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	redo_button.pressed.connect(func(): EditorInterface.get_editor_undo_redo().redo())
 	undo_row.add_child(redo_button)
-	content.add_child(undo_row)
+	home.add_child(undo_row)
 
-	_add_section(content, "Cursor móvil")
+	_add_section(sculpt, "Pincel de escultura")
+	mode_picker = OptionButton.new()
+	for mode in ["Elevar", "Bajar", "Suavizar", "Aplanar"]:
+		mode_picker.add_item(mode)
+	sculpt.add_child(mode_picker)
+	brush_radius = _add_slider(sculpt, "Radio del pincel", 4.0, 0.5, 24.0, 0.5)
+	brush_strength = _add_slider(sculpt, "Intensidad", 0.35, 0.01, 1.0, 0.01)
+	flatten_height = _add_spin(sculpt, "Altura objetivo", 0.0, -100.0, 100.0, 0.25)
+	grid_snap = CheckButton.new()
+	grid_snap.text = "Ajustar pincel a cuadrícula"
+	sculpt.add_child(grid_snap)
+	_add_section(sculpt, "Control táctil")
 	var joystick_row := HBoxContainer.new()
 	joystick_pad = Panel.new()
 	joystick_pad.custom_minimum_size = Vector2(112, 112)
@@ -162,25 +148,56 @@ func _build_panel() -> void:
 	joystick_pad.gui_input.connect(_on_joystick_input)
 	joystick_row.add_child(joystick_pad)
 	var joystick_help := Label.new()
-	joystick_help.text = "Mantén y arrastra aquí para mover el cursor sobre el terreno."
+	joystick_help.text = "Mantén y arrastra para mover el cursor por el terreno."
 	joystick_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	joystick_help.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	joystick_row.add_child(joystick_help)
-	content.add_child(joystick_row)
+	sculpt.add_child(joystick_row)
 	var recenter := Button.new()
 	recenter.text = "Centrar cursor"
 	recenter.pressed.connect(func(): joystick_vector = Vector2.ZERO)
-	content.add_child(recenter)
+	sculpt.add_child(recenter)
 	continuous_stroke = CheckButton.new()
-	continuous_stroke.text = "Trazo continuo mientras muevo el joystick"
-	content.add_child(continuous_stroke)
+	continuous_stroke.text = "Trazo continuo con el joystick"
+	sculpt.add_child(continuous_stroke)
 	var apply_button := Button.new()
 	apply_button.text = "Aplicar pincel en cursor"
 	apply_button.pressed.connect(_apply_at_cursor)
-	content.add_child(apply_button)
+	sculpt.add_child(apply_button)
 
-	_add_section(content, "Altura y vegetación")
-	height_scale = _add_spin(content, "Escala de altura", 20.0, 0.1, 250.0, 1.0)
+	_add_section(paint, "Pintura de terreno")
+	mode_picker.add_item("Pintar color")
+	mode_picker.add_item("Pintar capa de material")
+	paint_color = ColorPickerButton.new()
+	paint_color.color = Color(0.24, 0.48, 0.20)
+	paint_color.text = "Color del terreno"
+	paint.add_child(paint_color)
+	layer_picker = OptionButton.new()
+	for layer_name in ["Hierba", "Roca", "Arena", "Nieve"]:
+		layer_picker.add_item(layer_name)
+	paint.add_child(layer_picker)
+	var texture_button := Button.new()
+	texture_button.text = "Cargar textura para la capa elegida"
+	texture_button.pressed.connect(_open_layer_texture)
+	paint.add_child(texture_button)
+	var paint_help := Label.new()
+	paint_help.text = "Selecciona un modo de pintura en la lista del pincel de Esculpir; el color y la capa se configuran aquí."
+	paint_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	paint.add_child(paint_help)
+
+	_add_section(foliage, "Distribución de vegetación")
+	foliage_count = _add_spin(foliage, "Cantidad de árboles", 180, 1, 5000, 10)
+	var foliage_button := Button.new()
+	foliage_button.text = "Distribuir árboles"
+	foliage_button.pressed.connect(_scatter_foliage)
+	foliage.add_child(foliage_button)
+	var foliage_help := Label.new()
+	foliage_help.text = "La vegetación se genera usando instancias múltiples para reducir el coste de renderizado en móvil."
+	foliage_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	foliage.add_child(foliage_help)
+
+	_add_section(maps, "Mapas de altura")
+	height_scale = _add_spin(maps, "Escala de altura", 20.0, 0.1, 250.0, 1.0)
 	var heightmap_row := HBoxContainer.new()
 	var import_button := Button.new()
 	import_button.text = "Importar heightmap"
@@ -192,18 +209,16 @@ func _build_panel() -> void:
 	export_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	export_button.pressed.connect(_open_export_heightmap)
 	heightmap_row.add_child(export_button)
-	content.add_child(heightmap_row)
-	foliage_count = _add_spin(content, "Cantidad de árboles", 180, 1, 5000, 10)
-	var foliage_button := Button.new()
-	foliage_button.text = "Distribuir árboles"
-	foliage_button.pressed.connect(_scatter_foliage)
-	content.add_child(foliage_button)
+	maps.add_child(heightmap_row)
+	var map_help := Label.new()
+	map_help.text = "Importa una imagen en escala de grises para definir alturas o exporta el relieve actual a PNG."
+	map_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	maps.add_child(map_help)
 
 	status_label = Label.new()
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	status_label.text = "Selecciona un terreno o crea uno nuevo."
-	content.add_child(status_label)
-
+	status_label.text = "Abre una escena 3D para comenzar."
+	panel.add_child(status_label)
 	add_control_to_bottom_panel(panel, "Terreno 3D")
 	panel.hide()
 	_create_cursor()
@@ -232,6 +247,19 @@ func _build_panel() -> void:
 	texture_dialog.add_filter("*.png,*.jpg,*.jpeg,*.webp", "Textura de terreno")
 	texture_dialog.file_selected.connect(_import_layer_texture)
 	add_child(texture_dialog)
+
+func _make_tab_page(tabs: TabContainer, title: String) -> VBoxContainer:
+	var scroll := ScrollContainer.new()
+	scroll.name = title
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tabs.add_child(scroll)
+	var content := VBoxContainer.new()
+	content.custom_minimum_size = Vector2(250, 0)
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_theme_constant_override("separation", 7)
+	scroll.add_child(content)
+	return content
 
 func _add_section(parent: Control, text: String) -> void:
 	var label := Label.new()
@@ -277,9 +305,14 @@ func _add_slider(parent: Control, label_text: String, value: float, minimum: flo
 func _toggle_panel() -> void:
 	if panel.visible:
 		hide_bottom_panel()
-	else:
-		make_bottom_panel_item_visible(panel)
+		return
+	make_bottom_panel_item_visible(panel)
 	_update_terrain_preview()
+	# Opening the dedicated terrain editor gives the scene a ready-to-edit square base.
+	if _get_terrain() == null:
+		_create_terrain()
+	else:
+		_focus_terrain()
 
 func _create_terrain() -> void:
 	var root := EditorInterface.get_edited_scene_root()
@@ -305,7 +338,8 @@ func _create_terrain() -> void:
 	undo_redo.commit_action()
 	EditorInterface.get_selection().clear()
 	EditorInterface.get_selection().add_node(terrain)
-	_set_status("Terreno creado. Usa el pincel en la vista 3D o el joystick de este panel.")
+	_set_status("Base cuadrada creada con malla, material y colisiones. Edita desde las pestañas del editor de terreno.")
+	_focus_terrain()
 
 func _get_terrain():
 	var root := EditorInterface.get_edited_scene_root()
