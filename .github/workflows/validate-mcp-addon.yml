@@ -1,13 +1,8 @@
 name: Validate Android MCP addon packaging
 
-# Validate packaging and parser/load behavior on every integration branch update and pull request.
+# Linux-based addon validation is manual-only per project-owner instruction.
+# Source and native Android compile checks for this task run on Windows workflows.
 on:
-  push:
-    branches:
-      - feature/github-sync-and-safe-mcp
-  pull_request:
-    branches:
-      - feature/github-sync-and-safe-mcp
   workflow_dispatch:
 
 permissions:
