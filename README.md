@@ -22,6 +22,12 @@ Performance work must therefore be measurement-led:
 - Prefer fixing unnecessary work, repeated redraws, stalls, synchronization, or expensive paths while retaining features and intended visual quality.
 - Do not call the editor “optimized” until comparable before/after measurements show an improvement and the same preview features still work.
 
+### Missing editor controls — current implementation step
+
+- Extended `inspect_editor_ui` to enumerate open Godot `PopupMenu` controls and expose each item’s label/index, disabled/separator state, and checked state. This is groundwork for discovering and operating built-in debug menu options (including collision visualization) without temporary scripts.
+- Extended the packaging script’s static guard so the popup-menu inspection behavior cannot silently disappear from the generated addon.
+- This does **not** mean all editor functions or collision/debug overlays are finished. The change remains source-only; parser/runtime and Android checks are pending. Next: inspect the actual Android editor menu surface and add dedicated typed actions where the generic UI bridge cannot reach an option reliably.
+
 ### Android Gallery pollution fix — source-only
 
 - ZIP-based project installs now create a root-level `.nomedia` marker **before extracting project assets**, so Android's media scanner should skip image/audio descendants instead of flooding the Gallery with game assets.
