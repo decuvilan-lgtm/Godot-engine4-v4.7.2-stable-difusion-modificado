@@ -42,8 +42,11 @@ func _enter_tree() -> void:
 	_build_dialogs()
 
 func _exit_tree() -> void:
+	# A dismissed preview or editor shutdown must not leave ZIP/staging data on the phone.
+	_cleanup_staging()
 	if request and is_instance_valid(request):
-		request.request_completed.disconnect(_on_zip_downloaded)
+		if request.request_completed.is_connected(_on_zip_downloaded):
+			request.request_completed.disconnect(_on_zip_downloaded)
 		request.queue_free()
 	if sync_button:
 		remove_control_from_container(EditorPlugin.CONTAINER_TOOLBAR, sync_button)
@@ -87,6 +90,8 @@ func _build_dialogs() -> void:
 	preview_dialog.add_child(preview_label)
 	add_child(preview_dialog)
 	preview_dialog.confirmed.connect(_apply_changes)
+	preview_dialog.canceled.connect(_on_preview_dismissed)
+	preview_dialog.close_requested.connect(_on_preview_dismissed)
 
 func _open_sync_dialog() -> void:
 	status_label.text = "Los cambios locales nunca se suben a GitHub."
@@ -354,6 +359,11 @@ func _show_preview() -> void:
 		preview_dialog.get_ok_button().disabled = false
 	preview_label.text = summary
 	preview_dialog.popup_centered(Vector2i(540, 420))
+
+func _on_preview_dismissed() -> void:
+	# The user may close the preview without applying. No staged duplicate files should remain.
+	_cleanup_staging()
+	operations.clear()
 
 func _apply_changes() -> void:
 	if operations.is_empty():
