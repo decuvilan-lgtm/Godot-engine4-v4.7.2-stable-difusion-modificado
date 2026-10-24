@@ -9,6 +9,9 @@ var panel: VBoxContainer
 var terrain_width: SpinBox
 var terrain_depth: SpinBox
 var cell_size: SpinBox
+var resolution_preview_label: Label
+var terrain_preview: MeshInstance3D
+var terrain_preview_material: StandardMaterial3D
 var mode_picker: OptionButton
 var brush_radius: HSlider
 var brush_strength: HSlider
@@ -66,6 +69,8 @@ func _exit_tree() -> void:
 		export_dialog.queue_free()
 	if texture_dialog:
 		texture_dialog.queue_free()
+	if terrain_preview and is_instance_valid(terrain_preview):
+		terrain_preview.queue_free()
 
 func _build_panel() -> void:
 	panel = VBoxContainer.new()
@@ -93,6 +98,12 @@ func _build_panel() -> void:
 	terrain_width = _add_spin(content, "Resolución X", 65, 9, 257, 8)
 	terrain_depth = _add_spin(content, "Resolución Z", 65, 9, 257, 8)
 	cell_size = _add_spin(content, "Tamaño de celda", 1.0, 0.1, 16.0, 0.1)
+	resolution_preview_label = Label.new()
+	resolution_preview_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.add_child(resolution_preview_label)
+	terrain_width.value_changed.connect(_update_terrain_preview)
+	terrain_depth.value_changed.connect(_update_terrain_preview)
+	cell_size.value_changed.connect(_update_terrain_preview)
 	var create_button := Button.new()
 	create_button.text = "Crear terreno editable"
 	create_button.pressed.connect(_create_terrain)
@@ -196,6 +207,7 @@ func _build_panel() -> void:
 	add_control_to_bottom_panel(panel, "Terreno 3D")
 	panel.hide()
 	_create_cursor()
+	_create_terrain_preview()
 
 	import_dialog = FileDialog.new()
 	import_dialog.title = "Importar mapa de altura"
@@ -267,6 +279,7 @@ func _toggle_panel() -> void:
 		hide_bottom_panel()
 	else:
 		make_bottom_panel_item_visible(panel)
+	_update_terrain_preview()
 
 func _create_terrain() -> void:
 	var root := EditorInterface.get_edited_scene_root()
@@ -319,6 +332,33 @@ func _find_terrain(node: Node):
 		if found:
 			return found
 	return null
+
+func _create_terrain_preview() -> void:
+	terrain_preview = MeshInstance3D.new()
+	terrain_preview.name = "TerrainCreationPreview"
+	terrain_preview.top_level = true
+	terrain_preview.visible = false
+	terrain_preview_material = StandardMaterial3D.new()
+	terrain_preview_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	terrain_preview_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	terrain_preview_material.albedo_color = Color(0.15, 0.8, 1.0, 0.22)
+	terrain_preview_material.no_depth_test = true
+	terrain_preview.material_override = terrain_preview_material
+	_update_terrain_preview()
+
+func _update_terrain_preview(_value: float = 0.0) -> void:
+	if resolution_preview_label:
+		var width := int(terrain_width.value) if terrain_width else 65
+		var depth := int(terrain_depth.value) if terrain_depth else 65
+		var cell := cell_size.value if cell_size else 1.0
+		resolution_preview_label.text = "%d × %d vértices · %.1f × %.1f unidades" % [width, depth, (width - 1) * cell, (depth - 1) * cell]
+	if terrain_preview == null or not is_instance_valid(terrain_preview) or terrain_width == null:
+		return
+	var plane := PlaneMesh.new()
+	plane.size = Vector2((terrain_width.value - 1.0) * cell_size.value, (terrain_depth.value - 1.0) * cell_size.value)
+	plane.subdivide_width = int(terrain_width.value) - 2
+	plane.subdivide_depth = int(terrain_depth.value) - 2
+	terrain_preview.mesh = plane
 
 func _create_cursor() -> void:
 	cursor_mesh = MeshInstance3D.new()
@@ -413,6 +453,15 @@ func _process(delta: float) -> void:
 			collision_dirty_terrain.rebuild_collision()
 		collision_dirty = false
 		collision_dirty_terrain = null
+	var root := EditorInterface.get_edited_scene_root()
+	if terrain_preview and is_instance_valid(terrain_preview):
+		if root and terrain_preview.get_parent() != root:
+			if terrain_preview.get_parent():
+				terrain_preview.get_parent().remove_child(terrain_preview)
+			root.add_child(terrain_preview)
+		terrain_preview.visible = panel.visible and root != null and _get_terrain() == null
+		if terrain_preview.visible:
+			terrain_preview.global_position = Vector3(0.0, 0.05, 0.0)
 	var terrain = _get_terrain()
 	if terrain == null:
 		if cursor_mesh:
