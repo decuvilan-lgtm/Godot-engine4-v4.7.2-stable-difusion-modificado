@@ -28,7 +28,7 @@ for token, label in [
     ("_show_preview()", "presents the change preview"),
     ("_apply_changes()", "applies only after explicit confirmation"),
     ("_rollback_operations(transaction_root)", "attempts rollback when applying changes fails"),
-    ("transaction_root = OS.get_user_data_dir()", "creates transaction backups outside the project"),
+    ("transaction_root := OS.get_user_data_dir()", "creates transaction backups outside the project"),
     ("_save_manifest()", "persists baseline for later deletions"),
     ("_ensure_sync_plugin_enabled(staged_project)", "keeps the editor plugin enabled when project.godot changes"),
     ('relative.begins_with("addons/github_sync/")', "sync cannot overwrite its own addon"),
@@ -38,7 +38,7 @@ for token, label in [
     ("EditorInterface.get_resource_filesystem().scan()", "rescans the editor filesystem after synchronization"),
 ]:
     require(token in gd, label)
-require("never uploads" in gd.lower() or "never uploads" in config.read_text(encoding="utf-8").lower(),
+require("No sube archivos." in gd and "never uploads local files" in config.read_text(encoding="utf-8").lower(),
         "one-way sync is documented as no-upload")
 patcher_text = patcher.read_text(encoding="utf-8")
 require("GitHubSyncAddonData::PLUGIN_GD" in patcher_text and "editor_plugins" in patcher_text,
