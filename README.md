@@ -223,66 +223,32 @@ Artifact: [`godot-4.7.2-android-editor-arm64-only`](https://github.com/decuvilan
 
 Commit `894b99d89c5659f00a6b0a64a4b52517c5c6166e` adds `generate_android_binaries=yes` and removes Gradle `clean` before generating the editor. The workflow still selects `godot-source/bin/android_editor_builds/android_editor-android-debug.apk` and refuses to publish if it is missing or smaller than 50 MB. Run 31 subsequently validated this correction at the build/artifact level: the full-sized ARM64-only APK was produced and passed static package checks. This still does not establish installation or runtime behavior on the user's physical phone.
 
-## Planned feature: multi-repository GitHub synchronization
+## GitHub synchronization: current implementation and limits
 
-**Status: design documented; not implemented yet.** The current GitHub button only imports a public repository ZIP. It does not yet provide the synchronization system described below.
+**Status: source implementation present; Android editor runtime not yet verified.** This branch now includes a one-way **Sincronizar GitHub** toolbar action inside an open project, separate from the Project Manager's existing public-repository import/search flow.
 
-### User-facing workflow
+### Implemented in source
+- Accepts a public GitHub repository URL or `owner/repository`, with an optional branch/tag/SHA reference.
+- Downloads the selected repository archive, applies mobile-oriented archive/file/count limits, rejects unsafe archive paths, and stages the files before any project changes.
+- Tracks a per-project baseline outside the project, tied to repository identity.
+- Shows a change preview for additions, updates, and tracked files deleted upstream; applies changes only after explicit confirmation.
+- Keeps synchronization one-way: local files are never uploaded or pushed to GitHub.
+- Keeps the injected sync and terrain addons out of upstream overwrite/deletion and preserves their enabled plugin entries when updating `project.godot`.
+- Creates **no rescue, transaction, rollback, or duplicate file copies**. If applying a batch fails partway through, the user can synchronize again; this is the explicitly chosen mobile-storage tradeoff.
+- Removes the downloaded ZIP and extracted staging after success, no-op sync, errors, preview cancellation/window close, and plugin unload.
 
-- Provide one main **Synchronize** entry point in both the Project Manager and the editor.
-- The entry point lists connected GitHub accounts and their accessible repositories, grouped by account (for example, `gavilandavid/pril`, `gavilandavid/prop-hunt`, and repositories under a second account).
-- Each repository has its own **Analyze** and **Synchronize** actions.
-- The user chooses a separate local project folder for every repository. Two different repositories must not silently share or overwrite the same destination.
-- Each repository also has its own rescue folder, located outside both the project directory and the repository. Rescue files are local-only: they are never uploaded to GitHub and are not shown as project files in Godot.
-- Synchronization is manual only. No background polling, automatic sync, or automatic upload from Godot to GitHub.
-- GitHub is the remote source of truth for synchronized files. The intended flow is **ChatGPT/developer changes → GitHub → manual sync → local project → Godot**.
+### Not yet implemented or not yet verified
+- Incremental per-file downloading: the current implementation downloads a repository ZIP to compare its current contents, so it is not yet optimized for very large repositories or tiny changes.
+- Authenticated accounts/private repositories, OAuth, and multi-account repository browsing are intentionally out of scope; only public repositories are supported.
+- GDScript parsing inside the actual editor, end-to-end sync interactions, deletion behavior across repeated retries, and Android device behavior remain unverified.
+- Source validation and native C++ compilation do not establish that the editor plugin loads or that its controls work on the LG K51. Do not mark the feature runtime-verified until those tests exist.
 
-### Analyze: incremental by default
-
-Analyze should not rescan or download the entire repository on every run.
-
-- Store a per-repository baseline after the first successful sync: repository identity, selected branch, last successfully applied commit SHA, tracked paths, and file hashes or equivalent reliable metadata.
-- Ask GitHub for changes between the baseline commit and the current branch commit. Build the pending change set from that comparison.
-- Compare local files against the saved baseline, concentrating hash checks on affected paths and relevant directories.
-- Detect additions, modifications, deletions, renames, and moves. GitHub can report likely renames on the remote side; local rename/move detection must compare the previous path/hash manifest with current local paths and hashes.
-- Prepare a reusable plan containing old and new paths, remote downloads, local rescue operations, deletions, conflicts, and the exact remote commit SHA analyzed.
-- Analyze must not change project files or move files to rescue. Only Synchronize applies the plan.
-- If the remote branch advances after analysis, refresh/revalidate the plan before applying it. If the baseline is missing or inconsistent, perform a controlled recovery scan rather than blindly applying a stale plan.
-- If there are no pending changes, report that the project is already synchronized.
-
-### Synchronize: safe, incremental, and one-way
-
-- First sync: download and install the full repository contents, then write the baseline only after validation succeeds.
-- Later syncs: download only newly added or modified file contents required by the change set. Do not download a full ZIP for every sync.
-- Apply remote deletions, renames, and moves to restore the remote directory structure.
-- Before replacing, moving, or removing a local file that differs from the saved baseline, automatically copy/move its local version into the repository's separate rescue area. Rescue must use collision-safe unique names so an earlier rescue is never overwritten.
-- Local-only files are moved to rescue, not uploaded. Locally renamed/moved files are rescued and the official remote paths are restored.
-- A local file deleted by the user is restored if it still exists remotely.
-- Files deleted remotely are removed locally only after any uncommitted local content has been rescued.
-- If a rename/move cannot be identified confidently, protect the local file and record the ambiguity rather than guessing destructively.
-- Exclude known generated/cache paths such as Godot's `.godot/` from ordinary project-change handling where appropriate; define exclusions carefully so real source assets are not skipped.
-- Use a staging area and validate downloads before applying changes. Failed downloads or invalid archives must not modify the working project.
-- Update the baseline commit and manifest only after the entire sync has completed successfully. A partial failure must be recoverable and must not advance the baseline prematurely.
-- Never push, commit, or upload local project/rescue changes to GitHub automatically.
-
-### Performance and scale goals
-
-The synchronizer should handle large change sets without treating each file as a separate sync operation. Example workload for testing (not a hard limit): 40 renames, 50 moves, 70 deletions, and 20 new files in one update.
-
-- Batch API metadata requests where possible and obey GitHub rate limits.
-- Use hashes and the saved manifest to avoid re-reading or re-downloading unchanged content.
-- Bound parallel downloads to avoid overwhelming the phone or network.
-- Apply file operations in a planned order, accounting for directory moves, path collisions, case sensitivity, and rename cycles.
-- Show a summary of the pending operations and any ambiguous cases before applying the plan. Routine rescue is automatic once sync begins; users should not need to approve every rescued file individually.
-- Measure performance on actual Android devices before promising specific speed.
-
-### Accounts, permissions, and local storage
-
-- Public repositories can be accessed without login, but listing a user's repositories and accessing private repositories requires GitHub authentication and appropriately scoped permissions.
-- Store credentials securely; never put access tokens in project files, rescue folders, logs, or the repository.
-- Support multiple connected accounts and keep each account/repository configuration isolated.
-- Android storage permissions and scoped-storage behavior must be verified. Let users select writable local destinations and rescue locations; do not assume every arbitrary device folder is accessible.
-- Repository identity, branch, destination path, rescue path, and manifest must be stored independently for each configured repository.
+### Intended user flow
+1. Open a project in Godot and press **Sincronizar GitHub**.
+2. Enter a public repository URL or `owner/repository`; optionally specify a branch, tag, or commit.
+3. Review the additions, updates, and deletions in the preview.
+4. Confirm to apply the GitHub version to the project. No local-to-GitHub upload occurs.
+5. If a write fails partway through, repeat synchronization; no backup copies are kept on the phone.
 
 ## Android ABI support: ARM32 and ARM64
 
@@ -316,8 +282,8 @@ The active implementation branch is `feature/github-sync-and-safe-mcp`.
 - Accept **public repositories only**. Do not implement GitHub OAuth, private repository browsing, token storage, or private repository access.
 - Keep the sync action manual and one-way: GitHub to local project.
 - Keep Analyze read-only and bind its plan to the exact remote commit SHA.
-- Rescue local-only or locally modified files outside the project before overwriting/removing them. Never upload rescue content.
-- Keep each repository's destination, manifest, baseline, and rescue folder isolated.
+- Do not create backup/rescue copies during GitHub sync; preview changes before applying and keep the operation one-way.
+- Keep each project's manifest/baseline tied to the correct repository identity.
 
 ### Android MCP scope and safety
 - Build on the Android-compatible GDScript editor plugin, then expand its tool registry in parallel with GitHub sync.
