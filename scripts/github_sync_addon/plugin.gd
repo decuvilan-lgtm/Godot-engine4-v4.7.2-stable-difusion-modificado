@@ -542,10 +542,11 @@ func _apply_changes() -> void:
 				if relative.ends_with(".tscn"):
 					if not connection_change.is_empty():
 						_log_sync("%s en '%s'; revisa las conexiones en el editor/Debugger." % [connection_change, relative], "warning")
+					elif operation.kind == "add":
+						_log_sync("Escena añadida '%s': %d conexiones serializadas recibidas." % [relative, incoming_connections.size()])
 					else:
 						_log_sync("Conexiones de '%s': sin cambios (%d conexiones serializadas)." % [relative, incoming_connections.size()])
 		if operation_error != OK:
-			_log_sync("Falló la aplicación de '%s' (error %d)." % [relative, operation_error], "error")
 			_cleanup_staging()
 			_show_error("Falló la aplicación de '%s' (error %d). No se crearon copias. Vuelve a sincronizar para aplicar de nuevo los archivos de GitHub." % [relative, operation_error])
 			return
