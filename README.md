@@ -540,3 +540,8 @@ The runtime controller also exposes touchscreen tap/release and swipe events, pl
 ### Required verification gate
 
 Before merging this branch, protect the previously working GitHub import/search behavior from regressions; if the recent URL-fallback refinements are included in a future approved build, check default branch, explicit branch/tag/commit, pagination, download failures, and malformed refs separately. Also establish the current APK's ABI/package status and on-device installation/runtime status. A green packaging workflow alone does not prove the updated fallback works in the Android UI or that the APK installs and launches on a device. Record source changes, build results, and physical-device results separately.
+
+
+### Source-only checks for preview debug overlays
+
+A Windows GitHub Actions workflow at `.github/workflows/validate-debug-overlay-source.yml` checks the patcher's Python syntax and confirms that the run-bar menu, collision/navigation/avoidance remote-debugger wiring, and documentation of deferred overlays remain present. It intentionally does not compile Godot or claim runtime validation. Visible Paths and Debug CanvasItem Redraws are still not implemented as live runtime toggles; their menu entries currently persist preferences only.
