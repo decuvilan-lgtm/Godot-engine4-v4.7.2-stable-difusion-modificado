@@ -825,4 +825,49 @@ replace_once(SCENE_DEBUGGER_SOURCE,
     'message_handlers["debug_mute_audio"] = _msg_debug_mute_audio;',
     'message_handlers["debug_mute_audio"] = _msg_debug_mute_audio;\n\tmessage_handlers["set_debug_navigation"] = _msg_set_debug_navigation;\n\tmessage_handlers["set_debug_avoidance"] = _msg_set_debug_avoidance;')
 
+
+# Live CanvasItem redraw visualization: relay the run-bar toggle to the game process.
+replace_once(EDITOR_DEBUGGER_HEADER,
+    "void set_debug_avoidance(bool p_enabled);",
+    "void set_debug_avoidance(bool p_enabled);\\n\\tvoid set_debug_canvas_item_redraw(bool p_enabled);")
+replace_once(EDITOR_DEBUGGER_SOURCE,
+    "void EditorDebuggerNode::set_debug_collisions(bool p_enabled) {",
+    """void EditorDebuggerNode::set_debug_canvas_item_redraw(bool p_enabled) {
+\\t_for_all(tabs, [&](ScriptEditorDebugger *dbg) {
+\\t\\tdbg->set_debug_canvas_item_redraw(p_enabled);
+\\t});
+}
+
+void EditorDebuggerNode::set_debug_collisions(bool p_enabled) {""")
+replace_once(SCRIPT_DEBUGGER_HEADER,
+    "void set_debug_avoidance(bool p_enable);",
+    "void set_debug_avoidance(bool p_enable);\\n\\tvoid set_debug_canvas_item_redraw(bool p_enable);")
+replace_once(SCRIPT_DEBUGGER_SOURCE,
+    "void ScriptEditorDebugger::set_debug_collisions(bool p_enable) {",
+    """void ScriptEditorDebugger::set_debug_canvas_item_redraw(bool p_enable) {
+\\tArray msg = { p_enable };
+\\t_put_msg("scene:set_debug_canvas_item_redraw", msg);
+}
+
+void ScriptEditorDebugger::set_debug_collisions(bool p_enable) {""")
+replace_once(SCENE_DEBUGGER_HEADER,
+    "static Error _msg_set_debug_avoidance(const Array &p_args);",
+    "static Error _msg_set_debug_avoidance(const Array &p_args);\\n\\tstatic Error _msg_set_debug_canvas_item_redraw(const Array &p_args);")
+replace_once(SCENE_DEBUGGER_SOURCE,
+    "Error SceneDebugger::_msg_debug_mute_audio(const Array &p_args) {",
+    """Error SceneDebugger::_msg_set_debug_canvas_item_redraw(const Array &p_args) {
+\\tERR_FAIL_COND_V(p_args.is_empty(), ERR_INVALID_DATA);
+\\tRenderingServer::get_singleton()->canvas_item_set_debug_redraw(bool(p_args[0]));
+\\treturn OK;
+}
+
+Error SceneDebugger::_msg_debug_mute_audio(const Array &p_args) {""")
+replace_once(SCENE_DEBUGGER_SOURCE,
+    'message_handlers["set_debug_avoidance"] = _msg_set_debug_avoidance;',
+    'message_handlers["set_debug_avoidance"] = _msg_set_debug_avoidance;\\n\\tmessage_handlers["set_debug_canvas_item_redraw"] = _msg_set_debug_canvas_item_redraw;')
+replace_once(RUN_BAR_SOURCE,
+    "void EditorRunBar::_movie_maker_item_pressed(int p_id) {",
+    """// Placeholder anchor for canvas redraw dispatch is inserted into the existing handler below.
+void EditorRunBar::_movie_maker_item_pressed(int p_id) {""")
+
 print("GitHub import and Android Gallery protection patches applied successfully.")
