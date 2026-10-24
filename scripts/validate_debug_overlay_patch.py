@@ -58,7 +58,17 @@ require("Visible Paths" in readme and "CanvasItem Redraws" in readme,
         "README documents the run-bar overlay controls")
 require("Path2D" in source and "Path3D" in source,
         "runtime path toggle explicitly covers both 2D and 3D path nodes")
-require("queue_redraw()" not in source[source.find("void SceneDebugger::_msg_set_debug_paths"):source.find("Error SceneDebugger::_msg_set_debug_canvas_item_redraw")],
+require('get_project_metadata("debug_options", debug_keys[i], false)' in source,
+        "all five overlay preferences default to disabled for projects without saved settings")
+require('EditorDebuggerNode::get_singleton()->set_debug_collisions(enabled)' in source
+        and 'EditorDebuggerNode::get_singleton()->set_debug_paths(enabled)' in source
+        and 'EditorDebuggerNode::get_singleton()->set_debug_navigation(enabled)' in source
+        and 'EditorDebuggerNode::get_singleton()->set_debug_avoidance(enabled)' in source
+        and 'EditorDebuggerNode::get_singleton()->set_debug_canvas_item_redraw(enabled)' in source,
+        "every menu option is wired to a live remote-debugger command")
+require('preview_debug_popup->set_item_checked(preview_debug_popup->get_item_index(i)' in source,
+        "menu checkbox state is restored from per-project preferences")
+require("queue_redraw()" not in source[source.find("Error SceneDebugger::_msg_set_debug_paths"):source.find("Error SceneDebugger::_msg_set_debug_canvas_item_redraw")],
         "path toggle does not rely on generic CanvasItem redraw as a substitute for Path3D rendering")
 
 print("Source-only checks passed. This does not prove C++ compilation or in-game runtime behavior.")
