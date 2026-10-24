@@ -46,7 +46,7 @@ func _enter_tree() -> void:
 	_build_dialogs()
 
 func _exit_tree() -> void:
-	# A dismissed preview or editor shutdown must not leave ZIP/staging data on the phone.
+	# A dismissed preview or editor shutdown must not leave temporary staging data on the phone.
 	_cleanup_staging()
 	if request and is_instance_valid(request):
 		if request.request_completed.is_connected(_on_incremental_request_completed):
