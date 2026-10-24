@@ -44,6 +44,6 @@ require("No sube archivos." in gd and "never uploads local files" in config.read
 patcher_text = patcher.read_text(encoding="utf-8")
 require("TERRAIN_DATA_GD" in patcher_text and "terrain_plugin_setting" in patcher_text and "editor_plugins" in patcher_text,
         "installer embeds and enables both custom editor addons")
-require("install custom addons before launching any existing project" in patcher_text and "ProjectManager" in patcher_text,
+require("install custom addons before launching any existing project" in patcher_text and "MANAGER_SOURCE" in patcher_text,
         "existing projects are provisioned before the editor process starts")
 print("Source-only checks passed; no C++ compilation, GDScript parse, APK, or device runtime is implied.")
