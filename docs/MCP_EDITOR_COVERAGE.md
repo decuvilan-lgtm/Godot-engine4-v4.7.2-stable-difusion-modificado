@@ -84,10 +84,16 @@ Two additional tools are now generated and registered by the packaging script:
 
 | Tool | Intended coverage | Current status |
 |---|---|---|
-| `inspect_editor_ui` | Enumerate editor controls and their paths, labels, classes, visibility, disabled state, tab titles, and open-menu entries | Source added; parser/runtime test pending |
+| `inspect_editor_ui` | Enumerate editor controls and paths, plus open PopupMenu item labels, indices, disabled/separator state and checked state | Source added; parser/runtime test pending |
 | `activate_editor_ui_control` | Activate an exact visible button or a specific item in an open PopupMenu, enabling UI-level navigation where no dedicated typed action exists | Source added; parser/runtime test pending |
 
 This is a **generic UI bridge**, not proof that every Godot action is accessible. It deliberately blocks project deletion/removal, requires explicit confirmation for potentially destructive labels, and currently activates buttons, switches tabs and OptionButton choices, selects open PopupMenu items, and edits LineEdit/SpinBox/checkbox controls. More control types and dialogs may need dedicated adapters. It must be checked on the actual Android editor because some internal controls may be hidden, dynamically created, or inaccessible through the public editor tree.
+
+## Open menu and debug-option inspection — source added, not yet validated
+
+The generated `inspect_editor_ui` tool now includes open `PopupMenu` windows in its traversal and lists each menu item's index, label, separator/disabled state, and checkable/checked state. Combined with `activate_editor_ui_control`, this gives the agent a more reliable path to discover and toggle built-in editor menu options—such as collision/debug visualization options—without asking the user to add a temporary script.
+
+**Scope limit:** this is generic menu-level access, not a guarantee that every collision overlay, viewport mode, or hidden submenu is reachable. The popup traversal and check-state reporting are source-only and still need Godot parser/runtime and Android-device verification. The next implementation pass should inventory the actual target editor's debug menus, then add dedicated typed actions for options that are not reliably exposed through the generic UI tree.
 
 ## Scene UI and preview-control bridge — source added, not yet validated
 
