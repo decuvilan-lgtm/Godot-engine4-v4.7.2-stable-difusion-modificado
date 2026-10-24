@@ -22,6 +22,14 @@ Performance work must therefore be measurement-led:
 - Prefer fixing unnecessary work, repeated redraws, stalls, synchronization, or expensive paths while retaining features and intended visual quality.
 - Do not call the editor “optimized” until comparable before/after measurements show an improvement and the same preview features still work.
 
+### Preview/run-bar debug visibility menu — source added, not yet validated
+
+- Added a **Debug** menu directly to Godot's existing run bar, alongside the play/pause/stop controls, so the common runtime overlays are reachable without opening the Debug menu or adding temporary scripts.
+- Options: **Visible Collision Shapes** (2D/3D collision shapes and raycasts), **Visible Paths**, **Visible Navigation**, **Visible Avoidance**, and **Debug CanvasItem Redraws**.
+- Every option defaults to **off** for a new project. Existing per-project preferences are respected. The menu writes Godot's existing `debug_options` project metadata, which the run launcher already reads.
+- Important behavior: these are launch-time debug flags. Change the selection and restart the running preview for it to take effect; toggling while a game is already running does not inject a new debug flag into that process.
+- This is a source patch only. It has not been applied to a fresh Godot checkout, compiled, or checked on the LG K51. Do not treat the menu as verified until the source patch and Android UI are validated.
+
 ### Missing editor controls — current implementation step
 
 - Extended `inspect_editor_ui` to enumerate open Godot `PopupMenu` controls and expose each item’s label/index, disabled/separator state, and checked state. `activate_editor_ui_control` now accepts a desired `checked_value` for checkable menu entries, avoids toggling when the requested state is already active, and verifies the resulting state. This is groundwork for operating built-in debug menu options (including collision visualization) without temporary scripts.
