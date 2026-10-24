@@ -23,38 +23,39 @@ gd = addon.read_text(encoding="utf-8")
 for token, label in [
     ("Sincronizar GitHub", "visible in-editor sync button"),
     ("HTTPRequest", "network requests use Godot HTTPRequest"),
-    ("MAX_ARCHIVE_FILES := 6000", "archive entry count is bounded"),
-    ("MAX_FILE_BYTES := 16 * 1024 * 1024", "single-file extraction size is bounded"),
-    ("MAX_TOTAL_BYTES := 100 * 1024 * 1024", "total extracted data is bounded"),
-    ("if not _save_manifest()", "no-op sync updates the repository baseline"),
-    ("api.github.com/repos/%s/zipball", "downloads a repository archive from GitHub"),
-    ("_build_change_plan()", "previews the change set before writing"),
+    ("MAX_TREE_FILES := 6000", "tree entry count is bounded"),
+    ("MAX_FILE_BYTES := 16 * 1024 * 1024", "single-file download size is bounded"),
+    ("MAX_TOTAL_BYTES := 100 * 1024 * 1024", "total staged downloads are bounded"),
+    ("api.github.com/repos/%s/git/trees/%s?recursive=1", "enumerates repository tree instead of downloading a ZIP"),
+    ("raw.githubusercontent.com/%s/%s/%s", "downloads changed file content pinned to a commit SHA"),
+    ("bool(parsed.get(\"truncated\", false))", "rejects truncated GitHub trees instead of silently syncing partial data"),
+    ("_build_incremental_download_queue()", "queues only missing or changed files"),
+    ("_git_blob_sha1", "verifies Git blob IDs against downloaded file contents"),
+    ("legacy_baseline", "migrates old SHA-256 manifests without trusting them as Git blob IDs"),
+    ("_build_change_plan()", "plans tracked deletions before preview"),
     ("_show_preview()", "presents the change preview"),
     ("_apply_changes()", "applies only after explicit confirmation"),
-    ("func _cleanup_staging()", "removes temporary archive and extracted repository after sync"),
+    ("func _cleanup_staging()", "removes temporary staged changed files"),
     ("preview_dialog.canceled.connect(_on_preview_dismissed)", "cleans staged files when the user cancels preview"),
     ("preview_dialog.close_requested.connect(_on_preview_dismissed)", "cleans staged files when the preview window is closed"),
     ("_cleanup_staging()\n\tif request and is_instance_valid(request):", "cleans staging when the plugin unloads"),
-    ("DirAccess.remove_absolute(absolute_zip)", "deletes the downloaded ZIP from mobile storage"),
     ("GitHub is the source of truth", "applies GitHub files directly as the source of truth"),
     ("No se crearon copias.", "reports retryable sync failure without creating backups"),
     ("Deliberately create no backup or transaction copies", "documents the no-backup mobile-storage policy"),
     ("_save_manifest()", "persists baseline for later deletions"),
     ('str(parsed.get("repository", "")) == active_repo', "only same-repository baseline permits deletion"),
-    ("MAX_ARCHIVE_BYTES", "limits downloaded archive size on mobile"),
-    ("MAX_ARCHIVE_FILES", "limits archive entry count"),
-    ("MAX_FILE_BYTES", "limits individual staged file size"),
-    ("MAX_TOTAL_BYTES", "limits expanded staged content"),
-    ("not entry.begins_with(archive_root + \"/\")", "rejects ZIP paths outside the GitHub archive root"),
-    ("_ensure_sync_plugin_enabled(staged_project)", "keeps the editor plugin enabled when project.godot changes"),
+    ("_ensure_sync_plugin_enabled(staged_path)", "keeps editor plugins enabled when project.godot changes"),
     ('relative.begins_with("addons/github_sync/")', "sync cannot overwrite its own addon"),
     ('relative.begins_with("addons/terrain_3d/")', "sync cannot overwrite the terrain addon"),
     ('"delete"', "handles files removed from upstream"),
     ("EditorInterface.get_resource_filesystem().scan()", "rescans the editor filesystem after synchronization"),
 ]:
+
     require(token in gd, label)
+require("zipball" not in gd.lower() and "ZIPReader" not in gd, "incremental sync does not download or extract repository ZIPs")
 require("Copias de rescate" not in gd, "does not create permanent rescue copies")
 require("transaction_root" not in gd, "does not create transaction backup copies")
+require("DirAccess.copy_absolute" not in gd, "does not copy local files during synchronization")
 require("DirAccess.copy_absolute" not in gd, "does not copy local files during synchronization")
 require("no se crearon copias" in gd.lower() and "never uploads local files" in config.read_text(encoding="utf-8").lower(),
         "one-way sync is documented as no-upload")
