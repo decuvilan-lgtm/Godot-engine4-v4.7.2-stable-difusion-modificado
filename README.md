@@ -1,5 +1,16 @@
 # Godot 4.7.2 Android Editor — GitHub import (ARM32 + ARM64)
 
+
+## GitHub → local project synchronization — implementation started (2026-10-24)
+
+- Added scripts/github_sync_addon/plugin.gd and plugin.cfg: a one-way, in-editor **Sincronizar GitHub** toolbar action for public repositories. It downloads a ZIP from GitHub, stages files, shows a change preview, and applies only after confirmation. It never uploads local files.
+- The sync tracks a baseline outside the project. It only deletes files that were tracked by a previous successful sync and are now absent upstream. Files changed locally that would be overwritten or deleted are copied to a rescue directory under the Godot user-data area, outside the project.
+- The sync makes transaction copies of touched files before the first write and attempts rollback if a write or manifest save fails. It preserves the project display name and the sync plugin entry when upstream changes project.godot; it excludes .godot/, .git/, and its own addon from the upstream file set.
+- Added scripts/apply_github_sync_patch.py, which embeds the addon into the native Godot source and installs/enables it for ZIP-installed projects, plus scripts/validate_github_sync_source.py. The Windows source-validation and ARM32 native-compile workflows now apply this integration.
+- **Current limitation:** the toolbar plugin is injected during ZIP installation. A project already on the phone that was imported before this change does not gain the button merely by opening it; extending the installer to existing open projects is still required.
+- **Not yet verified:** the GDScript has not been parsed/executed by Godot and the C++ source patch has not yet passed the new Windows validation/native compile. Do not treat synchronization as ready for phone use until those checks pass, followed by a planned Android UI test. No APK was packaged for this work.
+
+
 ## Current continuation status — 2026-10-24
 
 ### Important correction: GitHub import/search was already working
