@@ -592,9 +592,6 @@ replace_once(SOURCE,
 \t\t\thb->add_child(mcp_install_btn);
 
 \t\t\tscan_btn = memnew(Button);""")
-print("GitHub import patch applied successfully to project_manager.h and project_manager.cpp.")
-
-
 # Keep Android's media scanner from indexing images bundled in projects installed
 # from ZIP archives (including public GitHub repositories).
 replace_once(PROJECT_DIALOG,
@@ -624,8 +621,10 @@ replace_once(PROJECT_DIALOG,
 \t\t\t\t\tunzClose(pkg);
 \t\t\t\t\treturn;
 \t\t\t\t}
-\t\t\t\tno_media->store_string("Godot project assets are not gallery media.\\\\n");
+\t\t\t\tno_media->store_string("Godot project assets are not gallery media.");
 \t\t\t\tno_media.unref();
 \t\t\t}
 
 \t\t\tret = unzGoToFirstFile(pkg);""")
+
+print("GitHub import and Android Gallery protection patches applied successfully.")
