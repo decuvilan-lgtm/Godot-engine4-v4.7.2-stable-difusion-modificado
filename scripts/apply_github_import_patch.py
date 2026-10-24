@@ -792,7 +792,7 @@ replace_once(SCENE_DEBUGGER_HEADER,
     "static Error _msg_debug_mute_audio(const Array &p_args);\n\tstatic Error _msg_set_debug_navigation(const Array &p_args);\n\tstatic Error _msg_set_debug_avoidance(const Array &p_args);")
 replace_once(SCENE_DEBUGGER_SOURCE,
     '#include "servers/rendering/rendering_server.h"',
-    '#include "servers/rendering/rendering_server.h"\n#include "servers/navigation_2d/navigation_server_2d.h"\n#include "servers/navigation_3d/navigation_server_3d.h"')
+    '#include "scene/2d/path_2d.h"\n#include "scene/3d/path_3d.h"\n#include "servers/rendering/rendering_server.h"\n#include "servers/navigation_2d/navigation_server_2d.h"\n#include "servers/navigation_3d/navigation_server_3d.h"')
 replace_once(SCENE_DEBUGGER_SOURCE,
     "Error SceneDebugger::_msg_debug_mute_audio(const Array &p_args) {",
     """Error SceneDebugger::_msg_set_debug_navigation(const Array &p_args) {
@@ -876,8 +876,8 @@ replace_once(SCENE_DEBUGGER_SOURCE,
 \tERR_FAIL_NULL_V(tree, ERR_UNCONFIGURED);
 \tconst bool enabled = bool(p_args[0]);
 \ttree->set_debug_paths_hint(enabled);
-\t// SceneTree's path hint does not schedule redraws by itself. Refresh every
-\t// CanvasItem so Path2D curves update immediately without restarting the game.
+\t// The hint alone is not a runtime toggle in Godot. Refresh each existing
+\t// Path2D/Path3D debug renderer explicitly so both 2D and 3D paths update now.
 \tList<Node *> pending;
 \tif (tree->get_root()) {
 \t\tpending.push_back(tree->get_root());
@@ -885,8 +885,11 @@ replace_once(SCENE_DEBUGGER_SOURCE,
 \twhile (!pending.is_empty()) {
 \t\tNode *node = pending.front()->get();
 \t\tpending.pop_front();
-\t\tif (CanvasItem *item = Object::cast_to<CanvasItem>(node)) {
-\t\t\titem->queue_redraw();
+\t\tif (Path2D *path_2d = Object::cast_to<Path2D>(node)) {
+\t\t\tpath_2d->debug_update_runtime();
+\t\t}
+\t\tif (Path3D *path_3d = Object::cast_to<Path3D>(node)) {
+\t\t\tpath_3d->debug_update_runtime(enabled);
 \t\t}
 \t\tfor (int i = 0; i < node->get_child_count(); i++) {
 \t\t\tpending.push_back(node->get_child(i));
@@ -903,13 +906,58 @@ Error SceneDebugger::_msg_set_debug_canvas_item_redraw(const Array &p_args) {
 
 Error SceneDebugger::_msg_debug_mute_audio(const Array &p_args) {""")
 replace_once(SCENE_DEBUGGER_SOURCE,
-    '#include "servers/rendering/rendering_server.h"',
-    '#include "servers/rendering/rendering_server.h"\n#include "scene/main/canvas_item.h"')
-replace_once(SCENE_DEBUGGER_SOURCE,
     'message_handlers["set_debug_avoidance"] = _msg_set_debug_avoidance;',
     'message_handlers["set_debug_avoidance"] = _msg_set_debug_avoidance;\n\tmessage_handlers["set_debug_paths"] = _msg_set_debug_paths;\n\tmessage_handlers["set_debug_canvas_item_redraw"] = _msg_set_debug_canvas_item_redraw;')
 replace_once(RUN_BAR_SOURCE,
     "EditorDebuggerNode::get_singleton()->set_debug_avoidance(enabled);\n\t}",
     "EditorDebuggerNode::get_singleton()->set_debug_avoidance(enabled);\n\t} else if (p_id == PREVIEW_DEBUG_PATHS) {\n\t\tEditorDebuggerNode::get_singleton()->set_debug_paths(enabled);\n\t} else if (p_id == PREVIEW_DEBUG_CANVAS_REDRAW) {\n\t\tEditorDebuggerNode::get_singleton()->set_debug_canvas_item_redraw(enabled);\n\t}")
+
+
+// Runtime path toggling must refresh Godot's actual built-in Path2D/Path3D
+// debug renderers; merely changing SceneTree::debug_paths_hint is insufficient.
+PATH2D_HEADER = ROOT / "scene/2d/path_2d.h"
+PATH2D_SOURCE = ROOT / "scene/2d/path_2d.cpp"
+PATH3D_HEADER = ROOT / "scene/3d/path_3d.h"
+PATH3D_SOURCE = ROOT / "scene/3d/path_3d.cpp"
+for required in (PATH2D_HEADER, PATH2D_SOURCE, PATH3D_HEADER, PATH3D_SOURCE):
+    if not required.is_file():
+        sys.exit(f"Godot path-debug source not found: {required.relative_to(ROOT)}")
+
+replace_once(PATH2D_HEADER,
+    "Ref<Curve2D> get_curve() const;",
+    "Ref<Curve2D> get_curve() const;\n\tvoid debug_update_runtime();")
+replace_once(PATH2D_SOURCE,
+    "void Path2D::set_curve(const Ref<Curve2D> &p_curve) {",
+    """void Path2D::debug_update_runtime() {
+#ifdef DEBUG_ENABLED
+    if (is_inside_tree()) {
+        _debug_update();
+    }
+#endif
+}
+
+void Path2D::set_curve(const Ref<Curve2D> &p_curve) {""")
+replace_once(PATH3D_HEADER,
+    "Ref<StandardMaterial3D> get_debug_material();",
+    "Ref<StandardMaterial3D> get_debug_material();\n\tvoid debug_update_runtime(bool p_enabled);")
+replace_once(PATH3D_SOURCE,
+    "void Path3D::set_debug_custom_color(const Color &p_color) {",
+    """void Path3D::debug_update_runtime(bool p_enabled) {
+    if (!p_enabled) {
+        if (debug_instance.is_valid()) {
+            RS::get_singleton()->instance_set_visible(debug_instance, false);
+        }
+        return;
+    }
+
+    // Paths created while debugging was off have no RenderingServer instance yet.
+    if (!debug_instance.is_valid()) {
+        debug_instance = RS::get_singleton()->instance_create();
+        set_notify_transform(true);
+    }
+    _update_debug_mesh();
+}
+
+void Path3D::set_debug_custom_color(const Color &p_color) {""")
 
 print("GitHub import and Android Gallery protection patches applied successfully.")
