@@ -31,6 +31,8 @@ for token, label in [
     ("_build_change_plan()", "previews the change set before writing"),
     ("_show_preview()", "presents the change preview"),
     ("_apply_changes()", "applies only after explicit confirmation"),
+    ("func _cleanup_staging()", "removes temporary archive and extracted repository after sync"),
+    ("DirAccess.remove_absolute(absolute_zip)", "deletes the downloaded ZIP from mobile storage"),
     ("GitHub is the source of truth", "applies GitHub files directly as the source of truth"),
     ("No se crearon copias.", "reports retryable sync failure without creating backups"),
     ("Deliberately create no backup or transaction copies", "documents the no-backup mobile-storage policy"),
