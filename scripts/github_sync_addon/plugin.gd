@@ -2,6 +2,7 @@
 extends EditorPlugin
 
 const PLUGIN_PATH := "res://addons/github_sync/plugin.cfg"
+const TERRAIN_PLUGIN_PATH := "res://addons/terrain_3d/plugin.cfg"
 const MANIFEST_DIR := "github_sync_manifests"
 const STAGE_DIR := "github_sync_stage"
 const RESCUE_DIR := "github_sync_rescue"
@@ -202,7 +203,7 @@ func _stage_archive() -> int:
 		file.store_buffer(bytes)
 		file.close()
 		# Keep the injected editor plugin out of the upstream manifest so a sync cannot overwrite itself.
-		if not relative.begins_with("addons/github_sync/"):
+		if not relative.begins_with("addons/github_sync/") and not relative.begins_with("addons/terrain_3d/"):
 			upstream_files[relative] = _sha256(bytes)
 	zip.close()
 	if not upstream_files.has("project.godot"):
@@ -226,10 +227,17 @@ func _ensure_sync_plugin_enabled(config_path: String) -> int:
 	if local_config.load(project_root.path_join("project.godot")) == OK and local_config.has_section_key("application", "config/name"):
 		config.set_value("application", "config/name", local_config.get_value("application", "config/name"))
 	var enabled: PackedStringArray = config.get_value("editor_plugins", "enabled", PackedStringArray())
+	var changed := false
 	if not enabled.has(PLUGIN_PATH):
 		enabled.append(PLUGIN_PATH)
+		changed = true
+	if not enabled.has(TERRAIN_PLUGIN_PATH):
+		enabled.append(TERRAIN_PLUGIN_PATH)
+		changed = true
+	if changed:
 		config.set_value("editor_plugins", "enabled", enabled)
-	return config.save(config_path)
+		return config.save(config_path)
+	return OK
 
 func _manifest_path() -> String:
 	return "user://%s/%s.json" % [MANIFEST_DIR, project_key]
