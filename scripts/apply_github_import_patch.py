@@ -615,14 +615,17 @@ replace_once(PROJECT_DIALOG,
 \t\t\t// Prevent Android Gallery from indexing images bundled in installed projects.
 \t\t\t// Create .nomedia before extracting any assets so it covers all subdirectories.
 \t\t\tif (mode == MODE_INSTALL) {
-\t\t\t\tRef<FileAccess> no_media = FileAccess::open(path.path_join(".nomedia"), FileAccess::WRITE);
-\t\t\t\tif (no_media.is_null()) {
-\t\t\t\t\t_set_message(TTRC("Couldn't protect the imported project from Android Gallery indexing. Check project-folder permissions."), MESSAGE_ERROR);
-\t\t\t\t\tunzClose(pkg);
-\t\t\t\t\treturn;
+\t\t\t\tString no_media_path = path.path_join(\".nomedia\");
+\t\t\t\tif (!FileAccess::exists(no_media_path)) {
+\t\t\t\t\tRef<FileAccess> no_media = FileAccess::open(no_media_path, FileAccess::WRITE);
+\t\t\t\t\tif (no_media.is_null()) {
+\t\t\t\t\t\t_set_message(TTRC(\"Couldn't protect the imported project from Android Gallery indexing. Check project-folder permissions.\"), MESSAGE_ERROR);
+\t\t\t\t\t\tunzClose(pkg);
+\t\t\t\t\t\treturn;
+\t\t\t\t\t}
+\t\t\t\t\tno_media->store_string(\"Godot project assets are not gallery media.\");
+\t\t\t\t\tno_media.unref();
 \t\t\t\t}
-\t\t\t\tno_media->store_string("Godot project assets are not gallery media.");
-\t\t\t\tno_media.unref();
 \t\t\t}
 
 \t\t\tret = unzGoToFirstFile(pkg);""")
