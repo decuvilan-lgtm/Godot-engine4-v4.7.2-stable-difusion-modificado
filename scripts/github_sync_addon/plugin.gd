@@ -5,8 +5,7 @@ const PLUGIN_PATH := "res://addons/github_sync/plugin.cfg"
 const TERRAIN_PLUGIN_PATH := "res://addons/terrain_3d/plugin.cfg"
 const MANIFEST_DIR := "github_sync_manifests"
 const STAGE_DIR := "github_sync_stage"
-const MAX_ARCHIVE_BYTES := 200 * 1024 * 1024
-const MAX_ARCHIVE_FILES := 6000
+const MAX_TREE_FILES := 6000
 const MAX_FILE_BYTES := 16 * 1024 * 1024
 const MAX_TOTAL_BYTES := 100 * 1024 * 1024
 
@@ -18,11 +17,17 @@ var status_label: Label
 var preview_dialog: ConfirmationDialog
 var preview_label: RichTextLabel
 var request: HTTPRequest
-var zip_path := "user://github_sync_download.zip"
 var staged_root := "user://github_sync_stage"
 var active_repo := ""
 var active_ref := ""
+var remote_commit_sha := ""
+var request_state := ""
 var upstream_files: Dictionary = {}
+var tree_entries: Dictionary = {}
+var pending_downloads: Array[String] = []
+var download_index := 0
+var staged_bytes := 0
+var legacy_baseline := false
 var operations: Array[Dictionary] = []
 var baseline: Dictionary = {}
 var project_root := ""
@@ -45,8 +50,8 @@ func _exit_tree() -> void:
 	# A dismissed preview or editor shutdown must not leave ZIP/staging data on the phone.
 	_cleanup_staging()
 	if request and is_instance_valid(request):
-		if request.request_completed.is_connected(_on_zip_downloaded):
-			request.request_completed.disconnect(_on_zip_downloaded)
+		if request.request_completed.is_connected(_on_incremental_request_completed):
+			request.request_completed.disconnect(_on_incremental_request_completed)
 		request.queue_free()
 	if sync_button:
 		remove_control_from_container(EditorPlugin.CONTAINER_TOOLBAR, sync_button)
@@ -136,131 +141,234 @@ func _start_download() -> void:
 		return
 	if request and is_instance_valid(request):
 		request.queue_free()
+		request = null
+	_cleanup_staging()
+	_load_baseline()
+	tree_entries.clear()
+	upstream_files.clear()
+	operations.clear()
+	pending_downloads.clear()
+	download_index = 0
+	staged_bytes = 0
+	remote_commit_sha = ""
 	request = HTTPRequest.new()
 	request.timeout = 90.0
-	request.download_file = zip_path
+	request.request_completed.connect(_on_incremental_request_completed)
 	add_child(request)
-	request.request_completed.connect(_on_zip_downloaded)
-	var url := "https://api.github.com/repos/%s/zipball" % active_repo
-	if not active_ref.is_empty():
-		url += "/" + active_ref.uri_encode()
+	status_label.text = "Consultando la referencia de GitHub…"
+	if active_ref.is_empty():
+		_start_request("repo", "https://api.github.com/repos/%s" % active_repo)
+	else:
+		_start_request("commit", "https://api.github.com/repos/%s/commits/%s" % [active_repo, active_ref.uri_encode()])
+
+func _start_request(state: String, url: String, destination: String = "") -> void:
+	if request == null or not is_instance_valid(request):
+		_fail_sync("La solicitud de red dejó de estar disponible.")
+		return
+	request_state = state
+	request.download_file = destination
 	var headers := PackedStringArray(["Accept: application/vnd.github+json", "User-Agent: Godot-GitHub-Sync"])
 	var err := request.request(url, headers)
 	if err != OK:
-		request.queue_free()
-		request = null
-		status_label.text = "No se pudo iniciar la descarga (error %d)." % err
-		sync_dialog.popup_centered()
+		_fail_sync("No se pudo iniciar la solicitud a GitHub (error %d)." % err)
 
-func _on_zip_downloaded(result: int, response_code: int, _headers: PackedStringArray, _body: PackedByteArray) -> void:
-	if request:
+func _incremental_headers() -> PackedStringArray:
+	return PackedStringArray(["Accept: application/vnd.github+json", "User-Agent: Godot-GitHub-Sync"])
+
+func _on_incremental_request_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
+		_fail_sync("Falló la solicitud a GitHub (HTTP %d, resultado %d). Revisa conexión, referencia o límites de la API." % [response_code, result])
+		return
+	match request_state:
+		"repo":
+			var repo_data = JSON.parse_string(body.get_string_from_utf8())
+			if not repo_data is Dictionary or not repo_data.has("default_branch"):
+				_fail_sync("GitHub no devolvió la rama predeterminada del repositorio.")
+				return
+			active_ref = str(repo_data.default_branch)
+			_start_request("commit", "https://api.github.com/repos/%s/commits/%s" % [active_repo, active_ref.uri_encode()])
+		"commit":
+			var commit_data = JSON.parse_string(body.get_string_from_utf8())
+			if not commit_data is Dictionary or not commit_data.has("sha"):
+				_fail_sync("GitHub no devolvió un commit válido para esa referencia.")
+				return
+			remote_commit_sha = str(commit_data.sha)
+			_start_request("tree", "https://api.github.com/repos/%s/git/trees/%s?recursive=1" % [active_repo, remote_commit_sha])
+		"tree":
+			_process_tree_response(body)
+		"file":
+			_finish_downloaded_file()
+		_:
+			_fail_sync("Estado de sincronización desconocido; no se modificó el proyecto.")
+
+func _process_tree_response(body: PackedByteArray) -> void:
+	var parsed = JSON.parse_string(body.get_string_from_utf8())
+	if not parsed is Dictionary or not parsed.get("tree", null) is Array:
+		_fail_sync("GitHub devolvió un árbol de archivos inválido.")
+		return
+	if bool(parsed.get("truncated", false)):
+		_fail_sync("El árbol del repositorio supera el límite de la API. Se canceló para evitar una sincronización incompleta.")
+		return
+	var entries: Array = parsed.tree
+	if entries.size() > MAX_TREE_FILES:
+		_fail_sync("El repositorio supera el límite de %d entradas para proteger el teléfono." % MAX_TREE_FILES)
+		return
+	for entry in entries:
+		if not entry is Dictionary or str(entry.get("type", "")) != "blob":
+			continue
+		var relative := str(entry.get("path", ""))
+		if not _is_safe_relative_path(relative) or _is_ignored_path(relative):
+			continue
+		var blob_sha := str(entry.get("sha", ""))
+		var size := int(entry.get("size", -1))
+		if blob_sha.length() != 40 or size < 0:
+			_fail_sync("GitHub devolvió metadatos inválidos para '%s'." % relative)
+			return
+		if size > MAX_FILE_BYTES:
+			_fail_sync("'%s' supera el límite de %d MiB por archivo." % [relative, MAX_FILE_BYTES / (1024 * 1024)])
+			return
+		tree_entries[relative] = {"sha": blob_sha, "size": size}
+	if not tree_entries.has("project.godot"):
+		_fail_sync("El repositorio no contiene project.godot; no parece ser un proyecto Godot válido.")
+		return
+	_build_incremental_download_queue()
+	_download_next_file()
+
+func _is_safe_relative_path(relative: String) -> bool:
+	if relative.is_empty() or relative.begins_with("/") or relative.contains("\\"):
+		return false
+	for segment in relative.split("/"):
+		if segment.is_empty() or segment == "." or segment == "..":
+			return false
+	return true
+
+func _is_ignored_path(relative: String) -> bool:
+	return relative == ".DS_Store" or relative.begins_with(".git/") or relative == ".git" or relative.begins_with(".godot/") or relative == ".godot" or relative.begins_with("__MACOSX/") or relative.begins_with("addons/github_sync/") or relative.begins_with("addons/terrain_3d/")
+
+func _build_incremental_download_queue() -> void:
+	pending_downloads.clear()
+	upstream_files.clear()
+	legacy_baseline = false
+	for value in baseline.values():
+		if str(value).length() == 64:
+			legacy_baseline = true
+			break
+	for relative in tree_entries.keys():
+		var metadata: Dictionary = tree_entries[relative]
+		var remote_sha := str(metadata.sha)
+		upstream_files[relative] = remote_sha
+		var local_path := project_root.path_join(relative)
+		var local_exists := FileAccess.file_exists(local_path)
+		var old_sha := str(baseline.get(relative, ""))
+		var needs_legacy_compare := legacy_baseline and not old_sha.is_empty()
+		var local_sha := _git_blob_sha1(local_path) if local_exists else ""
+		if needs_legacy_compare:
+			# Old manifests stored SHA-256, not Git blob IDs. One migration pass downloads
+			# tracked files to compare content; successful manifests then use Git blob SHA-1.
+			pending_downloads.append(relative)
+		elif not local_exists or local_sha != remote_sha:
+			if old_sha != remote_sha or not local_exists:
+				pending_downloads.append(relative)
+	# Only previously tracked files may be deleted; untracked local files are never inferred as upstream deletions.
+	for relative in baseline.keys():
+		if tree_entries.has(str(relative)):
+			continue
+		var local_path := project_root.path_join(str(relative))
+		if FileAccess.file_exists(local_path):
+			var local_hash := FileAccess.get_sha256(local_path)
+			operations.append({"kind": "delete", "path": str(relative), "modified": legacy_baseline or local_hash != str(baseline[relative])})
+	status_label.text = "Árbol comparado: %d archivos; descargando solo contenido necesario…" % tree_entries.size()
+
+func _download_next_file() -> void:
+	if download_index >= pending_downloads.size():
+		_finish_incremental_plan()
+		return
+	var relative := pending_downloads[download_index]
+	var metadata: Dictionary = tree_entries[relative]
+	staged_bytes += int(metadata.size)
+	if staged_bytes > MAX_TOTAL_BYTES:
+		_fail_sync("Los archivos que cambiaron superan el límite temporal de %d MiB. No se modificó el proyecto." % (MAX_TOTAL_BYTES / (1024 * 1024)))
+		return
+	var destination := staged_root.path_join(relative)
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(destination).get_base_dir())
+	var encoded_parts := PackedStringArray()
+	for part in relative.split("/"):
+		encoded_parts.append(part.uri_encode())
+	var url := "https://raw.githubusercontent.com/%s/%s/%s" % [active_repo, remote_commit_sha, "/".join(encoded_parts)]
+	status_label.text = "Descargando %d/%d: %s" % [download_index + 1, pending_downloads.size(), relative]
+	_start_request("file", url, destination)
+
+func _finish_downloaded_file() -> void:
+	var relative := pending_downloads[download_index]
+	var staged_path := staged_root.path_join(relative)
+	if not FileAccess.file_exists(staged_path):
+		_fail_sync("GitHub no guardó el archivo descargado '%s'." % relative)
+		return
+	var size := FileAccess.get_file_as_bytes(staged_path).size()
+	var metadata: Dictionary = tree_entries[relative]
+	if size != int(metadata.size) or _git_blob_sha1(staged_path) != str(metadata.sha):
+		_fail_sync("La verificación del archivo '%s' falló; se canceló la sincronización." % relative)
+		return
+	_plan_downloaded_file(relative, staged_path)
+	download_index += 1
+	_download_next_file()
+
+func _plan_downloaded_file(relative: String, staged_path: String) -> void:
+	var local_path := project_root.path_join(relative)
+	var local_exists := FileAccess.file_exists(local_path)
+	var old_sha := str(baseline.get(relative, ""))
+	var remote_sha := str(tree_entries[relative].sha)
+	if legacy_baseline and not old_sha.is_empty():
+		var downloaded_sha256 := FileAccess.get_sha256(staged_path)
+		if not local_exists:
+			operations.append({"kind": "add", "path": relative, "modified": false})
+		elif downloaded_sha256 != old_sha:
+			operations.append({"kind": "update", "path": relative, "modified": FileAccess.get_sha256(local_path) != old_sha})
+		return
+	if not local_exists:
+		operations.append({"kind": "add", "path": relative, "modified": false})
+		return
+	var local_sha := _git_blob_sha1(local_path)
+	if local_sha == remote_sha:
+		return
+	operations.append({"kind": "update", "path": relative, "modified": old_sha.is_empty() or local_sha != old_sha})
+
+func _finish_incremental_plan() -> void:
+	if request and is_instance_valid(request):
 		request.queue_free()
 		request = null
-	if result != HTTPRequest.RESULT_SUCCESS or response_code != 200 or not FileAccess.file_exists(zip_path):
-		_cleanup_staging()
-		status_label.text = "GitHub no entregó el ZIP (HTTP %d). Revisa conexión, repositorio y referencia." % response_code
-		sync_dialog.popup_centered()
-		return
-	var archive_file := FileAccess.open(zip_path, FileAccess.READ)
-	if archive_file == null:
-		_cleanup_staging()
-		status_label.text = "No se pudo leer el ZIP descargado."
-		sync_dialog.popup_centered()
-		return
-	var archive_size := archive_file.get_length()
-	archive_file.close()
-	if archive_size <= 0 or archive_size > MAX_ARCHIVE_BYTES:
-		_cleanup_staging()
-		status_label.text = "El ZIP está vacío o supera el límite de 200 MiB para proteger el almacenamiento del teléfono."
-		sync_dialog.popup_centered()
-		return
-	var err := _stage_archive()
-	if err != OK:
-		_cleanup_staging()
-		status_label.text = "No se pudo preparar el ZIP (error %d). No se modificó el proyecto." % err
-		sync_dialog.popup_centered()
-		return
 	_build_change_plan()
 	_show_preview()
 
-func _stage_archive() -> int:
-	var zip := ZIPReader.new()
-	var err := zip.open(zip_path)
-	if err != OK:
-		return err
-	var entries := zip.get_files()
-	if entries.is_empty() or entries.size() > MAX_ARCHIVE_FILES:
-		zip.close()
-		return ERR_FILE_CORRUPT
-	var first_file := ""
-	for candidate in entries:
-		if not candidate.ends_with("/"):
-			first_file = candidate
-			break
-	if first_file.is_empty() or not first_file.contains("/"):
-		zip.close()
-		return ERR_FILE_CORRUPT
-	var archive_root := first_file.get_slice("/", 0)
-	var stage_absolute := ProjectSettings.globalize_path(staged_root)
-	DirAccess.make_dir_recursive_absolute(stage_absolute)
-	_remove_tree(staged_root)
-	DirAccess.make_dir_recursive_absolute(stage_absolute)
-	upstream_files.clear()
-	var total_staged_bytes := 0
-	for entry in entries:
-		if entry.ends_with("/"):
-			continue
-		# GitHub ZIPs have one top-level directory; reject entries outside it.
-		if not entry.begins_with(archive_root + "/"):
-			continue
-		var relative := entry.trim_prefix(archive_root + "/")
-		if relative.is_empty() or relative.begins_with("/") or relative.contains("\\"):
-			continue
-		var invalid := false
-		for segment in relative.split("/"):
-			if segment == ".." or segment == "." or segment.is_empty():
-				invalid = true
-				break
-		if invalid or relative.begins_with(".git/") or relative.begins_with(".godot/") or relative.begins_with("__MACOSX/"):
-			continue
-		if relative == ".DS_Store":
-			continue
-		var bytes := zip.read_file(entry)
-		if bytes.size() > MAX_FILE_BYTES:
-			zip.close()
-			_remove_tree(staged_root)
-			return ERR_FILE_TOO_BIG
-		total_staged_bytes += bytes.size()
-		if total_staged_bytes > MAX_TOTAL_BYTES:
-			zip.close()
-			_remove_tree(staged_root)
-			return ERR_FILE_TOO_BIG
-		if bytes.is_empty() and zip.get_files().has(entry):
-			# Empty source files are valid; the write below preserves them.
-			pass
-		var target := staged_root.path_join(relative)
-		var target_abs := ProjectSettings.globalize_path(target)
-		DirAccess.make_dir_recursive_absolute(target_abs.get_base_dir())
-		var file := FileAccess.open(target, FileAccess.WRITE)
-		if file == null:
-			zip.close()
-			return FileAccess.get_open_error()
-		file.store_buffer(bytes)
+func _fail_sync(message: String) -> void:
+	if request and is_instance_valid(request):
+		if request.request_completed.is_connected(_on_incremental_request_completed):
+			request.request_completed.disconnect(_on_incremental_request_completed)
+		request.queue_free()
+		request = null
+	_cleanup_staging()
+	operations.clear()
+	status_label.text = message
+	sync_dialog.popup_centered(Vector2i(520, 240))
+
+func _git_blob_sha1(path: String) -> String:
+	if not FileAccess.file_exists(path):
+		return ""
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return ""
+	var size := file.get_length()
+	if size > MAX_FILE_BYTES:
 		file.close()
-		# Keep the injected editor plugin out of the upstream manifest so a sync cannot overwrite itself.
-		if not relative.begins_with("addons/github_sync/") and not relative.begins_with("addons/terrain_3d/"):
-			upstream_files[relative] = _sha256(bytes)
-	zip.close()
-	if not upstream_files.has("project.godot"):
-		return ERR_FILE_MISSING_DEPENDENCIES
-	# Keep the sync plugin enabled when upstream changes project.godot. Hash the normalized staged
-	# config so the plugin's own enabled entry does not appear as a local conflict on every sync.
-	var staged_project := staged_root.path_join("project.godot")
-	var config_err := _ensure_sync_plugin_enabled(staged_project)
-	if config_err != OK:
-		return config_err
-	upstream_files["project.godot"] = FileAccess.get_sha256(staged_project)
-	return OK
+		return ""
+	var bytes := file.get_buffer(size)
+	file.close()
+	var context := HashingContext.new()
+	if context.start(HashingContext.HASH_SHA1) != OK:
+		return ""
+	context.update(("blob %d" % bytes.size()).to_utf8_buffer() + PackedByteArray([0]))
+	context.update(bytes)
+	return context.finish().hex_encode()
 
 func _ensure_sync_plugin_enabled(config_path: String) -> int:
 	var config := ConfigFile.new()
@@ -289,6 +397,7 @@ func _manifest_path() -> String:
 
 func _load_baseline() -> void:
 	baseline = {}
+	legacy_baseline = false
 	var path := _manifest_path()
 	if not FileAccess.file_exists(path):
 		return
@@ -297,34 +406,29 @@ func _load_baseline() -> void:
 		return
 	var parsed = JSON.parse_string(file.get_as_text())
 	file.close()
-	if parsed is Dictionary and parsed.get("files", null) is Dictionary:
-		# A baseline from another repository must never authorize deletions here.
-		if str(parsed.get("repository", "")) == active_repo:
-			baseline = parsed.files
-		else:
-			baseline = {}
+	if parsed is Dictionary and parsed.get("files", null) is Dictionary and str(parsed.get("repository", "")) == active_repo:
+		baseline = parsed.files
+		for value in baseline.values():
+			if str(value).length() == 64:
+				legacy_baseline = true
+				break
 
 func _build_change_plan() -> void:
-	_load_baseline()
-	operations.clear()
-	for relative in upstream_files.keys():
-		var local_path := project_root.path_join(relative)
-		var local_exists := FileAccess.file_exists(local_path)
-		var local_hash := FileAccess.get_sha256(local_path) if local_exists else ""
-		var old_hash := str(baseline.get(relative, ""))
-		var new_hash := str(upstream_files[relative])
-		if not local_exists:
-			operations.append({"kind": "add", "path": relative, "modified": false})
-		elif local_hash != new_hash:
-			operations.append({"kind": "update", "path": relative, "modified": old_hash.is_empty() or local_hash != old_hash})
-	# Deletion is allowed only for files tracked by a previous successful sync.
+	# Deletions were planned from the prior successful manifest before downloading.
+	# Keep only paths whose old manifest entry was present and which still exist locally.
 	for relative in baseline.keys():
-		if upstream_files.has(relative):
+		if tree_entries.has(str(relative)):
 			continue
 		var local_path := project_root.path_join(str(relative))
 		if FileAccess.file_exists(local_path):
-			var local_hash := FileAccess.get_sha256(local_path)
-			operations.append({"kind": "delete", "path": str(relative), "modified": local_hash != str(baseline[relative])})
+			var already_planned := false
+			for operation in operations:
+				if operation.kind == "delete" and str(operation.path) == str(relative):
+					already_planned = true
+					break
+			if not already_planned:
+				operations.append({"kind": "delete", "path": str(relative), "modified": true})
+
 
 func _show_preview() -> void:
 	var adds := 0
@@ -402,9 +506,6 @@ func _apply_changes() -> void:
 
 func _cleanup_staging() -> void:
 	_remove_tree(staged_root)
-	var absolute_zip := ProjectSettings.globalize_path(zip_path)
-	if FileAccess.file_exists(zip_path):
-		DirAccess.remove_absolute(absolute_zip)
 
 func _save_manifest() -> bool:
 	var folder := "user://%s" % MANIFEST_DIR
@@ -412,10 +513,18 @@ func _save_manifest() -> bool:
 	var file := FileAccess.open(_manifest_path(), FileAccess.WRITE)
 	if file == null:
 		return false
-	file.store_string(JSON.stringify({"repository": active_repo, "ref": active_ref, "files": upstream_files}, "\t"))
+	file.store_string(JSON.stringify({
+		"schema": 2,
+		"repository": active_repo,
+		"ref": active_ref,
+		"commit": remote_commit_sha,
+		"files": upstream_files
+	}, "\t"))
 	var save_error := file.get_error()
 	file.close()
 	return save_error == OK
+
+
 
 func _sha256(bytes: PackedByteArray) -> String:
 	var context := HashingContext.new()
