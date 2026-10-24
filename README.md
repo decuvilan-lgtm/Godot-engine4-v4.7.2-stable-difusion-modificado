@@ -554,67 +554,43 @@ Before merging this branch, protect the previously working GitHub import/search 
 
 The Windows workflow `.github/workflows/validate-debug-overlay-source.yml` now checks patcher syntax and applies it to a clean official Godot 4.7.2 checkout. A separate Windows workflow, `.github/workflows/validate-debug-overlay-android-compile.yml`, is configured to compile the **ARM32 (`armeabi-v7a`) Android editor native engine first**, matching the LG K51 target—no Gradle APK packaging and no Linux runner. The native ARM32 compile completed successfully in run 40065262042; a stricter output-file check is being rerun after the first check was found to match an object file. No in-game runtime behavior is claimed until the toggles are exercised in the running preview.
 
-## Proposed feature — Native 3D terrain editor (documented, not implemented)
+## Proposed feature — Native 3D terrain editor (approved, implementation pending)
 
-**Status: idea documented only. Do not treat this as an existing Godot feature or as code already merged.** The project owner wants a terrain workflow integrated into the Godot editor, designed to remain usable on Android/mobile as well as desktop.
+**Status: approved direction; implementation has not yet started.** The goal is a native-feeling terrain workflow inside the modified Godot editor, designed for desktop and a narrow mobile screen. Godot 4.7.2 includes 3D meshes, GridMap, CSG and procedural geometry, but its built-in editor feature list does not provide a general terrain sculpt/paint workspace. Community tools exist, including Terrain3D; this project aims for careful native integration rather than assuming an add-on is already included. References: [Godot 4.7 feature list](https://docs.godotengine.org/en/4.7/about/list_of_features.html), [Terrain3D Asset Library entry](https://godotengine.org/asset-library/asset/3892).
 
-### Intended capabilities
-- Create a 3D terrain and sculpt its height directly in the editor.
-- Brush operations: raise/lower, smooth, flatten, and add visible relief; more advanced erosion or holes/caves can be evaluated later.
-- Paint terrain with multiple textures/material layers and colors.
-- Add and distribute objects such as grass, trees, rocks, and structures, with controls for density, scale, random rotation, and terrain alignment.
-- Import/export heightmaps where practical.
-- Support undo/redo, collision generation, and sensible rendering/performance behavior.
-- Provide a dedicated, touch-friendly editor workspace/tooling rather than requiring the user to write scripts for routine terrain editing.
+### Core terrain capabilities
+- Create a terrain and choose dimensions/resolution, with a preview before committing.
+- Sculpt with raise, lower, smooth and flatten brushes; show radius, strength, target point and brush footprint before applying.
+- Paint terrain colors and multiple material/texture layers.
+- Place or distribute grass, trees, rocks and structures with density, scale, random rotation and surface alignment.
+- Generate/update collision, save and reopen terrain data, support undo/redo, and avoid destructive changes to unrelated nodes/resources.
+- Import/export heightmaps after the core workflow is stable.
+- Treat erosion, caves and holes as later-stage features; arbitrary caves/overhangs need a volumetric representation and are not part of the first heightfield milestone.
 
+### Mobile precision cursor (new requirement)
+- Add an optional **virtual joystick that moves an editor cursor over the 3D world**, so the user does not have to touch an exact terrain pixel.
+- Project a ray from the editor camera into the world and resolve the precise hit point and surface normal against the terrain. Keep the cursor visible and show a ring/footprint for the active brush radius.
+- Show a pre-edit preview for sculpting, painting and object placement. Support press/hold for continuous strokes and a separate apply/confirm action where useful.
+- Keep camera orbit/pan/zoom separate from cursor movement. Include recentering and retain direct mouse/touch input on desktop or when preferred.
+- Never edit while the cursor is over UI, a modal dialog blocks input, or there is no valid terrain hit. Show invalid-target feedback instead of silently editing another object.
+- Add sensible snap/grid options, undo/redo, and a last-action indicator. Fit the controls into a narrow 720px mobile viewport without hiding the terrain preview.
+- The joystick moves the cursor indirectly; the camera ray determines the exact world-space hit point. This is an **editor tool**, not a runtime-game control.
 
-### Native 3D terrain editor — implementation direction and cursor controls
+### Implementation order and acceptance gates
+1. Inspect the 4.7.2 editor viewport, gizmo/input routing, resource serialization, undo/redo, mesh and collision APIs before selecting source insertion points.
+2. Build a minimal native terrain resource/node and editor tool entry point. First acceptance gate: create/save/reopen a small heightfield and use raise/lower, smooth and flatten.
+3. Implement the cursor/raycast and virtual joystick as a reusable input layer that also supports mouse/touch. Validate ray hits and UI blocking before enabling destructive brush actions.
+4. Add undo/redo and collision regeneration, then material/color painting, then foliage/object placement.
+5. Add heightmap import/export and advanced tools only after the core passes source and functional checks.
+6. Validate patch application/source checks first, native compilation second, and editor/runtime/device behavior separately. Do not rebuild a full APK solely for the already-passed native compile check.
 
-**Status: approved direction; implementation has not yet been started.** Godot 4.7.2 has 3D meshes, GridMap, CSG and procedural geometry, but its built-in editor feature list does not provide a general native terrain sculpt/paint workspace. Community terrain tools exist, including Terrain3D, but the goal here is a carefully integrated native editor feature rather than assuming an add-on is already part of this modified build. References: [Godot 4.7 feature list](https://docs.godotengine.org/en/4.7/about/list_of_features.html), [Terrain3D Asset Library entry](https://godotengine.org/asset-library/asset/3892).
-
-#### Core editing tools
-1. Create a terrain in the 3D editor, choose dimensions/resolution, and see a clear preview before committing.
-2. Sculpt with raise, lower, smooth and flatten brushes; show brush radius, strength, target point and a visible footprint before applying changes.
-3. Paint terrain colors/material layers, then add foliage/object scatter with density, scale, rotation and surface alignment.
-4. Generate/update collision, save/reopen terrain data, support undo/redo, and avoid destructive edits to unrelated nodes/resources.
-5. Add heightmap import/export and advanced features only after the core terrain workflow is stable; erosion, caves and holes are later-stage work.
-
-#### Mobile precision cursor (new requirement)
-- Add an optional **virtual joystick to move an editor cursor over the 3D world**, instead of requiring a finger to hit the exact terrain pixel.
-- Project the cursor from the editor camera into the world with a ray query; resolve the precise hit point and surface normal against the terrain. The cursor must remain visible and show a ring/footprint representing brush radius.
-- Show a clear pre-edit preview for sculpting, painting, and object placement; support press/hold for continuous brush strokes and a separate apply/confirm action where useful.
-- Keep camera orbit/pan/zoom separate from cursor movement. Provide a quick way to recenter the cursor and switch back to direct touch/desktop mouse input.
-- Do not edit when the cursor is over UI, when no valid terrain surface is hit, or while a modal dialog blocks editing. Show invalid-target feedback instead of silently editing another object.
-- Include snap/grid options where sensible, plus undo/redo and a visible last-action indicator. All controls must fit a narrow 720px mobile viewport and remain usable without hiding the terrain preview.
-
-#### Implementation order and acceptance gates
-1. Inspect Godot 4.7.2 editor viewport, gizmo/input routing, resource serialization, undo/redo, mesh and collision APIs before choosing source insertion points.
-2. Build a minimal native terrain resource/node plus editor plugin/tool entry point; create and save a small heightfield and support raise/lower, smooth, flatten.
-3. Implement the viewport cursor and virtual joystick as an input abstraction that can also accept mouse/touch input. Validate ray hits and UI blocking before enabling destructive brush actions.
-4. Add undo/redo, collision regeneration, material/color painting, and then foliage/object placement.
-5. Add heightmap workflows and performance work only after functional gates pass. Profile before optimizing; do not remove features or reduce visual quality as a blanket fix.
-6. Validate patch application and source checks first; native compilation next; runtime/editor integration and Android-device testing are separate milestones. Avoid rebuilding a full APK solely for the already-passed native compile check.
-
-#### Scope and risk controls
-- This is a substantial editor feature, not a one-line toggle. Keep it modular and land incremental, reviewable changes rather than a giant unverified source rewrite.
-- Prefer a heightfield-based first implementation; arbitrary caves/overhangs require a different volumetric representation and are not part of the first milestone.
-- Keep the LG K51 / Android 11 / ARM32 target in mind, but do not claim performance compatibility without measurements on the device.
-- The joystick controls the cursor in world space indirectly; a camera ray determines the exact hit point. The cursor is an editor interaction tool, not a runtime-game control.
-
-### Proposed implementation order
-1. **Small native vertical slice:** create a terrain resource/node and editor tool that can sculpt a heightfield with raise/lower, smooth, and flatten brushes; save/reopen the result and support undo/redo.
-2. **Texture and color painting:** multiple material layers, brush size/strength, and persistent paint data.
-3. **Object placement:** paint/distribute foliage and other scenes across the surface.
-4. **Advanced terrain features:** heightmap workflow, more relief tools, and investigate erosion/caves only after the core is stable.
-5. **Performance and device validation:** measure editing responsiveness and runtime rendering on the intended Android device before raising default terrain resolution or adding costly effects.
-
-### Constraints and acceptance criteria
-- Prefer native source integration over depending on an external editor plugin, but keep the implementation modular and review compatibility/licensing before reusing third-party code.
-- Keep the interface usable on a narrow mobile screen and provide conservative defaults suitable for the LG K51 / Android 11 / ARM32 target.
-- Do not trade away existing editor features or visual quality as a blanket performance fix. Optimize based on measurements.
-- A completed source patch, successful Windows source checks, a successful Android native compile, a packaged APK, and a successful on-device test are separate milestones and must be recorded separately.
-- **No terrain implementation or terrain test has started as part of this documentation update.** The Android ARM32 native compile and the corrected exact shared-library output check both completed successfully.
-
+### Constraints and risk controls
+- This is a substantial editor feature, not a one-line toggle. Keep changes modular and reviewable; avoid a giant unverified source rewrite.
+- Keep the LG K51 / Android 11 / ARM32 target in mind, but do not claim device performance compatibility without measurements.
+- Do not disable existing features or reduce visual quality as a blanket performance fix; profile before optimizing.
+- A source patch, source validation, native compilation, APK packaging and on-device testing are separate milestones.
+- **No terrain implementation or terrain test has started yet.** The scope above is the agreed implementation target, not a claim that the feature exists.
+ 
 ### Validation results and deliberately deferred tests — 2026-10-24
 - **PASS — [Latest source-only debug overlay checks, run 40068088797](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40068088797)** on commit `4871bae`, including validation of the corrected output-check workflow.
 - **PASS — [ARM32 native editor compile, no APK, run 40065262042](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40065262042)** on commit `09c9cf0`: SCons completed and linked `libgodot.android.editor.arm32.so`, then moved it into the Android editor library path. This is a native C++ compile, **not** an APK build or device test.
