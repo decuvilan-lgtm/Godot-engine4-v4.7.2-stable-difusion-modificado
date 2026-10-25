@@ -45,6 +45,8 @@ var status_label: Label
 func _enter_tree() -> void:
 	terrain_button = Button.new()
 	terrain_button.text = "Terreno 3D"
+	terrain_button.custom_minimum_size = Vector2(0, 48)
+	terrain_button.add_theme_font_size_override("font_size", 17)
 	terrain_button.tooltip_text = "Abrir las herramientas de terreno 3D"
 	terrain_button.pressed.connect(_toggle_panel)
 	add_control_to_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_MENU, terrain_button)
@@ -77,8 +79,10 @@ func _exit_tree() -> void:
 func _build_panel() -> void:
 	panel = VBoxContainer.new()
 	panel.name = "Terrain3DEditorPanel"
-	panel.custom_minimum_size = Vector2(320, 0)
+	panel.custom_minimum_size = Vector2(340, 0)
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.add_theme_font_size_override("font_size", 18)
+	panel.add_theme_constant_override("separation", 12)
 	panel.hide()
 	add_control_to_dock(EditorPlugin.DOCK_SLOT_LEFT_UL, panel)
 	var tabs := TabContainer.new()
@@ -262,14 +266,14 @@ func _make_tab_page(tabs: TabContainer, title: String) -> VBoxContainer:
 	var content := VBoxContainer.new()
 	content.custom_minimum_size = Vector2(250, 0)
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 7)
+	content.add_theme_constant_override("separation", 12)
 	scroll.add_child(content)
 	return content
 
 func _add_section(parent: Control, text: String) -> void:
 	var label := Label.new()
 	label.text = text
-	label.add_theme_font_size_override("font_size", 15)
+	label.add_theme_font_size_override("font_size", 18)
 	parent.add_child(label)
 	var separator := HSeparator.new()
 	parent.add_child(separator)
@@ -286,7 +290,8 @@ func _add_spin(parent: Control, label_text: String, value: float, minimum: float
 	spin.max_value = maximum
 	spin.step = step
 	spin.value = value
-	spin.custom_minimum_size = Vector2(96, 0)
+	spin.custom_minimum_size = Vector2(112, 44)
+	spin.add_theme_font_size_override("font_size", 17)
 	row.add_child(spin)
 	parent.add_child(row)
 	return spin
@@ -297,6 +302,7 @@ func _add_slider(parent: Control, label_text: String, value: float, minimum: flo
 	label.text = "%s: %.2f" % [label_text, value]
 	column.add_child(label)
 	var slider := HSlider.new()
+	slider.custom_minimum_size = Vector2(0, 36)
 	slider.min_value = minimum
 	slider.max_value = maximum
 	slider.step = step
