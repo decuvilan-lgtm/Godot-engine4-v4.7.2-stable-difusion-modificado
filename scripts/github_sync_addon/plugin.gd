@@ -334,11 +334,8 @@ func _finish_downloaded_file() -> void:
 	if size != int(metadata.size) or _git_blob_sha1(staged_path) != str(metadata.sha):
 		_fail_sync("La verificación del archivo '%s' falló; se canceló la sincronización." % relative)
 		return
-	if relative == "project.godot":
-		var config_error := _ensure_sync_plugin_enabled(staged_path)
-		if config_error != OK:
-			_fail_sync("No se pudo conservar la configuración de los complementos en project.godot (error %d)." % config_error)
-			return
+	# Keep staged bytes identical to the verified upstream blob. Do not rewrite
+	# project.godot to preserve local editor/plugin settings: GitHub is authoritative.
 	_plan_downloaded_file(relative, staged_path)
 	download_index += 1
 	_download_next_file()
