@@ -701,7 +701,7 @@ void ScriptEditorDebugger::set_debug_mute_audio(bool p_mute) {""")
 
 replace_once(SCENE_DEBUGGER_HEADER,
     "static Error _msg_debug_mute_audio(const Array &p_args);",
-    "static Error _msg_debug_mute_audio(const Array &p_args);\n\tstatic Error _msg_set_debug_collisions(const Array &p_args);\n\tstatic Error _msg_set_debug_navigation(const Array &p_args);\n\tstatic Error _msg_set_debug_avoidance(const Array &p_args);\n\tstatic Error _msg_set_debug_paths(const Array &p_args);\n\tstatic Error _msg_set_debug_canvas_item_redraw(const Array &p_args);\n\tstatic void _create_runtime_debug_overlay();\n\tstatic void _runtime_debug_button_pressed();\n\tstatic void _runtime_debug_item_pressed(int p_id);")
+    "static Error _msg_debug_mute_audio(const Array &p_args);\n\tstatic Error _msg_set_debug_collisions(const Array &p_args);\n\tstatic Error _msg_set_debug_navigation(const Array &p_args);\n\tstatic Error _msg_set_debug_avoidance(const Array &p_args);\n\tstatic void _create_runtime_debug_overlay();\n\tstatic void _runtime_debug_button_pressed();\n\tstatic void _runtime_debug_item_pressed(int p_id);")
 replace_once(SCENE_DEBUGGER_SOURCE,
     '#include "servers/rendering/rendering_server.h"',
     '#include "core/templates/list.h"\n#include "scene/2d/path_2d.h"\n#include "scene/3d/path_3d.h"\n#include "scene/gui/button.h"\n#include "scene/gui/popup_menu.h"\n#include "scene/main/canvas_layer.h"\n#include "servers/rendering/rendering_server.h"\n#include "servers/navigation_2d/navigation_server_2d.h"\n#include "servers/navigation_3d/navigation_server_3d.h"')
