@@ -269,8 +269,10 @@ func _refresh_ui_scale() -> void:
 	if joystick_pad:
 		joystick_pad.custom_minimum_size = Vector2(112, 112) * scale
 	if panel:
-		for spin in panel.find_children("*", "SpinBox", true, false):
-			spin.custom_minimum_size = Vector2(112, 44) * scale
+		for control in panel.find_children("*", "SpinBox", true, false):
+			var spin := control as SpinBox
+			if spin:
+				spin.custom_minimum_size = Vector2(112, 44) * scale
 
 func _make_tab_page(tabs: TabContainer, title: String) -> VBoxContainer:
 	var scroll := ScrollContainer.new()
