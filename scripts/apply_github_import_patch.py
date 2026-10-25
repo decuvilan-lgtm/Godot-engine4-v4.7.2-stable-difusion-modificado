@@ -1119,6 +1119,8 @@ static void SceneDebugger::_runtime_debug_item_pressed(int p_id) {
 }
 
 Error SceneDebugger::_msg_set_debug_collisions(const Array &p_args) {""")
+replace_once(SCENE_DEBUGGER_SOURCE,
+    "Error SceneDebugger::_msg_set_debug_collisions(const Array &p_args) {",
     """static bool mobile_immersive_preview_active = false;
 static Window::ContentScaleAspect mobile_immersive_previous_aspect = Window::CONTENT_SCALE_ASPECT_IGNORE;
 static Window::ContentScaleMode mobile_immersive_previous_scale_mode = Window::CONTENT_SCALE_MODE_DISABLED;
