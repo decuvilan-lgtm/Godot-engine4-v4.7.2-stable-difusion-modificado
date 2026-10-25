@@ -29,7 +29,8 @@ permissions:
 
 concurrency:
   group: godot-android-editor-${{ github.ref }}
-  cancel-in-progress: true
+  # Do not cancel a 60–90 minute Android build when a later audit/fix commit arrives.
+  cancel-in-progress: false
 
 jobs:
   build-android-editor:
