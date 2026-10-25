@@ -626,3 +626,10 @@ The Windows workflow `.github/workflows/validate-debug-overlay-source.yml` now c
 - El diálogo de importación/búsqueda de GitHub se amplía para mejorar la legibilidad en el teléfono de 720×1600, y la ventana de resultados recibe un tamaño mínimo mayor. La interfaz debe seguir respetando la escala de tema del editor en lugar de aplicar tamaños globales a controles ajenos.
 - **Pantalla inmersiva de vista previa:** requisito pendiente de implementación/validación nativa. Debe ocultar la barra del editor y expandir el contenido del juego al área útil completa de 720×1600 (incluyendo cambio de relación de aspecto cuando el juego no coincide), con un control táctil discreto para volver sin detener la ejecución. No marcarlo como terminado hasta probar que no deja barra superior ni franjas/zoom con la relación anterior.
 - **Incidencias que requieren cierre:** en el dispositivo el botón Terreno 3D parecía no abrir herramientas y, tras cerrar el panel, no se pudo recuperar; al tocar otras opciones el editor dejó de responder. Las correcciones de dock e inactividad atacan dos causas plausibles, pero el parser/runtime de GDScript y la interacción real en Android siguen pendientes de verificación.
+
+
+### Android immersive preview control — source patch added (2026-10-25)
+
+- Added a compact **⛶** action to the run bar on Android. While a game is running, it enters fullscreen, enables distraction-free mode, hides the editor title bar, and shows a floating **Volver** control so the user can return without stopping/restarting the session.
+- The implementation is a native source patch in `scripts/apply_github_import_patch.py`; the source-validation script now checks for the immersive-mode anchors and mobile dialog sizing.
+- **Important limitation:** source patch application, Android compilation, and LG K51 runtime behavior are not yet verified. In particular, confirm the embedded game surface really stretches to the full 720×1600 area (rather than preserving the project's aspect ratio) and that the floating return control overlays the running preview. Do not consider the immersive requirement complete until those device checks pass.
