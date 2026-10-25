@@ -126,7 +126,7 @@ func _build_panel() -> void:
 	terrain_width.value_changed.connect(_update_terrain_preview)
 	terrain_depth.value_changed.connect(_update_terrain_preview)
 	cell_size.value_changed.connect(_update_terrain_preview)
-	shape_picker.item_selected.connect(_update_terrain_preview.bind(0.0))
+	shape_picker.item_selected.connect(_update_terrain_preview)
 	var create_button := Button.new()
 	create_button.text = "Crear terreno"
 	create_button.pressed.connect(_create_terrain)
