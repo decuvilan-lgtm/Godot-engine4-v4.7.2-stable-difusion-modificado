@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Patch the Android editor's native splash and in-engine startup overlay."""
 from pathlib import Path
+from base64 import b64decode
 import sys
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ROOT = REPO_ROOT / "godot-source"
 LAYOUT = ROOT / "platform/android/java/editor/src/main/res/layout/godot_editor_layout.xml"
 THEMES = ROOT / "platform/android/java/editor/src/main/res/values/themes.xml"
+ASSET_B64 = REPO_ROOT / "scripts/assets/goku_ultra_instinto.jpg.b64"
+GOKU_DRAWABLE = ROOT / "platform/android/java/editor/src/main/res/drawable-nodpi/goku_ultra_instinto.jpg"
 
 def replace_once(path: Path, old: str, new: str) -> None:
     if not path.is_file():
@@ -17,8 +20,10 @@ def replace_once(path: Path, old: str, new: str) -> None:
         raise RuntimeError(f"{path.relative_to(ROOT)}: expected one anchor, found {count}")
     path.write_text(content.replace(old, new, 1), encoding="utf-8")
 
-if not LAYOUT.is_file() or not THEMES.is_file():
-    sys.exit("Android editor resource tree missing; check out Godot 4.7.2 source first.")
+if not LAYOUT.is_file() or not THEMES.is_file() or not ASSET_B64.is_file():
+    sys.exit("Android editor resources or supplied Goku image asset missing; check out source and scripts/assets.")
+GOKU_DRAWABLE.parent.mkdir(parents=True, exist_ok=True)
+GOKU_DRAWABLE.write_bytes(b64decode(ASSET_B64.read_text(encoding="ascii").strip(), validate=True))
 
 replace_once(THEMES,
 """	<style name="GodotEditorSplashScreenTheme" parent="Theme.SplashScreen.IconBackground">
@@ -29,7 +34,7 @@ replace_once(THEMES,
 """	<style name="GodotEditorSplashScreenTheme" parent="Theme.SplashScreen.IconBackground">
 		<!-- Keep the native splash and the editor's own loading overlay visually consistent. -->
 		<item name="windowSplashScreenBackground">#10141C</item>
-		<item name="windowSplashScreenAnimatedIcon">@mipmap/ic_play_window</item>
+		<item name="windowSplashScreenAnimatedIcon">@drawable/goku_ultra_instinto</item>
 		<item name="windowSplashScreenIconBackgroundColor">#263244</item>
 		<item name="postSplashScreenTheme">@style/GodotEditorTheme</item>
 	</style>""")
@@ -71,7 +76,7 @@ replace_once(LAYOUT,
 			<ImageView
 				android:layout_width="88dp"
 				android:layout_height="88dp"
-				android:src="@mipmap/ic_play_window"
+				android:src="@drawable/goku_ultra_instinto"
 				android:contentDescription="Goku Ultra Instinto"/>
 
 			<TextView
@@ -102,6 +107,6 @@ replace_once(LAYOUT,
 		</LinearLayout>
 	</FrameLayout>""")
 
-print("PASS: native Android splash has an explicit icon/background.")
-print("PASS: startup overlay covers the editor until the Godot main loop starts.")
+print("PASS: native Android splash uses the supplied Goku Ultra Instinto image and dark background.")
+print("PASS: startup overlay uses the supplied Goku image, AZIZA title, and covers the editor until the Godot main loop starts.")
 print("Note: Android resource/Gradle and device runtime checks are still required.")
