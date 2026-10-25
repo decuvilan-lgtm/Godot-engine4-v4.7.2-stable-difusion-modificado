@@ -11,6 +11,8 @@ extends MeshInstance3D
 @export_storage var heights: PackedFloat32Array = PackedFloat32Array()
 @export_storage var vertex_colors: PackedColorArray = PackedColorArray()
 @export_storage var layer_weights: PackedColorArray = PackedColorArray()
+@export var full_surface_texture: Texture2D
+@export var stretch_full_surface_texture: bool = true
 var collision_body: StaticBody3D
 var terrain_material: ShaderMaterial
 
@@ -21,6 +23,11 @@ func _ready() -> void:
 	var existing_material := get_surface_override_material(0)
 	if existing_material is ShaderMaterial:
 		terrain_material = existing_material
+	if terrain_material:
+		terrain_material.set_shader_parameter("use_full_surface_texture", full_surface_texture != null)
+		if full_surface_texture:
+			terrain_material.set_shader_parameter("full_surface_texture", full_surface_texture)
+		terrain_material.set_shader_parameter("stretch_full_surface_texture", stretch_full_surface_texture)
 
 func initialize_grid(p_width: int, p_depth: int, p_cell_size: float) -> void:
 	# Validate all dimensions before allocating arrays or generating geometry.
@@ -78,6 +85,17 @@ func set_layer_texture(layer_index: int, texture: Texture2D) -> void:
 	if layer_index < 0 or layer_index >= names.size():
 		return
 	terrain_material.set_shader_parameter(names[layer_index], texture)
+	set_surface_override_material(0, terrain_material)
+
+
+func set_full_surface_texture(texture: Texture2D, stretch: bool = true) -> void:
+	full_surface_texture = texture
+	stretch_full_surface_texture = stretch
+	if terrain_material == null:
+		terrain_material = _create_terrain_material()
+	terrain_material.set_shader_parameter("full_surface_texture", texture if texture else _make_noise_texture(97, 0.04))
+	terrain_material.set_shader_parameter("use_full_surface_texture", texture != null)
+	terrain_material.set_shader_parameter("stretch_full_surface_texture", stretch)
 	set_surface_override_material(0, terrain_material)
 
 func set_layer_weights(values: PackedColorArray) -> void:
@@ -187,6 +205,9 @@ uniform sampler2D grass_texture : repeat_enable;
 uniform sampler2D rock_texture : repeat_enable;
 uniform sampler2D sand_texture : repeat_enable;
 uniform sampler2D snow_texture : repeat_enable;
+uniform sampler2D full_surface_texture : source_color, repeat_enable;
+uniform bool use_full_surface_texture = false;
+uniform bool stretch_full_surface_texture = true;
 uniform vec3 grass_tint : source_color = vec3(0.25, 0.46, 0.18);
 uniform vec3 rock_tint : source_color = vec3(0.38, 0.39, 0.40);
 uniform vec3 sand_tint : source_color = vec3(0.68, 0.56, 0.34);
@@ -203,7 +224,15 @@ void fragment() {
 	vec3 rock = texture(rock_texture, tiled_uv * 1.7).rgb * rock_tint;
 	vec3 sand = texture(sand_texture, tiled_uv * 0.7).rgb * sand_tint;
 	vec3 snow = texture(snow_texture, tiled_uv * 1.2).rgb * snow_tint;
-	ALBEDO = (grass * w.r + rock * w.g + sand * w.b + snow * w.a) * COLOR.rgb;
+	if (use_full_surface_texture) {
+		vec2 image_uv = UV;
+		if (!stretch_full_surface_texture) {
+			image_uv = tiled_uv;
+		}
+		ALBEDO = texture(full_surface_texture, image_uv).rgb * COLOR.rgb;
+	} else {
+		ALBEDO = (grass * w.r + rock * w.g + sand * w.b + snow * w.a) * COLOR.rgb;
+	}
 	ROUGHNESS = 0.92;
 }
 """
@@ -213,6 +242,9 @@ void fragment() {
 	material.set_shader_parameter("rock_texture", _make_noise_texture(37, 0.09))
 	material.set_shader_parameter("sand_texture", _make_noise_texture(59, 0.055))
 	material.set_shader_parameter("snow_texture", _make_noise_texture(83, 0.025))
+	material.set_shader_parameter("full_surface_texture", _make_noise_texture(97, 0.04))
+	material.set_shader_parameter("use_full_surface_texture", false)
+	material.set_shader_parameter("stretch_full_surface_texture", true)
 	return material
 
 func _make_noise_texture(seed_value: int, frequency: float) -> NoiseTexture2D:
