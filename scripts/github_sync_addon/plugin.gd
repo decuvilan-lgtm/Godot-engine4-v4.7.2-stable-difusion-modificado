@@ -396,28 +396,6 @@ func _git_blob_sha1(path: String) -> String:
 	file.close()
 	return context.finish().hex_encode()
 
-func _ensure_sync_plugin_enabled(config_path: String) -> int:
-	var config := ConfigFile.new()
-	var err := config.load(config_path)
-	if err != OK:
-		return err
-	# Preserve the display name chosen during import while accepting upstream project settings.
-	var local_config := ConfigFile.new()
-	if local_config.load(project_root.path_join("project.godot")) == OK and local_config.has_section_key("application", "config/name"):
-		config.set_value("application", "config/name", local_config.get_value("application", "config/name"))
-	var enabled: PackedStringArray = config.get_value("editor_plugins", "enabled", PackedStringArray())
-	var changed := false
-	if not enabled.has(PLUGIN_PATH):
-		enabled.append(PLUGIN_PATH)
-		changed = true
-	if not enabled.has(TERRAIN_PLUGIN_PATH):
-		enabled.append(TERRAIN_PLUGIN_PATH)
-		changed = true
-	if changed:
-		config.set_value("editor_plugins", "enabled", enabled)
-		return config.save(config_path)
-	return OK
-
 func _manifest_path() -> String:
 	return "user://%s/%s.json" % [MANIFEST_DIR, project_key]
 
