@@ -282,16 +282,13 @@ func _build_incremental_download_queue() -> void:
 		upstream_files[relative] = remote_sha
 		var local_path := project_root.path_join(relative)
 		var local_exists := FileAccess.file_exists(local_path)
-		var old_sha := str(baseline.get(relative, ""))
-		var needs_legacy_compare := legacy_baseline and not old_sha.is_empty()
 		var local_sha := _git_blob_sha1(local_path) if local_exists else ""
-		if needs_legacy_compare:
-			# Old manifests stored SHA-256, not Git blob IDs. One migration pass downloads
-			# tracked files to compare content; successful manifests then use Git blob SHA-1.
+		# GitHub is the source of truth: compare the actual local bytes with the
+		# upstream blob, never with the previous manifest. If a tracked file was
+		# edited inside Godot, download the repository version even when upstream
+		# itself has not changed since the previous sync.
+		if not local_exists or local_sha != remote_sha:
 			pending_downloads.append(relative)
-		elif not local_exists or local_sha != remote_sha:
-			if old_sha != remote_sha or not local_exists:
-				pending_downloads.append(relative)
 	# Only previously tracked files may be deleted; untracked local files are never inferred as upstream deletions.
 	for relative in baseline.keys():
 		if tree_entries.has(str(relative)):
@@ -349,32 +346,17 @@ func _finish_downloaded_file() -> void:
 func _plan_downloaded_file(relative: String, staged_path: String) -> void:
 	var local_path := project_root.path_join(relative)
 	var local_exists := FileAccess.file_exists(local_path)
-	var old_sha := str(baseline.get(relative, ""))
 	var remote_sha := str(tree_entries[relative].sha)
 	if not local_exists:
 		operations.append({"kind": "add", "path": relative, "modified": false})
 		return
-	if relative == "project.godot":
-		var local_config_hash := FileAccess.get_sha256(local_path)
-		var staged_config_hash := FileAccess.get_sha256(staged_path)
-		if local_config_hash == staged_config_hash:
-			return
-		if legacy_baseline and not old_sha.is_empty() and staged_config_hash == old_sha:
-			return
-		operations.append({"kind": "update", "path": relative, "modified": old_sha.is_empty() or local_config_hash != old_sha})
-		return
 	var local_sha := _git_blob_sha1(local_path)
 	if local_sha == remote_sha:
 		return
-	if legacy_baseline and not old_sha.is_empty():
-		# Legacy manifests store SHA-256 of the last synced bytes. If the upstream bytes
-		# are unchanged, preserve local edits instead of rewriting an unchanged file.
-		var downloaded_sha256 := FileAccess.get_sha256(staged_path)
-		if downloaded_sha256 == old_sha:
-			return
-		operations.append({"kind": "update", "path": relative, "modified": FileAccess.get_sha256(local_path) != old_sha})
-		return
-	operations.append({"kind": "update", "path": relative, "modified": old_sha.is_empty() or local_sha != old_sha})
+	# Any differing local copy is replaced by the verified bytes downloaded from
+	# the exact upstream commit, including project.godot. Editor-only addon enablement
+	# is managed separately by the editor installation flow, not by sync conflict rules.
+	operations.append({"kind": "update", "path": relative, "modified": true})
 
 func _finish_incremental_plan() -> void:
 	if request and is_instance_valid(request):
