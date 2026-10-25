@@ -21,6 +21,7 @@ var active_repo := ""
 var active_ref := ""
 var remote_commit_sha := ""
 var request_state := ""
+var current_request_url := ""
 var upstream_files: Dictionary = {}
 var tree_entries: Dictionary = {}
 var pending_downloads: Array[String] = []
@@ -168,6 +169,7 @@ func _start_request(state: String, url: String, destination: String = "") -> voi
 		_fail_sync("La solicitud de red dejó de estar disponible.")
 		return
 	request_state = state
+	current_request_url = url
 	request.download_file = destination
 	# JSON tree responses are capped at 8 MiB; changed file downloads may use the full 256 MiB file budget.
 	request.body_size_limit = MAX_FILE_BYTES + 1024 * 1024 if not destination.is_empty() else 8 * 1024 * 1024
@@ -181,7 +183,21 @@ func _incremental_headers() -> PackedStringArray:
 
 func _on_incremental_request_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
 	if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
-		_fail_sync("Falló la solicitud a GitHub (HTTP %d, resultado %d). Revisa conexión, referencia o límites de la API." % [response_code, result])
+		var reason := "GitHub no completó la solicitud."
+		match result:
+			HTTPRequest.RESULT_CANT_RESOLVE:
+				reason = "No se pudo encontrar el servidor. Comprueba Internet o DNS."
+			HTTPRequest.RESULT_CONNECTION_ERROR:
+				reason = "No se pudo conectar con GitHub. Comprueba Internet."
+			HTTPRequest.RESULT_TIMEOUT:
+				reason = "La solicitud tardó demasiado. Prueba una conexión más estable."
+			HTTPRequest.RESULT_BODY_SIZE_LIMIT_EXCEEDED:
+				reason = "La respuesta superó el límite de tamaño permitido."
+		var api_detail := ""
+		var response_json = JSON.parse_string(body.get_string_from_utf8())
+		if response_json is Dictionary and response_json.has("message"):
+			api_detail = "\nMensaje de GitHub: " + str(response_json.message)
+		_fail_sync("NO SE PUDO COMUNICAR CON GITHUB\nPaso: %s\nCódigo HTTP: %d\nCódigo de red: %d\nMotivo: %s%s\nDirección consultada: %s\nRepositorio: %s\nCommit: %s" % [request_state, response_code, result, reason, api_detail, current_request_url, active_repo, remote_commit_sha])
 		return
 	match request_state:
 		"repo":
@@ -502,7 +518,7 @@ func _apply_changes() -> void:
 	if operations.is_empty():
 		return
 	var possible_moves := _detect_possible_moves()
-	_log_sync("Aplicando %d operaciones desde %s @ %s." % [operations.size(), active_repo, remote_commit_sha])
+	_log_sync("INICIO DE ACTUALIZACIÓN\nProyecto local: %s\nRepositorio: %s\nCommit: %s\nCambios a aplicar: %d" % [project_root.get_file(), active_repo, remote_commit_sha, operations.size()])
 	for operation in operations:
 		var relative: String = operation.path
 		var local_path := project_root.path_join(relative)
@@ -514,7 +530,7 @@ func _apply_changes() -> void:
 				if possible_moves.has(relative):
 					_log_sync("POSIBLE MOVIMIENTO/RENOMBRE: '%s' → '%s' (se elimina la ruta anterior y se instala la nueva)." % [relative, str(possible_moves[relative])])
 				else:
-					_log_sync("ELIMINADO: '%s' ya no existe en el repositorio." % relative)
+					_log_sync("ARCHIVO ELIMINADO\nArchivo: %s\nYa no existe en GitHub y se quitó del proyecto local." % relative)
 		else:
 			var staged_path := staged_root.path_join(relative)
 			DirAccess.make_dir_recursive_absolute(local_path.get_base_dir())
@@ -524,7 +540,7 @@ func _apply_changes() -> void:
 				if FileAccess.file_exists(local_path):
 					var previous_connections := _read_scene_connections(local_path)
 					if previous_connections != incoming_connections:
-						connection_change = "CONEXIONES CAMBIADAS (%d antes, %d después)" % [previous_connections.size(), incoming_connections.size()]
+						connection_change = "Las conexiones guardadas cambiaron: %d antes y %d después" % [previous_connections.size(), incoming_connections.size()]
 			operation_error = _copy_file_streaming(staged_path, local_path)
 			if operation_error == OK:
 				if operation.kind == "add":
@@ -536,19 +552,20 @@ func _apply_changes() -> void:
 					if not move_source.is_empty():
 						_log_sync("AÑADIDO como posible movimiento: '%s' (origen: '%s')." % [relative, move_source])
 					else:
-						_log_sync("AÑADIDO: '%s'." % relative)
+						_log_sync("ARCHIVO NUEVO\nArchivo: %s\nSe añadió al proyecto local." % relative)
 				else:
-					_log_sync("SOBRESCRITO: '%s' en su ruta original." % relative)
+					_log_sync("ARCHIVO ACTUALIZADO\nArchivo: %s\nSe reemplazó por la versión de GitHub en la misma ruta." % relative)
 				if relative.ends_with(".tscn"):
 					if not connection_change.is_empty():
-						_log_sync("%s en '%s'; revisa las conexiones en el editor/Debugger." % [connection_change, relative], "warning")
+						_log_sync("REVISAR CONEXIONES DE ESCENA\nEscena: %s\nDetalle: %s\nAbre la escena y comprueba sus señales/conexiones. Esta revisión solo lee conexiones guardadas en archivos .tscn." % [relative, connection_change], "warning")
 					elif operation.kind == "add":
 						_log_sync("Escena añadida '%s': %d conexiones serializadas recibidas." % [relative, incoming_connections.size()])
 					else:
 						_log_sync("Conexiones de '%s': sin cambios (%d conexiones serializadas)." % [relative, incoming_connections.size()])
 		if operation_error != OK:
 			_cleanup_staging()
-			_show_error("Falló la aplicación de '%s' (error %d). No se crearon copias. Vuelve a sincronizar para aplicar de nuevo los archivos de GitHub." % [relative, operation_error])
+			var action_name := "eliminar" if operation.kind == "delete" else ("añadir" if operation.kind == "add" else "reemplazar")
+			_show_error("NO SE PUDO APLICAR EL CAMBIO\nAcción: %s\nArchivo: %s\nRuta local: %s\nCódigo Godot: %d (%s)\n\nPosibles causas: falta de espacio, acceso denegado o archivo bloqueado.\nQué hacer: revisa el espacio libre y vuelve a sincronizar. No se crearon copias de respaldo." % [action_name, relative, local_path, operation_error, error_string(operation_error)])
 			return
 	if not _save_manifest():
 		_cleanup_staging()
@@ -556,7 +573,7 @@ func _apply_changes() -> void:
 		return
 	_cleanup_staging()
 	EditorInterface.get_resource_filesystem().scan()
-	_log_sync("Sincronización completada: %d operaciones aplicadas; temporales eliminados." % operations.size())
+	_log_sync("ACTUALIZACIÓN TERMINADA\nCambios aplicados: %d\nArchivos temporales eliminados. No se subió ningún archivo a GitHub." % operations.size())
 	_show_notice("Sincronización completada. Se aplicaron los cambios de GitHub directamente; los temporales se eliminaron y no se subió ningún archivo.")
 
 func _detect_possible_moves() -> Dictionary:
@@ -594,7 +611,13 @@ func _read_scene_connections(scene_path: String) -> PackedStringArray:
 	return connections
 
 func _log_sync(message: String, severity: String = "info") -> void:
-	var formatted := "[GitHub Sync] " + message
+	var heading := "GITHUB → GODOT | INFORMACIÓN"
+	match severity:
+		"warning":
+			heading = "GITHUB → GODOT | ATENCIÓN"
+		"error":
+			heading = "GITHUB → GODOT | ERROR"
+	var formatted := "\n" + heading + "\n" + message + "\n" + "-".repeat(42)
 	match severity:
 		"warning":
 			push_warning(formatted)
