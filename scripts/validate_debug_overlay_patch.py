@@ -24,6 +24,11 @@ require(True, "patcher has valid Python syntax")
 
 for token, label in [
     ("PREVIEW_DEBUG_COLLISIONS", "collision overlay menu item"),
+    ('preview_debug_button->set_text(TTR("COL."))', "compact collision button has a visible toolbar label"),
+    ("set_custom_minimum_size(Size2(48, 44))", "collision button has a reliable touch target on mobile"),
+    ("Colisiones 2D/3D, formas y raycasts", "collision menu explicitly names 2D/3D shapes and raycasts"),
+    ("Area2D/Area3D", "collision menu documents Area2D and Area3D visibility"),
+    ("Opciones avanzadas de vista previa", "collision menu button has an accessible name and tooltip"),
     ("PREVIEW_DEBUG_PATHS", "path overlay menu item"),
     ("PREVIEW_DEBUG_NAVIGATION", "navigation overlay menu item"),
     ("PREVIEW_DEBUG_AVOIDANCE", "avoidance overlay menu item"),
