@@ -33,6 +33,9 @@ for token, label in [
 layout = ROOT / "godot-source/platform/android/java/editor/src/main/res/layout/godot_editor_layout.xml"
 themes = ROOT / "godot-source/platform/android/java/editor/src/main/res/values/themes.xml"
 require(layout.is_file() and themes.is_file(), "patched Android startup resources exist")
+asset = ROOT / "godot-source/platform/android/java/editor/src/main/res/drawable-nodpi/goku_ultra_instinto.jpg"
+require(asset.is_file() and asset.stat().st_size > 1000 and asset.read_bytes().startswith(b"\\xff\\xd8"),
+        "Goku splash drawable was decoded as a real JPEG asset")
 layout_root = ET.parse(layout).getroot()
 themes_root = ET.parse(themes).getroot()
 require(any(node.attrib.get("{http://schemas.android.com/apk/res/android}id") == "@+id/editor_loading_indicator" for node in layout_root.iter()),
@@ -40,4 +43,5 @@ require(any(node.attrib.get("{http://schemas.android.com/apk/res/android}id") ==
 theme_items = [node.attrib.get("name", "") for node in themes_root.iter("item")]
 require("windowSplashScreenBackground" in theme_items and "windowSplashScreenAnimatedIcon" in theme_items,
         "patched native splash resources are well-formed and include explicit branding")
+require("@drawable/goku_ultra_instinto" in source, "both native and in-engine startup use the Goku drawable")
 print("Static checks only; no Android resource compilation or device runtime is implied.")
