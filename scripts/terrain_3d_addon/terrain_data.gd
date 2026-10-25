@@ -5,6 +5,9 @@ extends MeshInstance3D
 @export var grid_width: int = 65
 @export var grid_depth: int = 65
 @export var cell_size: float = 1.0
+@export_enum("Cuadrada / rectangular", "Circular / elíptica") var footprint_shape: int = 0
+@export_range(0.1, 100.0, 0.1) var base_thickness: float = 2.0
+@export_range(1.0, 1000.0, 1.0) var max_height: float = 100.0
 @export_storage var heights: PackedFloat32Array = PackedFloat32Array()
 @export_storage var vertex_colors: PackedColorArray = PackedColorArray()
 @export_storage var layer_weights: PackedColorArray = PackedColorArray()
@@ -121,22 +124,46 @@ func _rebuild_mesh() -> void:
 	var st := SurfaceTool.new()
 	st.set_custom_format(0, SurfaceTool.CUSTOM_RGBA8_UNORM)
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var lowest_height := 0.0
+	for height in heights:
+		lowest_height = minf(lowest_height, height)
+	var bottom_y := lowest_height - maxf(0.1, base_thickness)
 	for z in range(grid_depth - 1):
 		for x in range(grid_width - 1):
+			if not _cell_inside_footprint(x, z):
+				continue
 			var i00 := get_height_index(x, z)
 			var i10 := get_height_index(x + 1, z)
 			var i01 := get_height_index(x, z + 1)
 			var i11 := get_height_index(x + 1, z + 1)
-			# Winding is counter-clockwise from above so generated normals face upward.
+			# Top surface.
 			_add_vertex(st, x, z, i00)
 			_add_vertex(st, x, z + 1, i01)
 			_add_vertex(st, x + 1, z, i10)
 			_add_vertex(st, x + 1, z, i10)
 			_add_vertex(st, x, z + 1, i01)
 			_add_vertex(st, x + 1, z + 1, i11)
-	# Vertices are emitted per triangle for simple winding, then indexed to share
-	# identical vertices. This cuts a 257x257 grid from ~393k to ~66k vertices,
-	# reducing mesh memory, upload time, and normal-generation cost on Android.
+			# Underside closes the terrain into a solid, collision-ready volume.
+			_add_bottom_vertex(st, x, z, i00, bottom_y)
+			_add_bottom_vertex(st, x + 1, z, i10, bottom_y)
+			_add_bottom_vertex(st, x, z + 1, i01, bottom_y)
+			_add_bottom_vertex(st, x + 1, z, i10, bottom_y)
+			_add_bottom_vertex(st, x + 1, z + 1, i11, bottom_y)
+			_add_bottom_vertex(st, x, z + 1, i01, bottom_y)
+			# Add vertical walls wherever this footprint cell borders empty space.
+			var p00 := get_vertex_local_position(x, z)
+			var p10 := get_vertex_local_position(x + 1, z)
+			var p01 := get_vertex_local_position(x, z + 1)
+			var p11 := get_vertex_local_position(x + 1, z + 1)
+			if not _cell_inside_footprint(x, z - 1):
+				_add_wall(st, p00, p10, bottom_y, i00, i10)
+			if not _cell_inside_footprint(x, z + 1):
+				_add_wall(st, p11, p01, bottom_y, i11, i01)
+			if not _cell_inside_footprint(x - 1, z):
+				_add_wall(st, p01, p00, bottom_y, i01, i00)
+			if not _cell_inside_footprint(x + 1, z):
+				_add_wall(st, p10, p11, bottom_y, i10, i11)
+	# Share identical vertices to keep the 257x257 Android mesh bounded.
 	st.index()
 	st.generate_normals()
 	mesh = st.commit()
@@ -196,11 +223,44 @@ func _make_noise_texture(seed_value: int, frequency: float) -> NoiseTexture2D:
 	texture.noise = noise
 	return texture
 
+func _cell_inside_footprint(x: int, z: int) -> bool:
+	if x < 0 or z < 0 or x >= grid_width - 1 or z >= grid_depth - 1:
+		return false
+	if footprint_shape == 0:
+		return true
+	var nx := (float(x) + 0.5 - float(grid_width - 1) * 0.5) / maxf(0.5, float(grid_width - 1) * 0.5)
+	var nz := (float(z) + 0.5 - float(grid_depth - 1) * 0.5) / maxf(0.5, float(grid_depth - 1) * 0.5)
+	return nx * nx + nz * nz <= 1.0
+
+func _add_custom_vertex(st: SurfaceTool, position: Vector3, color: Color, weights: Color, uv: Vector2) -> void:
+	st.set_color(color)
+	st.set_custom(0, weights)
+	st.set_uv(uv)
+	st.add_vertex(position)
+
 func _add_vertex(st: SurfaceTool, x: int, z: int, color_index: int) -> void:
-	st.set_color(vertex_colors[color_index])
-	st.set_custom(0, layer_weights[color_index])
-	st.set_uv(Vector2(float(x) / float(grid_width - 1), float(z) / float(grid_depth - 1)))
-	st.add_vertex(get_vertex_local_position(x, z))
+	_add_custom_vertex(st, get_vertex_local_position(x, z), vertex_colors[color_index], layer_weights[color_index], Vector2(float(x) / float(grid_width - 1), float(z) / float(grid_depth - 1)))
+
+func _add_bottom_vertex(st: SurfaceTool, x: int, z: int, color_index: int, bottom_y: float) -> void:
+	var position := get_vertex_local_position(x, z)
+	position.y = bottom_y
+	_add_custom_vertex(st, position, vertex_colors[color_index], layer_weights[color_index], Vector2(float(x) / float(grid_width - 1), float(z) / float(grid_depth - 1)))
+
+func _add_wall(st: SurfaceTool, top_a: Vector3, top_b: Vector3, bottom_y: float, index_a: int, index_b: int) -> void:
+	var bottom_a := Vector3(top_a.x, bottom_y, top_a.z)
+	var bottom_b := Vector3(top_b.x, bottom_y, top_b.z)
+	var uv_a := Vector2(top_a.x, top_a.z) / maxf(cell_size, 0.1)
+	var uv_b := Vector2(top_b.x, top_b.z) / maxf(cell_size, 0.1)
+	var color_a: Color = vertex_colors[index_a]
+	var color_b: Color = vertex_colors[index_b]
+	var weight_a: Color = layer_weights[index_a]
+	var weight_b: Color = layer_weights[index_b]
+	_add_custom_vertex(st, top_a, color_a, weight_a, uv_a)
+	_add_custom_vertex(st, bottom_a, color_a, weight_a, uv_a)
+	_add_custom_vertex(st, top_b, color_b, weight_b, uv_b)
+	_add_custom_vertex(st, top_b, color_b, weight_b, uv_b)
+	_add_custom_vertex(st, bottom_a, color_a, weight_a, uv_a)
+	_add_custom_vertex(st, bottom_b, color_b, weight_b, uv_b)
 
 func rebuild_collision() -> void:
 	_rebuild_collision()
