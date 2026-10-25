@@ -50,9 +50,9 @@ func _enter_tree() -> void:
 	terrain_button.pressed.connect(_toggle_panel)
 	add_control_to_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_MENU, terrain_button)
 	_build_panel()
-	var editor_base := EditorInterface.get_base_control()
-	if editor_base and not editor_base.theme_changed.is_connected(_refresh_ui_scale):
-		editor_base.theme_changed.connect(_refresh_ui_scale)
+	var editor_settings := EditorInterface.get_editor_settings()
+	if editor_settings and not editor_settings.settings_changed.is_connected(_refresh_ui_scale):
+		editor_settings.settings_changed.connect(_refresh_ui_scale)
 	_refresh_ui_scale()
 	# Terrain brush input must remain available even when the terrain node is not selected.
 	set_input_event_forwarding_always_enabled()
