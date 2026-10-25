@@ -252,7 +252,9 @@ func create_foliage(count: int, seed_value: int = 1701) -> Node3D:
 	var amount := clampi(count, 1, 5000)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
-	var canopy_mesh := ConeMesh.new()
+	# Godot 4.7 has CylinderMesh but no ConeMesh primitive. A zero top radius
+	# creates a cone while remaining compatible with the engine's built-in mesh API.
+	var canopy_mesh := CylinderMesh.new()
 	canopy_mesh.top_radius = 0.0
 	canopy_mesh.bottom_radius = 0.65
 	canopy_mesh.height = 1.8
