@@ -333,6 +333,12 @@ func _toggle_panel() -> void:
 	if panel.visible:
 		panel.hide()
 		return
+
+	# Re-register the dock on every reopen. Godot can detach/close an EditorPlugin
+	# dock independently of the child Control's lifetime; show() alone may leave
+	# the toolbar button pointing at a hidden, detached panel.
+	remove_control_from_docks(panel)
+	add_control_to_dock(EditorPlugin.DOCK_SLOT_RIGHT_UL, panel)
 	panel.show()
 	_update_terrain_preview()
 	# Open the tools in their dock first. Create a starter base only when there
