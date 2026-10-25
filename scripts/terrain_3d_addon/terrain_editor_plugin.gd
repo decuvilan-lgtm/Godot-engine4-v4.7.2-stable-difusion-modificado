@@ -77,7 +77,8 @@ func _exit_tree() -> void:
 func _build_panel() -> void:
 	panel = VBoxContainer.new()
 	panel.name = "Terrain3DEditorPanel"
-	panel.custom_minimum_size = Vector2(280, 0)
+	panel.custom_minimum_size = Vector2(320, 0)
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.hide()
 	add_control_to_dock(EditorPlugin.DOCK_SLOT_LEFT_UL, panel)
 	var tabs := TabContainer.new()
@@ -223,7 +224,7 @@ func _build_panel() -> void:
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status_label.text = "Abre una escena 3D para comenzar."
 	panel.add_child(status_label)
-	add_control_to_bottom_panel(panel, "Terreno 3D")
+	# Keep the terrain tools in the dock; the viewport remains the main work area.
 	panel.hide()
 	_create_cursor()
 	_create_terrain_preview()
@@ -594,7 +595,7 @@ func _apply_at_cursor() -> void:
 		_set_status("No hay un punto válido del terreno bajo el cursor.")
 
 func _apply_brush(terrain, world_position: Vector3) -> void:
-	var local := terrain.to_local(world_position)
+	var local: Vector3 = terrain.to_local(world_position)
 	if grid_snap.button_pressed:
 		local.x = roundf(local.x / terrain.cell_size) * terrain.cell_size
 		local.z = roundf(local.z / terrain.cell_size) * terrain.cell_size
@@ -697,7 +698,7 @@ func _focus_terrain() -> void:
 		_set_status("Selecciona o crea un terreno para enfocarlo.")
 		return
 	var camera := viewport.get_camera_3d()
-	var center := terrain.global_position
+	var center: Vector3 = terrain.global_position
 	camera.global_position = center + Vector3(18.0, 18.0, 18.0)
 	camera.look_at(center, Vector3.UP)
 	_set_status("Vista centrada en el terreno.")
