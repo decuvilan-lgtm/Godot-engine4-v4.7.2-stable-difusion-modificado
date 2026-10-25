@@ -34,7 +34,6 @@ for token, label in [
     ("terrain.set(\"footprint_shape\"", "creation applies the selected footprint shape"),
     ("terrain.set(\"base_thickness\"", "creation applies the selected volume thickness"),
     ("terrain.set(\"max_height\"", "creation applies the selected vertical range"),
-    ("_cell_inside_footprint", "terrain mesh supports a non-rectangular footprint"),
     ("_add_wall(st", "terrain mesh creates perimeter walls for a solid volume"),
     ("_add_bottom_vertex", "terrain mesh includes an underside"),
     ("add_control_to_dock(EditorPlugin.DOCK_SLOT_RIGHT_UL, panel)", "terrain tools share the native right dock"),
@@ -106,6 +105,7 @@ for token, label in [
     ("var canopy_mesh := CylinderMesh.new()", "foliage canopy uses a Godot 4.7 built-in mesh primitive"),
 ]:
     require(token in data, label)
+require("_cell_inside_footprint" in data, "terrain mesh supports a non-rectangular footprint")
 require("TERRAIN_DATA_GD" in patcher and "res://addons/terrain_3d/plugin.cfg" in patcher,
         "ZIP-installed projects receive and enable the terrain addon")
 print("Static source checks only; GDScript parsing, Android resource compilation and viewport runtime are still required.")
