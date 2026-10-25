@@ -457,11 +457,23 @@ func _update_terrain_preview(_value: float = 0.0) -> void:
 		resolution_preview_label.text = "%s · X %.1f × Z %.1f unidades · Y ±%.1f · base %.1f · %d × %d vértices" % [footprint, (width - 1) * cell, (depth - 1) * cell, y_range, thickness, width, depth]
 	if terrain_preview == null or not is_instance_valid(terrain_preview) or terrain_width == null:
 		return
-	var plane := PlaneMesh.new()
-	plane.size = Vector2((terrain_width.value - 1.0) * cell_size.value, (terrain_depth.value - 1.0) * cell_size.value)
-	plane.subdivide_width = int(terrain_width.value) - 2
-	plane.subdivide_depth = int(terrain_depth.value) - 2
-	terrain_preview.mesh = plane
+	var world_width := (terrain_width.value - 1.0) * cell_size.value
+	var world_depth := (terrain_depth.value - 1.0) * cell_size.value
+	if shape_picker and shape_picker.get_selected_id() == 1:
+		var disc := CylinderMesh.new()
+		disc.top_radius = 0.5
+		disc.bottom_radius = 0.5
+		disc.height = 0.05
+		disc.radial_segments = 48
+		terrain_preview.mesh = disc
+		terrain_preview.scale = Vector3(world_width, 1.0, world_depth)
+	else:
+		var plane := PlaneMesh.new()
+		plane.size = Vector2(world_width, world_depth)
+		plane.subdivide_width = int(terrain_width.value) - 2
+		plane.subdivide_depth = int(terrain_depth.value) - 2
+		terrain_preview.mesh = plane
+		terrain_preview.scale = Vector3.ONE
 
 func _create_cursor() -> void:
 	cursor_mesh = MeshInstance3D.new()
@@ -734,6 +746,9 @@ func _apply_brush(terrain, world_position: Vector3) -> void:
 					new_heights[index] = lerpf(old_heights[index], total / maxf(1.0, count), strength * weight)
 				3:
 					new_heights[index] = lerpf(old_heights[index], flatten_height.value, strength * weight)
+	var vertical_limit := float(terrain.get("max_height")) if terrain.get("max_height") != null else 100.0
+	for index in range(new_heights.size()):
+		new_heights[index] = clampf(new_heights[index], -vertical_limit, vertical_limit)
 	_commit_terrain_change(terrain, "Esculpir terreno", "set_heights", old_heights, new_heights)
 
 func _commit_terrain_change(terrain, action_name: String, method: StringName, old_value: Variant, new_value: Variant) -> void:
