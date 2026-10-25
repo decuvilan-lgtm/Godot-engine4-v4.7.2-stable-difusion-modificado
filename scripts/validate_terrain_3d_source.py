@@ -30,7 +30,7 @@ for token, label in [
     ("add_control_to_dock(EditorPlugin.DOCK_SLOT_LEFT_UL, panel)", "terrain tools are placed in the editor dock"),
     ("var local: Vector3 = terrain.to_local(world_position)", "brush local coordinates have an explicit Vector3 type"),
     ("var center: Vector3 = terrain.global_position", "terrain focus center has an explicit Vector3 type"),
-    ("panel.custom_minimum_size = Vector2(320, 0)", "terrain dock has a mobile-friendly minimum width"),
+    ("panel.custom_minimum_size = Vector2(340, 0)", "terrain dock has a mobile-friendly minimum width"),
     ("joystick_pad.gui_input.connect", "touch joystick input is wired"),
     ("_forward_3d_gui_input", "3D viewport mouse/touch input is handled"),
     ("set_input_event_forwarding_always_enabled()", "terrain viewport input remains available without selection-dependent forwarding"),
