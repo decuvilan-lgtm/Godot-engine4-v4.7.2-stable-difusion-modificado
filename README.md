@@ -693,3 +693,11 @@ Esta sección prevalece sobre notas antiguas de este README cuando describan un 
 - La revisión detectó que los modos de pintura estaban añadidos al selector de Esculpir, aunque sus controles vivían en Pintar. Se corrigió: **Esculpir** contiene Elevar/Bajar/Suavizar/Aplanar; **Pintar** contiene su propio selector de Pintar color/Pintar capa de material y los controles de imagen/textura.
 - Se restringió la edición por toque/ratón y el trazo continuo a las pestañas **Esculpir** y **Pintar**. Inicio, Vegetación y Heightmaps ya no deben recibir accidentalmente pinceladas por el simple hecho de que el panel esté abierto.
 - Esta corrección conserva el estilo de distribución de Godot (dock, pestañas, controles integrados en la vista correspondiente). Falta comprobar visualmente tamaños, orden y comportamiento dentro del editor Android; no se ha compilado ni ejecutado Godot.
+
+
+## Contador FPS superpuesto en la vista previa — 2026-10-25
+
+- Se incorpora **Mostrar FPS (esquina superior derecha)** al menú existente **COL.** de la vista previa en ejecución. No agrega controles a la barra principal del editor ni cambia la distribución de docks y paneles.
+- El contador queda anclado arriba a la derecha, debajo del botón COL., en la capa superpuesta de la vista previa. Ignora los toques para no bloquear los controles del juego.
+- Actualiza el valor cuatro veces por segundo con los FPS reportados por el motor. Está desactivado por defecto; al desactivarlo, el contador se oculta y se detiene su temporizador.
+- La validación estática comprueba la opción, ubicación, lectura de FPS y paso de entrada táctil. La compilación C++ y la prueba visual en Android siguen siendo necesarias.
