@@ -45,6 +45,9 @@ func _enter_tree() -> void:
 	sync_button.pressed.connect(_open_sync_dialog)
 	add_control_to_container(EditorPlugin.CONTAINER_TOOLBAR, sync_button)
 	_build_dialogs()
+	# Organize project scenes after the editor has restored its filesystem and main scene.
+	# This opens existing scene resources in tabs without changing their node trees.
+	call_deferred("_auto_organize_project_scenes")
 
 func _exit_tree() -> void:
 	# A dismissed preview or editor shutdown must not leave temporary staging data on the phone.
@@ -583,13 +586,38 @@ func _apply_changes() -> void:
 	_log_sync("ACTUALIZACIÓN TERMINADA\nCambios aplicados: %d\nArchivos temporales eliminados. No se subió ningún archivo a GitHub." % operations.size())
 	_show_notice("Sincronización completada. Se aplicaron los cambios de GitHub directamente; los temporales se eliminaron y no se subió ningún archivo.")
 
-func _organize_synced_scenes(initial_paths: PackedStringArray) -> void:
-	# Keep imported scenes as separate editor tabs; never instance their nodes into
-	# the main scene tree. Traverse PackedScene instance references so nested scenes
-	# are also opened when they are dependencies of a changed scene.
+func _auto_organize_project_scenes() -> void:
+	# Enumerate every scene in the project, not only scenes referenced by Main.
+	# This means a project opens ready to inspect without manually arranging tabs.
+	var scene_paths := PackedStringArray()
+	var pending_dirs: Array[String] = ["res://"]
+	while not pending_dirs.is_empty():
+		var dir_path: String = pending_dirs.pop_back()
+		var dir := DirAccess.open(dir_path)
+		if dir == null:
+			continue
+		dir.list_dir_begin()
+		var entry := dir.get_next()
+		while not entry.is_empty():
+			if entry.begins_with(".") or entry == ".godot":
+				entry = dir.get_next()
+				continue
+			var full_path := dir_path.path_join(entry)
+			if dir.current_is_dir():
+				pending_dirs.append(full_path)
+			elif entry.ends_with(".tscn"):
+				scene_paths.append(full_path)
+			entry = dir.get_next()
+		dir.list_dir_end()
+	_organize_synced_scenes(scene_paths, true)
+
+func _organize_synced_scenes(initial_paths: PackedStringArray, open_all_project_scenes: bool = false) -> void:
+	# PackedScene state preserves node paths, owners, child nodes and instance roots.
+	# We only open scene resources as tabs; never flatten or duplicate their nodes.
 	var pending: Array[String] = []
 	var visited: Dictionary = {}
 	var unreadable: PackedStringArray = PackedStringArray()
+	var main_scene := str(ProjectSettings.get_setting("application/run/main_scene", ""))
 	for scene_path in initial_paths:
 		pending.append(scene_path)
 	while not pending.is_empty():
@@ -612,15 +640,19 @@ func _organize_synced_scenes(initial_paths: PackedStringArray) -> void:
 					var dependency_path := instance.resource_path
 					if dependency_path.begins_with("res://") and dependency_path.ends_with(".tscn") and not visited.has(dependency_path):
 						pending.append(dependency_path)
-		# Opening a scene creates a scene tab, not nodes in the current main scene.
+		# Open all discovered dependencies as tabs. Godot preserves each scene's
+		# own hierarchy, child nodes, owners, connections and nested instances.
 		EditorInterface.open_scene_from_path(scene_path)
+	if not main_scene.is_empty() and FileAccess.file_exists(main_scene):
+		EditorInterface.open_scene_from_path(main_scene)
 	if not unreadable.is_empty():
 		var dialog := AcceptDialog.new()
 		dialog.title = "Escenas que no se pudieron abrir"
-		dialog.dialog_text = "Solo estas escenas .tscn no se pudieron cargar como PackedScene. Los errores de scripts siguen en Output/Debugger.\n\n" + "\n".join(unreadable)
+		dialog.dialog_text = "No se pudieron cargar estas escenas como PackedScene. Los errores de scripts siguen en Output/Debugger.\n\n" + "\n".join(unreadable)
 		add_child(dialog)
 		dialog.popup_centered(Vector2i(560, 360))
-	_log_sync("Organización de escenas: %d pestañas válidas abiertas; %d escenas no legibles." % [visited.size() - unreadable.size(), unreadable.size()])
+	_log_sync("Organización automática: %d escenas procesadas; %d escenas ilegibles." % [visited.size() - unreadable.size(), unreadable.size()])
+
 
 func _detect_possible_moves() -> Dictionary:
 	var deleted_by_sha: Dictionary = {}
