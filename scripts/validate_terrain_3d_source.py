@@ -127,7 +127,7 @@ require("stretch_full_surface_texture" in data, "terrain shader supports stretch
 require('var terrain_tabs: TabContainer' in plugin, 'terrain editor uses a native tab container')
 require('paint_mode_picker = OptionButton.new()' in plugin, 'paint modes live in the Paint tab')
 require('terrain_tabs.current_tab not in [1, 2]' in plugin, 'brush editing is restricted to Sculpt/Paint tabs')
-require(re.search(r'(?m)^\\s*mode_picker\\.add_item\\("Pintar color"\\)', plugin) is None, 'sculpt selector does not contain paint modes')
+require(re.search(r'(?m)^\s*mode_picker\.add_item\("Pintar color"\)', plugin) is None, 'sculpt selector does not contain paint modes')
 
 if FAILURES:
     raise SystemExit(f"{len(FAILURES)} terrain source check(s) failed; see all FAIL lines above.")
