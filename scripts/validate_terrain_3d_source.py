@@ -83,7 +83,14 @@ for token, label in [
     ("Enfocar terreno en la vista 3D", "viewport recenter/focus control"),
 ]:
     require(token in plugin, label)
+toggle_body = plugin[plugin.index("func _toggle_panel()"):plugin.index("func _create_terrain()")]
+require("_create_terrain()" not in toggle_body, "opening Terreno 3D leaves the ordinary 3D scene empty")
+require('create_button.text = "Crear terreno"' in plugin, "terrain insertion requires the explicit Create terrain button")
+
 for token, label in [
+    ("@export_enum(\"Cuadrada / rectangular\", \"Circular / elíptica\") var footprint_shape", "terrain data persists its footprint shape"),
+    ("@export_range(0.1, 100.0, 0.1) var base_thickness", "terrain data persists its solid base thickness"),
+    ("@export_range(1.0, 1000.0, 1.0) var max_height", "terrain data persists its vertical sculpt range"),
     ("SurfaceTool", "procedural terrain mesh"),
     ("st.index()", "indexed terrain mesh avoids tripled vertex storage on mobile"),
     ("is_finite(height)", "reject non-finite/corrupt height values before mesh generation"),
