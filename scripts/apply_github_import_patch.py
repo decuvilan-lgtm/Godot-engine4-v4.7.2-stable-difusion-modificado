@@ -1003,8 +1003,8 @@ void EditorRunBar::_write_movie_toggled(bool p_enabled) {""")
 # While immersive preview is active, ask the running game through the existing
 # remote-debugger channel to ignore its design aspect ratio, then restore it on exit.
 replace_once(EDITOR_NODE_SOURCE,
-    "DisplayServer::get_singleton()->window_set_mode(DisplayServerEnums::WINDOW_MODE_FULLSCREEN);",
-    "DisplayServer::get_singleton()->window_set_mode(DisplayServerEnums::WINDOW_MODE_FULLSCREEN);\n\tEditorDebuggerNode::get_singleton()->set_mobile_immersive_preview(true);")
+    "mobile_immersive_preview = true;\n\tDisplayServer::get_singleton()->window_set_mode(DisplayServerEnums::WINDOW_MODE_FULLSCREEN);",
+    "mobile_immersive_preview = true;\n\tDisplayServer::get_singleton()->window_set_mode(DisplayServerEnums::WINDOW_MODE_FULLSCREEN);\n\tEditorDebuggerNode::get_singleton()->set_mobile_immersive_preview(true);")
 replace_once(EDITOR_NODE_SOURCE,
     "set_distraction_free_mode(mobile_previous_distraction_free);",
     "set_distraction_free_mode(mobile_previous_distraction_free);\n\tEditorDebuggerNode::get_singleton()->set_mobile_immersive_preview(false);")
