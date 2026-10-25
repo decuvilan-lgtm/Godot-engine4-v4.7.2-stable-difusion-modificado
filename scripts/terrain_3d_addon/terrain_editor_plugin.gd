@@ -6,6 +6,8 @@ const TERRAIN_META := "github_terrain_3d"
 
 var terrain_button: Button
 var panel: VBoxContainer
+var terrain_tabs: TabContainer
+var paint_mode_picker: OptionButton
 var terrain_width: SpinBox
 var terrain_depth: SpinBox
 var cell_size: SpinBox
@@ -97,15 +99,15 @@ func _build_panel() -> void:
 	# Behave like a native Godot inspector dock: share the right dock area and
 	# never reserve a custom-width column or resize the whole editor UI.
 	add_control_to_dock(EditorPlugin.DOCK_SLOT_RIGHT_UL, panel)
-	var tabs := TabContainer.new()
-	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_child(tabs)
-	var home := _make_tab_page(tabs, "Inicio")
-	var sculpt := _make_tab_page(tabs, "Esculpir")
-	var paint := _make_tab_page(tabs, "Pintar")
-	var foliage := _make_tab_page(tabs, "Vegetación")
-	var maps := _make_tab_page(tabs, "Heightmaps")
+	terrain_tabs = TabContainer.new()
+	terrain_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	terrain_tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.add_child(terrain_tabs)
+	var home := _make_tab_page(terrain_tabs, "Inicio")
+	var sculpt := _make_tab_page(terrain_tabs, "Esculpir")
+	var paint := _make_tab_page(terrain_tabs, "Pintar")
+	var foliage := _make_tab_page(terrain_tabs, "Vegetación")
+	var maps := _make_tab_page(terrain_tabs, "Heightmaps")
 
 	var title := Label.new()
 	title.text = "EDITOR DE TERRENO 3D"
@@ -193,8 +195,10 @@ func _build_panel() -> void:
 	sculpt.add_child(apply_button)
 
 	_add_section(paint, "Pintura de terreno")
-	mode_picker.add_item("Pintar color")
-	mode_picker.add_item("Pintar capa de material")
+	paint_mode_picker = OptionButton.new()
+	paint_mode_picker.add_item("Pintar color")
+	paint_mode_picker.add_item("Pintar capa de material")
+	paint.add_child(_make_labeled_control("Modo de pintura", paint_mode_picker))
 	paint_color = ColorPickerButton.new()
 	paint_color.color = Color(0.24, 0.48, 0.20)
 	paint_color.text = "Color del terreno"
@@ -223,7 +227,7 @@ func _build_panel() -> void:
 	surface_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	paint.add_child(surface_help)
 	var paint_help := Label.new()
-	paint_help.text = "Selecciona un modo de pintura en la lista del pincel de Esculpir; el color y la capa se configuran aquí."
+	paint_help.text = "Elige aquí el modo de pintura. Radio e intensidad se ajustan en Esculpir; el pincel solo modifica el terreno mientras estás en Esculpir o Pintar."
 	paint_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	paint.add_child(paint_help)
 
@@ -633,13 +637,13 @@ func _process(delta: float) -> void:
 		_update_cursor_mesh(cursor_hit)
 	else:
 		cursor_mesh.visible = false
-	if continuous_stroke.button_pressed and joystick_pressed and cursor_valid and stroke_timer >= 0.12:
+	if terrain_tabs and terrain_tabs.current_tab in [1, 2] and continuous_stroke.button_pressed and joystick_pressed and cursor_valid and stroke_timer >= 0.12:
 		stroke_timer = 0.0
 		_apply_brush(terrain, cursor_hit)
 
 func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 	# Never intercept normal Godot viewport input while this dock is hidden.
-	if panel == null or not panel.visible:
+	if panel == null or not panel.visible or terrain_tabs == null or terrain_tabs.current_tab not in [1, 2]:
 		return AFTER_GUI_INPUT_PASS
 	var terrain = _get_terrain()
 	if terrain == null:
@@ -691,6 +695,9 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 	return AFTER_GUI_INPUT_PASS
 
 func _apply_at_cursor() -> void:
+	if terrain_tabs == null or terrain_tabs.current_tab not in [1, 2]:
+		_set_status("Abre Esculpir o Pintar para aplicar el pincel.")
+		return
 	var terrain = _get_terrain()
 	if terrain and cursor_valid:
 		_apply_brush(terrain, cursor_hit)
@@ -704,7 +711,10 @@ func _apply_brush(terrain, world_position: Vector3) -> void:
 		local.z = roundf(local.z / terrain.cell_size) * terrain.cell_size
 	var radius: float = brush_radius.value
 	var strength: float = brush_strength.value
-	var mode: int = mode_picker.get_selected_id()
+	if terrain_tabs == null or terrain_tabs.current_tab not in [1, 2]:
+		_set_status("Selecciona la pestaña Esculpir o Pintar para modificar el terreno.")
+		return
+	var mode: int = mode_picker.get_selected_id() if terrain_tabs.current_tab == 1 else 4 + paint_mode_picker.get_selected_id()
 	var half_x := float(terrain.grid_width - 1) * 0.5
 	var half_z := float(terrain.grid_depth - 1) * 0.5
 	var min_x := clampi(floori((local.x - radius) / terrain.cell_size + half_x), 0, terrain.grid_width - 1)
