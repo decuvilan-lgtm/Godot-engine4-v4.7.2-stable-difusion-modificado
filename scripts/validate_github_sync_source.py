@@ -46,7 +46,7 @@ for token, label in [
     ("preview_dialog.canceled.connect(_on_preview_dismissed)", "cleans staged files when the user cancels preview"),
     ("preview_dialog.close_requested.connect(_on_preview_dismissed)", "cleans staged files when the preview window is closed"),
     ("_cleanup_staging()\n\tif request and is_instance_valid(request):", "cleans staging when the plugin unloads"),
-    ("GitHub is the source of truth", "applies GitHub files directly as the source of truth"),
+    ("Se aplicaron los cambios de GitHub directamente", "applies GitHub files directly as the source of truth"),
     ("No se crearon copias de respaldo.", "reports retryable sync failure without creating backups"),
     ("Deliberately create no backup or transaction copies", "documents the no-backup mobile-storage policy"),
     ("_save_manifest()", "persists baseline for later deletions"),
