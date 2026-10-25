@@ -47,7 +47,11 @@ func set_heights(values: PackedFloat32Array, update_collision: bool = true) -> v
 		if not is_finite(height) or absf(height) > 10000.0:
 			push_error("Terrain heights must be finite and within -10000..10000.")
 			return
-	heights = values.duplicate()
+	var constrained_heights := values.duplicate()
+	var vertical_limit := maxf(1.0, max_height)
+	for i in range(constrained_heights.size()):
+		constrained_heights[i] = clampf(constrained_heights[i], -vertical_limit, vertical_limit)
+	heights = constrained_heights
 	_rebuild_mesh()
 	if update_collision:
 		_rebuild_collision()
