@@ -3,7 +3,11 @@ name: Build Godot Android Editor (source pipeline)
 # One consolidated ARM32+ARM64 build after the implementation batch is integrated.
 # Keep manual dispatch available for intentional rebuilds and diagnostics.
 on:
-  # Deliberately manual-only: source edits must never trigger a long Android build.
+  # One-time automated build is triggered only by adding scripts/trigger_android_build_once.txt.
+  # Normal source edits do not launch the long Android build; manual dispatch remains available.
+  push:
+    paths:
+      - scripts/trigger_android_build_once.txt
   workflow_dispatch:
     inputs:
       run_type:
@@ -24,7 +28,7 @@ concurrency:
 
 jobs:
   build-android-editor:
-    if: ${{ inputs.run_type == 'full-android-build' }}
+    if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -234,7 +238,7 @@ jobs:
           fi
 
       - name: Upload ARM32+ARM64 Android editor APK
-        if: always() && inputs.run_type == 'full-android-build'
+        if: always() && (github.event_name == 'push' || inputs.run_type == 'full-android-build')
         uses: actions/upload-artifact@v4
         with:
           name: godot-4.7.2-android-editor-arm32-arm64
