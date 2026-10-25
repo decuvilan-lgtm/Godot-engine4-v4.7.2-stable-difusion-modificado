@@ -701,10 +701,10 @@ void ScriptEditorDebugger::set_debug_mute_audio(bool p_mute) {""")
 
 replace_once(SCENE_DEBUGGER_HEADER,
     "static Error _msg_debug_mute_audio(const Array &p_args);",
-    "static Error _msg_debug_mute_audio(const Array &p_args);\n\tstatic Error _msg_set_debug_collisions(const Array &p_args);\n\tstatic Error _msg_set_debug_navigation(const Array &p_args);\n\tstatic Error _msg_set_debug_avoidance(const Array &p_args);\n\tstatic void _create_runtime_debug_overlay();\n\tstatic void _runtime_debug_button_pressed();\n\tstatic void _runtime_debug_item_pressed(int p_id);")
+    "static Error _msg_debug_mute_audio(const Array &p_args);\n\tstatic Error _msg_set_debug_collisions(const Array &p_args);\n\tstatic Error _msg_set_debug_navigation(const Array &p_args);\n\tstatic Error _msg_set_debug_avoidance(const Array &p_args);\n\tstatic void _create_runtime_debug_overlay();\n\tstatic void _runtime_debug_button_pressed();\n\tstatic void _runtime_debug_item_pressed(int p_id);\n\tstatic void _runtime_fps_timer_timeout();")
 replace_once(SCENE_DEBUGGER_SOURCE,
     '#include "servers/rendering/rendering_server.h"',
-    '#include "core/templates/list.h"\n#include "scene/2d/path_2d.h"\n#include "scene/3d/path_3d.h"\n#include "scene/gui/button.h"\n#include "scene/gui/popup_menu.h"\n#include "scene/main/canvas_layer.h"\n#include "servers/rendering/rendering_server.h"\n#include "servers/navigation_2d/navigation_server_2d.h"\n#include "servers/navigation_3d/navigation_server_3d.h"')
+    '#include "core/templates/list.h"\n#include "scene/2d/path_2d.h"\n#include "scene/3d/path_3d.h"\n#include "scene/gui/button.h"\n#include "scene/gui/popup_menu.h"\n#include "scene/gui/label.h"\n#include "scene/main/timer.h"\n#include "core/config/engine.h"\n#include "scene/main/canvas_layer.h"\n#include "servers/rendering/rendering_server.h"\n#include "servers/navigation_2d/navigation_server_2d.h"\n#include "servers/navigation_3d/navigation_server_3d.h"')
 replace_once(SCENE_DEBUGGER_SOURCE,
     "Error SceneDebugger::_msg_debug_mute_audio(const Array &p_args) {",
     """Error SceneDebugger::_msg_set_debug_collisions(const Array &p_args) {
@@ -1074,6 +1074,28 @@ replace_once(SCENE_DEBUGGER_SOURCE,
 \tpopup->add_check_item("Mallas de navegación", 2);
 \tpopup->add_check_item("Áreas y velocidades de evasión", 3);
 \tpopup->add_check_item("Redibujado 2D", 4);
+\t\tpopup->add_check_item(\"Mostrar FPS (esquina superior derecha)\", 5);
+\tLabel *fps_label = memnew(Label);
+\tfps_label->set_name(\"FPSLabel\");
+\tfps_label->set_text(\"FPS: --\");
+\tfps_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
+\tfps_label->set_vertical_alignment(VERTICAL_ALIGNMENT_CENTER);
+\tfps_label->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
+\tfps_label->set_anchors_and_offsets_preset(Control::PRESET_TOP_RIGHT);
+\tfps_label->set_offset_left(-112);
+\tfps_label->set_offset_top(56);
+\tfps_label->set_offset_right(-8);
+\tfps_label->set_offset_bottom(82);
+\tfps_label->add_theme_color_override(\"font_color\", Color(1, 1, 1, 1));
+\tfps_label->add_theme_color_override(\"font_shadow_color\", Color(0, 0, 0, 0.9));
+\tfps_label->hide();
+\tlayer->add_child(fps_label);
+\tTimer *fps_timer = memnew(Timer);
+\tfps_timer->set_name(\"FPSTimer\");
+\tfps_timer->set_wait_time(0.25);
+\tfps_timer->set_one_shot(false);
+\tfps_timer->timeout.connect(callable_mp_static(SceneDebugger, &SceneDebugger::_runtime_fps_timer_timeout));
+\tlayer->add_child(fps_timer);
 \tbutton->connect(SceneStringName(pressed), callable_mp_static(SceneDebugger, &SceneDebugger::_runtime_debug_button_pressed));
 \tpopup->connect(SceneStringName(id_pressed), callable_mp_static(SceneDebugger, &SceneDebugger::_runtime_debug_item_pressed));
 }
@@ -1090,6 +1112,17 @@ static void SceneDebugger::_runtime_debug_button_pressed() {
 \t}
 \tpopup->set_position(button->get_screen_position());
 \tpopup->popup();
+}
+
+static void SceneDebugger::_runtime_fps_timer_timeout() {
+\tSceneTree *tree = SceneTree::get_singleton();
+\tif (tree == nullptr || tree->get_root() == nullptr) {
+\t\treturn;
+\t}
+\tLabel *fps_label = Object::cast_to<Label>(tree->get_root()->get_node_or_null(NodePath("__GodotPreviewDebugOverlay/FPSLabel")));
+\tif (fps_label != nullptr && fps_label->is_visible()) {
+\t\tfps_label->set_text(vformat("FPS: %d", Engine::get_singleton()->get_frames_per_second()));
+\t}
 }
 
 static void SceneDebugger::_runtime_debug_item_pressed(int p_id) {
@@ -1115,6 +1148,14 @@ static void SceneDebugger::_runtime_debug_item_pressed(int p_id) {
 \t\tcase 2: _msg_set_debug_navigation(args); break;
 \t\tcase 3: _msg_set_debug_avoidance(args); break;
 \t\tcase 4: _msg_set_debug_canvas_item_redraw(args); break;
+\t\tcase 5: {
+\t\t\tLabel *fps_label = Object::cast_to<Label>(tree->get_root()->get_node_or_null(NodePath("__GodotPreviewDebugOverlay/FPSLabel")));
+\t\t\tTimer *fps_timer = Object::cast_to<Timer>(tree->get_root()->get_node_or_null(NodePath("__GodotPreviewDebugOverlay/FPSTimer")));
+\t\t\tif (fps_label && fps_timer) {
+\t\t\t\tif (enabled) { fps_label->show(); fps_timer->start(); _runtime_fps_timer_timeout(); }
+\t\t\t\telse { fps_timer->stop(); fps_label->hide(); }
+\t\t\t}
+\t\t} break;
 \t\tdefault: break;
 \t}
 }
