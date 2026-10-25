@@ -26,7 +26,7 @@ for token, label in [
     ("_create_runtime_debug_overlay();", "runtime overlay is installed by SceneDebugger"),
     ("_runtime_debug_button_pressed", "runtime button opens its menu"),
     ("_runtime_debug_item_pressed", "runtime menu toggles overlays live"),
-    ("callable_mp_static(SceneDebugger, &SceneDebugger::_runtime_debug_item_pressed)", "runtime menu signal is wired"),
+    ("callable_mp_static(&SceneDebugger::_runtime_debug_item_pressed)", "runtime menu signal is wired"),
     ('popup->add_check_item("Colisiones 2D/3D, formas y raycasts", 0)', "menu contains collision shapes and raycasts"),
     ("rectángulos, círculos, cápsulas, polígonos, cajas 3D, Area2D/Area3D y RayCast2D/3D", "collision tooltip names the supported 2D/3D shape variants and detection areas"),
     ('popup->add_check_item("Rutas Path2D/Path3D", 1)', "menu contains 2D/3D path overlays"),
