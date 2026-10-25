@@ -11,11 +11,14 @@ DATA = ADDON / "terrain_data.gd"
 CFG = ADDON / "plugin.cfg"
 PATCHER = ROOT / "scripts/apply_github_sync_patch.py"
 
+FAILURES: list[str] = []
+
 def require(condition: bool, message: str) -> None:
     if not condition:
+        FAILURES.append(message)
         print("FAIL: " + message, file=sys.stderr)
-        raise SystemExit(1)
-    print("PASS: " + message)
+    else:
+        print("PASS: " + message)
 
 require(all(path.is_file() for path in (PLUGIN, DATA, CFG, PATCHER)), "terrain addon and embedding patch exist")
 plugin = PLUGIN.read_text(encoding="utf-8")
@@ -34,7 +37,6 @@ for token, label in [
     ("terrain.set(\"footprint_shape\"", "creation applies the selected footprint shape"),
     ("terrain.set(\"base_thickness\"", "creation applies the selected volume thickness"),
     ("terrain.set(\"max_height\"", "creation applies the selected vertical range"),
-    ("_add_bottom_vertex", "terrain mesh includes an underside"),
     ("add_control_to_dock(EditorPlugin.DOCK_SLOT_RIGHT_UL, panel)", "terrain tools share the native right dock"),
     ("remove_control_from_docks(panel)\n\tadd_control_to_dock(EditorPlugin.DOCK_SLOT_RIGHT_UL, panel)", "toolbar reopening re-registers a closed terrain dock"),
     ("var local: Vector3 = terrain.to_local(world_position)", "brush local coordinates have an explicit Vector3 type"),
@@ -90,6 +92,7 @@ for token, label in [
     ("@export_range(0.1, 100.0, 0.1) var base_thickness", "terrain data persists its solid base thickness"),
     ("@export_range(1.0, 1000.0, 1.0) var max_height", "terrain data persists its vertical sculpt range"),
     ("SurfaceTool", "procedural terrain mesh"),
+    ("_add_bottom_vertex", "terrain mesh includes an underside"),
     ("_add_wall(st", "terrain mesh creates perimeter walls for a solid volume"),
     ("st.index()", "indexed terrain mesh avoids tripled vertex storage on mobile"),
     ("is_finite(height)", "reject non-finite/corrupt height values before mesh generation"),
@@ -127,3 +130,6 @@ require('mode_picker.add_item("Pintar color")' not in plugin, 'sculpt selector d
 require('var terrain_tabs: TabContainer' in plugin, 'terrain tools use a native tab container')
 require('paint_mode_picker = OptionButton.new()' in plugin, 'paint modes live in the Paint tab')
 require('terrain_tabs.current_tab not in [1, 2]' in plugin, 'brush editing is restricted to Sculpt/Paint tabs')
+
+if FAILURES:
+    raise SystemExit(f"{len(FAILURES)} terrain source check(s) failed; see all FAIL lines above.")
