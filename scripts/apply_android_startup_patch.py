@@ -72,13 +72,13 @@ replace_once(LAYOUT,
 				android:layout_width="88dp"
 				android:layout_height="88dp"
 				android:src="@mipmap/ic_play_window"
-				android:contentDescription="Godot Android Editor"/>
+				android:contentDescription="Goku Ultra Instinto"/>
 
 			<TextView
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_marginTop="18dp"
-				android:text="Godot Android Editor"
+				android:text="AZIZA"
 				android:textColor="#FFFFFF"
 				android:textSize="20sp"
 				android:textStyle="bold"
