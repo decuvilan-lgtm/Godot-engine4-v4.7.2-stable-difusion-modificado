@@ -19,8 +19,10 @@ require(True, "startup patcher has valid Python syntax")
 source = patcher.read_text(encoding="utf-8")
 for token, label in [
     ("windowSplashScreenBackground", "native splash background is explicit"),
-    ("windowSplashScreenAnimatedIcon", "native splash uses the app icon"),
-    ("@mipmap/ic_play_window", "startup overlay references an existing upstream editor icon"),
+    ("windowSplashScreenAnimatedIcon", "native splash uses the supplied Goku image"),
+    ("@drawable/goku_ultra_instinto", "native splash and startup overlay use the supplied Goku image"),
+    ("GOKU_DRAWABLE.write_bytes", "supplied Goku image is decoded into an Android drawable"),
+    ("scripts/assets/goku_ultra_instinto.jpg.b64", "the provided image is stored as a build-time asset"),
     ("@+id/editor_loading_indicator", "loading overlay keeps the existing readiness hook ID"),
     ("Preparing your workspace", "startup overlay includes a status message"),
     ('android:text="AZIZA"', "startup overlay displays the requested AZIZA text"),
