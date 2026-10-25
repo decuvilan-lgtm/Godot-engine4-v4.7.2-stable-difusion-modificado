@@ -1,9 +1,8 @@
 name: Build Godot Android Editor (source pipeline)
 
-# Manual build plus one full build for the active implementation branch.
+# Full Android builds are deliberately manual so a series of source commits does not
+# repeatedly consume an hour-long ARM32+ARM64 build before the implementation is ready.
 on:
-  push:
-    branches: [feature/github-sync-and-safe-mcp]
   workflow_dispatch:
     inputs:
       run_type:
@@ -24,7 +23,7 @@ concurrency:
 
 jobs:
   build-android-editor:
-    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.run_type == 'full-android-build') }}
+    if: ${{ inputs.run_type == 'full-android-build' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
