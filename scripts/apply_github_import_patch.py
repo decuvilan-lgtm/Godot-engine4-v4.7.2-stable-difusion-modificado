@@ -1092,10 +1092,10 @@ replace_once(SCENE_DEBUGGER_SOURCE,
 \tfps_timer->set_name(\"FPSTimer\");
 \tfps_timer->set_wait_time(0.25);
 \tfps_timer->set_one_shot(false);
-\tfps_timer->connect(SceneStringName(timeout), callable_mp_static(SceneDebugger, &SceneDebugger::_runtime_fps_timer_timeout));
+\tfps_timer->connect("timeout", callable_mp_static(&SceneDebugger::_runtime_fps_timer_timeout));
 \tlayer->add_child(fps_timer);
-\tbutton->connect(SceneStringName(pressed), callable_mp_static(SceneDebugger, &SceneDebugger::_runtime_debug_button_pressed));
-\tpopup->connect(SceneStringName(id_pressed), callable_mp_static(SceneDebugger, &SceneDebugger::_runtime_debug_item_pressed));
+\tbutton->connect("pressed", callable_mp_static(&SceneDebugger::_runtime_debug_button_pressed));
+\tpopup->connect("id_pressed", callable_mp_static(&SceneDebugger::_runtime_debug_item_pressed));
 }
 
 void SceneDebugger::_runtime_debug_button_pressed() {
