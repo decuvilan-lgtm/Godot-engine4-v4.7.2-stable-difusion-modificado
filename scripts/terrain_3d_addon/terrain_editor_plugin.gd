@@ -81,7 +81,7 @@ func _build_panel() -> void:
 	panel.custom_minimum_size = Vector2(0, 0)
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_theme_constant_override("separation", 8)
+	panel.add_theme_constant_override("separation", roundi(8.0 * EditorInterface.get_editor_scale()))
 	panel.hide()
 	# Behave like a native Godot inspector dock: share the right dock area and
 	# never reserve a custom-width column or resize the whole editor UI.
@@ -98,7 +98,6 @@ func _build_panel() -> void:
 
 	var title := Label.new()
 	title.text = "EDITOR DE TERRENO 3D"
-	title.add_theme_font_size_override("font_size", 18)
 	home.add_child(title)
 	var intro := Label.new()
 	intro.text = "Al abrir esta pestaña se crea una base cuadrada editable en la escena. Las herramientas están separadas para mantener una interfaz cómoda en móvil."
@@ -153,7 +152,7 @@ func _build_panel() -> void:
 	_add_section(sculpt, "Control táctil")
 	var joystick_row := HBoxContainer.new()
 	joystick_pad = Panel.new()
-	joystick_pad.custom_minimum_size = Vector2(112, 112)
+	joystick_pad.custom_minimum_size = Vector2(112, 112) * EditorInterface.get_editor_scale()
 	joystick_pad.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	joystick_pad.gui_input.connect(_on_joystick_input)
 	joystick_row.add_child(joystick_pad)
@@ -274,7 +273,6 @@ func _make_tab_page(tabs: TabContainer, title: String) -> VBoxContainer:
 func _add_section(parent: Control, text: String) -> void:
 	var label := Label.new()
 	label.text = text
-	label.add_theme_font_size_override("font_size", 18)
 	parent.add_child(label)
 	var separator := HSeparator.new()
 	parent.add_child(separator)
@@ -291,8 +289,7 @@ func _add_spin(parent: Control, label_text: String, value: float, minimum: float
 	spin.max_value = maximum
 	spin.step = step
 	spin.value = value
-	spin.custom_minimum_size = Vector2(112, 44)
-	spin.add_theme_font_size_override("font_size", 17)
+	spin.custom_minimum_size = Vector2(112, 44) * EditorInterface.get_editor_scale()
 	row.add_child(spin)
 	parent.add_child(row)
 	return spin
@@ -303,7 +300,6 @@ func _add_slider(parent: Control, label_text: String, value: float, minimum: flo
 	label.text = "%s: %.2f" % [label_text, value]
 	column.add_child(label)
 	var slider := HSlider.new()
-	slider.custom_minimum_size = Vector2(0, 36)
 	slider.min_value = minimum
 	slider.max_value = maximum
 	slider.step = step
