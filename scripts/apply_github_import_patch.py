@@ -1145,6 +1145,7 @@ replace_once(SCENE_DEBUGGER_SOURCE,
     "Error SceneDebugger::_msg_set_debug_collisions(const Array &p_args) {",
     """static bool mobile_immersive_preview_active = false;
 static Window::ContentScaleAspect mobile_immersive_previous_aspect = Window::CONTENT_SCALE_ASPECT_IGNORE;
+static Window::ContentScaleMode mobile_immersive_previous_scale_mode = Window::CONTENT_SCALE_MODE_DISABLED;
 
 Error SceneDebugger::_msg_set_mobile_immersive_preview(const Array &p_args) {
 	ERR_FAIL_COND_V(p_args.is_empty(), ERR_INVALID_DATA);
@@ -1156,13 +1157,18 @@ Error SceneDebugger::_msg_set_mobile_immersive_preview(const Array &p_args) {
 	if (enabled) {
 		if (!mobile_immersive_preview_active) {
 			mobile_immersive_previous_aspect = window->get_content_scale_aspect();
+			mobile_immersive_previous_scale_mode = window->get_content_scale_mode();
 			mobile_immersive_preview_active = true;
 		}
 		// Fill the entire 720x1600 display area instead of preserving a
 		// landscape/letterboxed design aspect while immersive preview is active.
+		if (window->get_content_scale_mode() == Window::CONTENT_SCALE_MODE_DISABLED) {
+			window->set_content_scale_mode(Window::CONTENT_SCALE_MODE_CANVAS_ITEMS);
+		}
 		window->set_content_scale_aspect(Window::CONTENT_SCALE_ASPECT_IGNORE);
 	} else if (mobile_immersive_preview_active) {
 		window->set_content_scale_aspect(mobile_immersive_previous_aspect);
+		window->set_content_scale_mode(mobile_immersive_previous_scale_mode);
 		mobile_immersive_preview_active = false;
 	}
 	return OK;
