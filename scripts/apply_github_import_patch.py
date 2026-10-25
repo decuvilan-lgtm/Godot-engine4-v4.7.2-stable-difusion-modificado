@@ -714,8 +714,9 @@ replace_once(RUN_BAR_SOURCE,
 \tpreview_debug_button = memnew(MenuButton);
 \tmain_hbox->add_child(preview_debug_button);
 \tpreview_debug_button->set_theme_type_variation("RunBarButton");
-\tpreview_debug_button->set_text(TTR("Debug"));
-\tpreview_debug_button->set_tooltip_text(TTR("Show built-in debug overlays in the running game preview."));
+\tpreview_debug_button->set_text(TTR("⚙"));
+\tpreview_debug_button->set_accessibility_name(TTR("Opciones avanzadas de vista previa"));
+\tpreview_debug_button->set_tooltip_text(TTR("Opciones avanzadas de vista previa: colisiones, rutas, navegación y redibujado."));
 \tPopupMenu *preview_debug_popup = preview_debug_button->get_popup();
 \tpreview_debug_popup->add_check_item(TTRC("Visible Collision Shapes"), PREVIEW_DEBUG_COLLISIONS);
 \tpreview_debug_popup->set_item_tooltip(preview_debug_popup->get_item_index(PREVIEW_DEBUG_COLLISIONS), TTRC("Show 2D/3D collision shapes and raycast nodes in the running game."));
