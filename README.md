@@ -643,3 +643,36 @@ The Windows workflow `.github/workflows/validate-debug-overlay-source.yml` now c
 - **Cobertura funcional pendiente:** la lista del menú contempla colisiones 2D/3D, formas, raycasts, rutas, navegación, evasión y redibujado 2D. Aun así, no se ha demostrado en el dispositivo que cada variante se vea correctamente, ni que las opciones para `Area2D/Area3D` y `RayCast2D/3D` sean visibles en todos los escenarios relevantes.
 - **Protección contra compilaciones involuntarias:** el workflow de Android ahora es manual; los cambios de fuente ya no deberían disparar automáticamente la compilación larga. No se inició compilación ni se ejecutó una prueba en Linux para esta revisión.
 - **Estado honesto:** los cambios del dock y sus comprobaciones son cambios de código fuente. No hay confirmación de parser/runtime, instalación Android ni funcionamiento en el LG K51. Las dos opciones de perspectiva existentes se conservan; no se ha cambiado su comportamiento.
+
+## Aclaraciones vigentes del propietario y revisión de fuente (2026-10-25)
+
+Esta sección prevalece sobre notas antiguas de este README cuando describan un comportamiento distinto.
+
+### GitHub es la única fuente de verdad
+
+- La sincronización es estrictamente **GitHub → proyecto Godot**. Nunca se sube ni se publica nada desde Godot hacia GitHub.
+- En cada sincronización se compara el contenido local real con el blob del commit remoto actual, no solo con el manifiesto anterior. Si un archivo rastreado fue editado en Godot, se reemplaza por los bytes verificados de GitHub incluso si upstream no cambió desde la última sincronización.
+- Si un archivo que figuraba en el manifiesto desapareció del repositorio, se elimina del proyecto local aunque se haya modificado localmente. Los archivos locales no rastreados por el manifiesto no se eliminan automáticamente porque no hay evidencia de que antes pertenecieran al repositorio.
+- No se crean copias de respaldo ni duplicados. La vista previa sigue mostrando altas, reemplazos y eliminaciones antes de confirmar.
+- `project.godot` también se sincroniza con los bytes de GitHub; el sincronizador ya no reescribe esa copia para conservar ajustes locales. Por tanto, los ajustes locales que no estén en el repositorio no se preservan.
+- Se mantienen las exclusiones internas de los addons `addons/github_sync/` y `addons/terrain_3d/`, para evitar que el proyecto sobrescriba las herramientas que el editor inyecta.
+
+### Terreno 3D: espacio vacío hasta pedirlo
+
+- Abrir el dock Terreno 3D **no crea ni inserta nodos** en la escena. El espacio 3D normal permanece vacío.
+- La pestaña Inicio incluye creación explícita con resolución X/Z, tamaño de celda, forma cuadrada/rectangular o circular/elíptica, grosor de base Y y rango vertical de esculpido Y.
+- El terreno generado incluye superficie, base inferior, paredes de perímetro, material y colisión derivada de la malla. Esculpir e importar heightmaps respetan el rango vertical configurado.
+- Las pestañas Esculpir, Pintar, Vegetación y Heightmaps siguen siendo parte de la interfaz dedicada. La forma circular se aproxima con la resolución de la cuadrícula; esto es un heightfield sólido, no un sistema voxel con cuevas o voladizos arbitrarios.
+- Se corrigió la ruta de reapertura para volver a registrar el panel en el dock derecho. Aún requiere confirmación en el editor Android real.
+
+### COL dentro de la vista previa que está corriendo
+
+- Se quitó la creación de `COL.` de `EditorRunBar`, la barra Play/Pause/Stop del editor.
+- La propuesta actual crea un pequeño botón `COL.` en una capa de interfaz del **juego en ejecución**, con opciones en vivo para colisiones 2D/3D, formas y raycasts; rutas Path2D/Path3D; mallas de navegación; evasión; y redibujado 2D. No debería requerir reiniciar el juego.
+- El botón del juego se coloca en la esquina superior derecha y usa una capa independiente para permanecer visible sobre la escena. Su carga, posicionamiento táctil y compatibilidad con todos los modos de ejecución aún requieren validación real.
+
+### Límites de verificación
+
+- Se guardaron cambios de fuente y de validadores en la rama de trabajo. No se ha compilado ni se ha iniciado un workflow de Android.
+- No se ha hecho una prueba en el LG K51 ni se ha confirmado el parser GDScript o la compilación C++ de estos cambios. Las comprobaciones textuales del patcher no equivalen a una prueba funcional.
+- El workflow Android queda manual para evitar compilaciones automáticas al hacer push. No ejecutar builds, pruebas en Linux ni empaquetado APK hasta que el propietario lo autorice.
