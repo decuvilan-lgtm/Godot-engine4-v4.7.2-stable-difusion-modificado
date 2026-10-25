@@ -35,6 +35,7 @@ for token, label in [
     ("editor_base.theme_changed.connect(_refresh_ui_scale)", "terrain listens for editor theme/scale changes"),
     ("joystick_pad.gui_input.connect", "touch joystick input is wired"),
     ("_forward_3d_gui_input", "3D viewport mouse/touch input is handled"),
+    ("if panel == null or not panel.visible:", "closed terrain dock does not intercept normal editor viewport input"),
     ("set_input_event_forwarding_always_enabled()", "terrain viewport input remains available without selection-dependent forwarding"),
     ("if (panel == null or not panel.visible) and not stroke_active and not collision_dirty and not joystick_pressed:", "terrain editor avoids idle polling when its dock is closed"),
     ("_raycast_terrain", "cursor uses a 3D raycast"),
