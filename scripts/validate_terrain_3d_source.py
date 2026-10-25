@@ -65,7 +65,7 @@ for token, label in [
     ('_make_tab_page(tabs, "Pintar")', "dedicated interface has a painting tab"),
     ('_make_tab_page(tabs, "Vegetación")', "dedicated interface has a foliage tab"),
     ('_make_tab_page(tabs, "Heightmaps")', "dedicated interface has a heightmap tab"),
-    ("_create_terrain()", "opening the terrain editor can create a starter terrain"),
+    ("create_button.text = \"Crear terreno\"", "terrain is created only by explicit user action"),
     ("while root.has_node(NodePath(\"Terrain3D_%d\" % suffix)):", "terrain creation avoids node-name collisions"),
     ("terrain.heights.size() != terrain.grid_width * terrain.grid_depth", "heightmap export rejects incomplete terrain data"),
     ("layer_picker.selected < 0 or layer_picker.selected > 3", "texture assignment validates selected layer"),
