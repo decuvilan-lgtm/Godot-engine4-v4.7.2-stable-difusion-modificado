@@ -564,6 +564,9 @@ func _process(delta: float) -> void:
 		_apply_brush(terrain, cursor_hit)
 
 func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
+	# Never intercept normal Godot viewport input while this dock is hidden.
+	if panel == null or not panel.visible:
+		return AFTER_GUI_INPUT_PASS
 	var terrain = _get_terrain()
 	if terrain == null:
 		return AFTER_GUI_INPUT_PASS
