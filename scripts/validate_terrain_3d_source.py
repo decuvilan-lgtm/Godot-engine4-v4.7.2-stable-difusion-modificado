@@ -28,6 +28,7 @@ for token, label in [
     ("_create_terrain_preview", "pre-creation terrain footprint preview"),
     ("PlaneMesh", "preview mesh follows the chosen terrain dimensions"),
     ("add_control_to_dock(EditorPlugin.DOCK_SLOT_RIGHT_UL, panel)", "terrain tools share the native right dock"),
+    ("remove_control_from_docks(panel)\n\tadd_control_to_dock(EditorPlugin.DOCK_SLOT_RIGHT_UL, panel)", "toolbar reopening re-registers a closed terrain dock"),
     ("var local: Vector3 = terrain.to_local(world_position)", "brush local coordinates have an explicit Vector3 type"),
     ("var center: Vector3 = terrain.global_position", "terrain focus center has an explicit Vector3 type"),
     ("panel.custom_minimum_size = Vector2(0, 0)", "terrain dock does not force a wider custom column"),
