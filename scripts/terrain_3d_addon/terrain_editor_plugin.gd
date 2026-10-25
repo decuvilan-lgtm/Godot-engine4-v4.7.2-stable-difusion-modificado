@@ -9,6 +9,9 @@ var panel: VBoxContainer
 var terrain_width: SpinBox
 var terrain_depth: SpinBox
 var cell_size: SpinBox
+var base_thickness: SpinBox
+var max_height: SpinBox
+var shape_picker: OptionButton
 var resolution_preview_label: Label
 var terrain_preview: MeshInstance3D
 var terrain_preview_material: StandardMaterial3D
@@ -104,21 +107,28 @@ func _build_panel() -> void:
 	title.text = "EDITOR DE TERRENO 3D"
 	home.add_child(title)
 	var intro := Label.new()
-	intro.text = "Al abrir esta pestaña se crea una base cuadrada editable en la escena. Las herramientas están separadas para mantener una interfaz cómoda en móvil."
+	intro.text = "El espacio 3D permanece vacío hasta que pulses Crear terreno. Configura X/Z, rango vertical Y, grosor de base y forma antes de añadirlo a la escena."
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	home.add_child(intro)
-	_add_section(home, "Dimensiones")
+	_add_section(home, "Tamaño y forma")
 	terrain_width = _add_spin(home, "Resolución X", 65, 9, 257, 8)
 	terrain_depth = _add_spin(home, "Resolución Z", 65, 9, 257, 8)
-	cell_size = _add_spin(home, "Tamaño de celda", 1.0, 0.1, 16.0, 0.1)
+	cell_size = _add_spin(home, "Tamaño de celda (unidades)", 1.0, 0.1, 16.0, 0.1)
+	shape_picker = OptionButton.new()
+	shape_picker.add_item("Cuadrada / rectangular", 0)
+	shape_picker.add_item("Circular / elíptica", 1)
+	home.add_child(_make_labeled_control("Forma del terreno", shape_picker))
+	base_thickness = _add_spin(home, "Grosor de base Y", 2.0, 0.1, 100.0, 0.5)
+	max_height = _add_spin(home, "Rango de altura Y", 100.0, 1.0, 1000.0, 1.0)
 	resolution_preview_label = Label.new()
 	resolution_preview_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	home.add_child(resolution_preview_label)
 	terrain_width.value_changed.connect(_update_terrain_preview)
 	terrain_depth.value_changed.connect(_update_terrain_preview)
 	cell_size.value_changed.connect(_update_terrain_preview)
+	shape_picker.item_selected.connect(_update_terrain_preview.bind(0.0))
 	var create_button := Button.new()
-	create_button.text = "Crear otro terreno"
+	create_button.text = "Crear terreno"
 	create_button.pressed.connect(_create_terrain)
 	home.add_child(create_button)
 	var focus_button := Button.new()
@@ -287,6 +297,17 @@ func _make_tab_page(tabs: TabContainer, title: String) -> VBoxContainer:
 	scroll.add_child(content)
 	return content
 
+func _make_labeled_control(label_text: String, control: Control) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	var label := Label.new()
+	label.text = label_text
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row.add_child(label)
+	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(control)
+	return row
+
 func _add_section(parent: Control, text: String) -> void:
 	var label := Label.new()
 	label.text = text
@@ -341,19 +362,19 @@ func _toggle_panel() -> void:
 	add_control_to_dock(EditorPlugin.DOCK_SLOT_RIGHT_UL, panel)
 	panel.show()
 	_update_terrain_preview()
-	# Open the tools in their dock first. Create a starter base only when there
-	# is an editable scene; never interrupt other editor actions if none is open.
-	if _get_terrain() == null:
-		_create_terrain()
-	else:
+	# Opening the terrain tools never mutates the current scene. Creation is
+	# explicit so the ordinary 3D workspace remains empty until requested.
+	if _get_terrain() != null:
 		_focus_terrain()
+	else:
+		_set_status("Configura la forma y dimensiones; pulsa Crear terreno cuando estés listo.")
 
 func _create_terrain() -> void:
 	var root := EditorInterface.get_edited_scene_root()
 	if root == null:
 		_set_status("Primero crea o abre una escena.")
 		return
-	if terrain_width == null or terrain_depth == null or cell_size == null:
+	if terrain_width == null or terrain_depth == null or cell_size == null or shape_picker == null or base_thickness == null or max_height == null:
 		_set_status("El panel de terreno todavía no está inicializado.")
 		return
 	var terrain_script = load(TERRAIN_SCRIPT)
@@ -368,6 +389,9 @@ func _create_terrain() -> void:
 		suffix += 1
 	terrain.name = "Terrain3D_%d" % suffix
 	terrain.set_meta(TERRAIN_META, true)
+	terrain.set("footprint_shape", shape_picker.get_selected_id())
+	terrain.set("base_thickness", base_thickness.value)
+	terrain.set("max_height", max_height.value)
 	cached_terrain = terrain
 	cached_scene_root = root
 	var undo_redo := EditorInterface.get_editor_undo_redo()
@@ -380,7 +404,7 @@ func _create_terrain() -> void:
 	undo_redo.commit_action()
 	EditorInterface.get_selection().clear()
 	EditorInterface.get_selection().add_node(terrain)
-	_set_status("Base cuadrada creada con malla, material y colisiones. Edita desde las pestañas del editor de terreno.")
+	_set_status("Terreno creado con la forma, dimensiones X/Z, rango Y, base y colisiones configuradas. Edita desde las pestañas del editor de terreno.")
 	_focus_terrain()
 
 func _get_terrain():
@@ -427,7 +451,10 @@ func _update_terrain_preview(_value: float = 0.0) -> void:
 		var width := int(terrain_width.value) if terrain_width else 65
 		var depth := int(terrain_depth.value) if terrain_depth else 65
 		var cell := cell_size.value if cell_size else 1.0
-		resolution_preview_label.text = "%d × %d vértices · %.1f × %.1f unidades" % [width, depth, (width - 1) * cell, (depth - 1) * cell]
+		var footprint := "Circular/elíptica" if shape_picker and shape_picker.get_selected_id() == 1 else "Cuadrada/rectangular"
+		var y_range := max_height.value if max_height else 100.0
+		var thickness := base_thickness.value if base_thickness else 2.0
+		resolution_preview_label.text = "%s · X %.1f × Z %.1f unidades · Y ±%.1f · base %.1f · %d × %d vértices" % [footprint, (width - 1) * cell, (depth - 1) * cell, y_range, thickness, width, depth]
 	if terrain_preview == null or not is_instance_valid(terrain_preview) or terrain_width == null:
 		return
 	var plane := PlaneMesh.new()
