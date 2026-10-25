@@ -915,11 +915,11 @@ replace_once(EDITOR_NODE_SOURCE,
 	mobile_immersive_exit_button->set_accessibility_name(TTR("Salir de vista inmersiva"));
 	mobile_immersive_exit_button->set_custom_minimum_size(Size2(72, 48) * EDSCALE);
 	mobile_immersive_exit_button->set_anchors_and_offsets_preset(Control::PRESET_TOP_RIGHT);
-	mobile_immersive_exit_button->set_offset_left(-84 * EDSCALE);
-	mobile_immersive_exit_button->set_offset_top(8 * EDSCALE);
-	mobile_immersive_exit_button->set_offset_right(-8 * EDSCALE);
-	mobile_immersive_exit_button->set_offset_bottom(56 * EDSCALE);
-	mobile_immersive_exit_button->pressed.connect(callable_mp(this, &EditorNode::exit_mobile_immersive_preview));
+	mobile_immersive_exit_button->set_offset(SIDE_LEFT, -84 * EDSCALE);
+	mobile_immersive_exit_button->set_offset(SIDE_TOP, 8 * EDSCALE);
+	mobile_immersive_exit_button->set_offset(SIDE_RIGHT, -8 * EDSCALE);
+	mobile_immersive_exit_button->set_offset(SIDE_BOTTOM, 56 * EDSCALE);
+	mobile_immersive_exit_button->connect(SceneStringName(pressed), callable_mp(this, &EditorNode::exit_mobile_immersive_preview));
 	mobile_immersive_layer->add_child(mobile_immersive_exit_button);
 	mobile_immersive_exit_button->hide();
 #endif""")
@@ -1058,10 +1058,10 @@ replace_once(SCENE_DEBUGGER_SOURCE,
 \tbutton->set_accessibility_name("Opciones de depuración de la vista previa");
 \tbutton->set_custom_minimum_size(Size2(60, 44));
 \tbutton->set_anchors_and_offsets_preset(Control::PRESET_TOP_RIGHT);
-\tbutton->set_offset_left(-68);
-\tbutton->set_offset_top(8);
-\tbutton->set_offset_right(-8);
-\tbutton->set_offset_bottom(52);
+\tbutton->set_offset(SIDE_LEFT, -68);
+\tbutton->set_offset(SIDE_TOP, 8);
+\tbutton->set_offset(SIDE_RIGHT, -8);
+\tbutton->set_offset(SIDE_BOTTOM, 52);
 \tlayer->add_child(button);
 \tPopupMenu *popup = memnew(PopupMenu);
 \tpopup->set_name("CollisionMenu");
@@ -1080,10 +1080,10 @@ replace_once(SCENE_DEBUGGER_SOURCE,
 \tfps_label->set_vertical_alignment(VERTICAL_ALIGNMENT_CENTER);
 \tfps_label->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
 \tfps_label->set_anchors_and_offsets_preset(Control::PRESET_TOP_RIGHT);
-\tfps_label->set_offset_left(-112);
-\tfps_label->set_offset_top(56);
-\tfps_label->set_offset_right(-8);
-\tfps_label->set_offset_bottom(82);
+\tfps_label->set_offset(SIDE_LEFT, -112);
+\tfps_label->set_offset(SIDE_TOP, 56);
+\tfps_label->set_offset(SIDE_RIGHT, -8);
+\tfps_label->set_offset(SIDE_BOTTOM, 82);
 \tfps_label->add_theme_color_override(\"font_color\", Color(1, 1, 1, 1));
 \tfps_label->add_theme_color_override(\"font_shadow_color\", Color(0, 0, 0, 0.9));
 \tfps_label->hide();
