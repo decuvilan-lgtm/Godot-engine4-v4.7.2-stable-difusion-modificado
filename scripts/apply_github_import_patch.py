@@ -1040,7 +1040,7 @@ replace_once(SCENE_DEBUGGER_SOURCE,
     '#include "scene/3d/path_3d.h"\n#include "scene/main/window.h"')
 replace_once(SCENE_DEBUGGER_SOURCE,
     "Error SceneDebugger::_msg_set_debug_collisions(const Array &p_args) {",
-    """static void SceneDebugger::_create_runtime_debug_overlay() {
+    """void SceneDebugger::_create_runtime_debug_overlay() {
 \tSceneTree *tree = SceneTree::get_singleton();
 \tif (tree == nullptr || tree->get_root() == nullptr) {
 \t\treturn;
@@ -1100,7 +1100,7 @@ replace_once(SCENE_DEBUGGER_SOURCE,
 \tpopup->connect(SceneStringName(id_pressed), callable_mp_static(SceneDebugger, &SceneDebugger::_runtime_debug_item_pressed));
 }
 
-static void SceneDebugger::_runtime_debug_button_pressed() {
+void SceneDebugger::_runtime_debug_button_pressed() {
 \tSceneTree *tree = SceneTree::get_singleton();
 \tif (tree == nullptr || tree->get_root() == nullptr) {
 \t\treturn;
@@ -1114,7 +1114,7 @@ static void SceneDebugger::_runtime_debug_button_pressed() {
 \tpopup->popup();
 }
 
-static void SceneDebugger::_runtime_fps_timer_timeout() {
+void SceneDebugger::_runtime_fps_timer_timeout() {
 \tSceneTree *tree = SceneTree::get_singleton();
 \tif (tree == nullptr || tree->get_root() == nullptr) {
 \t\treturn;
@@ -1125,7 +1125,7 @@ static void SceneDebugger::_runtime_fps_timer_timeout() {
 \t}
 }
 
-static void SceneDebugger::_runtime_debug_item_pressed(int p_id) {
+void SceneDebugger::_runtime_debug_item_pressed(int p_id) {
 \tSceneTree *tree = SceneTree::get_singleton();
 \tif (tree == nullptr || tree->get_root() == nullptr) {
 \t\treturn;
