@@ -3,11 +3,16 @@ name: Build Godot Android Editor (source pipeline)
 # One consolidated ARM32+ARM64 build after the implementation batch is integrated.
 # Keep manual dispatch available for intentional rebuilds and diagnostics.
 on:
-  # One-time automated build is triggered only by adding scripts/trigger_android_build_once.txt.
-  # Normal source edits do not launch the long Android build; manual dispatch remains available.
+  # Automatically rebuild the Android editor whenever implementation/patch scripts change.
+  # This lets each committed implementation batch be compiled and validated on Android CI.
   push:
+    branches:
+      - feature/github-sync-and-safe-mcp
     paths:
-      - scripts/trigger_android_build_once.txt
+      - 'scripts/**'
+      - 'dist/**'
+      - 'addons/**'
+      - '.github/workflows/build-godot-android-source.yml'
   workflow_dispatch:
     inputs:
       run_type:
