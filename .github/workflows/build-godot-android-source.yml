@@ -99,6 +99,18 @@ jobs:
       - name: Apply GitHub import integration
         run: python "$GITHUB_WORKSPACE/scripts/apply_github_import_patch.py"
 
+      - name: Apply GitHub sync and terrain editor integration
+        run: python "$GITHUB_WORKSPACE/scripts/apply_github_sync_patch.py"
+
+      - name: Apply Android startup/loading patch
+        run: python "$GITHUB_WORKSPACE/scripts/apply_android_startup_patch.py"
+
+      - name: Validate Android startup/loading resources
+        run: python "$GITHUB_WORKSPACE/scripts/validate_android_startup_patch.py"
+
+      - name: Validate terrain editor source
+        run: python "$GITHUB_WORKSPACE/scripts/validate_terrain_3d_source.py"
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
