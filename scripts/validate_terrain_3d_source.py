@@ -46,7 +46,7 @@ for token, label in [
     ("editor_settings.settings_changed.connect(_refresh_ui_scale)", "terrain listens for editor scale setting changes"),
     ("joystick_pad.gui_input.connect", "touch joystick input is wired"),
     ("_forward_3d_gui_input", "3D viewport mouse/touch input is handled"),
-    ("if panel == null or not panel.visible:", "closed terrain dock does not intercept normal editor viewport input"),
+    ("if panel == null or not panel.visible or terrain_tabs == null or terrain_tabs.current_tab not in [1, 2]:", "viewport input is limited to Sculpt/Paint and leaves other tabs to Godot"),
     ("set_input_event_forwarding_always_enabled()", "terrain viewport input remains available without selection-dependent forwarding"),
     ("if (panel == null or not panel.visible) and not stroke_active and not collision_dirty and not joystick_pressed:", "terrain editor avoids idle polling when its dock is closed"),
     ("_raycast_terrain", "cursor uses a 3D raycast"),
@@ -57,14 +57,14 @@ for token, label in [
     ("Pintar color", "vertex-color painting"),
     ("Pintar capa de material", "four paintable terrain material layers"),
     ('for mode in ["Elevar", "Bajar", "Suavizar", "Aplanar"]:', "sculpt tool selector has valid loop syntax"),
-    ('mode_picker.add_item("Pintar color")', "color painting is available in the tool selector"),
-    ('mode_picker.add_item("Pintar capa de material")', "material-layer painting is available in the tool selector"),
+    ('paint_mode_picker.add_item("Pintar color")', "color painting is available in the Paint tab"),
+    ('paint_mode_picker.add_item("Pintar capa de material")', "material-layer painting is available in the Paint tab"),
     ("func _make_tab_page", "terrain editor options are separated into scrollable tabs"),
-    ('_make_tab_page(tabs, "Inicio")', "dedicated interface has an overview tab"),
-    ('_make_tab_page(tabs, "Esculpir")', "dedicated interface has a sculpting tab"),
-    ('_make_tab_page(tabs, "Pintar")', "dedicated interface has a painting tab"),
-    ('_make_tab_page(tabs, "Vegetación")', "dedicated interface has a foliage tab"),
-    ('_make_tab_page(tabs, "Heightmaps")', "dedicated interface has a heightmap tab"),
+    ('_make_tab_page(terrain_tabs, "Inicio")', "dedicated interface has an overview tab"),
+    ('_make_tab_page(terrain_tabs, "Esculpir")', "dedicated interface has a sculpting tab"),
+    ('_make_tab_page(terrain_tabs, "Pintar")', "dedicated interface has a painting tab"),
+    ('_make_tab_page(terrain_tabs, "Vegetación")', "dedicated interface has a foliage tab"),
+    ('_make_tab_page(terrain_tabs, "Heightmaps")', "dedicated interface has a heightmap tab"),
     ("create_button.text = \"Crear terreno\"", "terrain is created only by explicit user action"),
     ("while root.has_node(NodePath(\"Terrain3D_%d\" % suffix)):", "terrain creation avoids node-name collisions"),
     ("terrain.heights.size() != terrain.grid_width * terrain.grid_depth", "heightmap export rejects incomplete terrain data"),
@@ -124,3 +124,6 @@ require('var terrain_tabs: TabContainer' in plugin, 'terrain editor uses a nativ
 require('paint_mode_picker = OptionButton.new()' in plugin, 'paint modes live in the Paint tab')
 require('terrain_tabs.current_tab not in [1, 2]' in plugin, 'brush editing is restricted to Sculpt/Paint tabs')
 require('mode_picker.add_item("Pintar color")' not in plugin, 'sculpt selector does not contain paint modes')
+require('var terrain_tabs: TabContainer' in plugin, 'terrain tools use a native tab container')
+require('paint_mode_picker = OptionButton.new()' in plugin, 'paint modes live in the Paint tab')
+require('terrain_tabs.current_tab not in [1, 2]' in plugin, 'brush editing is restricted to Sculpt/Paint tabs')
