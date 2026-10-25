@@ -56,6 +56,10 @@ for token, label in [
     ('relative.begins_with("addons/terrain_3d/")', "sync cannot overwrite the terrain addon"),
     ('"delete"', "handles files removed from upstream"),
     ("EditorInterface.get_resource_filesystem().scan()", "rescans the editor filesystem after synchronization"),
+    ("func _organize_synced_scenes(initial_paths: PackedStringArray)", "organizes changed scenes into separate editor tabs"),
+    ("state.get_node_instance(node_index)", "traverses nested instanced-scene dependencies"),
+    ("EditorInterface.open_scene_from_path(scene_path)", "opens valid imported scenes as tabs without merging their nodes"),
+    ("Escenas que no se pudieron abrir", "reports only unreadable scene resources after synchronization"),
 ]:
 
     require(token in gd, label)
