@@ -35,7 +35,7 @@ for token, label in [
     ('popup->add_check_item("Redibujado 2D", 4)', "menu contains CanvasItem redraw debugging"),
     ('Mostrar FPS (esquina superior derecha)', "optional FPS counter appears in the existing runtime menu"),
     ('fps_label->set_anchors_and_offsets_preset(Control::PRESET_TOP_RIGHT)', "FPS counter is anchored to the top-right corner"),
-    ('fps_label->set_offset_top(56)', "FPS counter sits below the COL button"),
+    ('fps_label->set_offset(SIDE_TOP, 56)', "FPS counter sits below the COL button"),
     ('fps_label->set_mouse_filter(Control::MOUSE_FILTER_IGNORE)', "FPS counter does not intercept game input"),
     ('Engine::get_singleton()->get_frames_per_second()', "FPS counter reads live engine FPS"),
     ('fps_timer->set_wait_time(0.25)', "FPS counter refreshes at four updates per second"),
