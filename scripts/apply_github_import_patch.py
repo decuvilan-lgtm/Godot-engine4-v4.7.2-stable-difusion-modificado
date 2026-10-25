@@ -982,3 +982,107 @@ replace_once(PATH3D_SOURCE,
 void Path3D::set_debug_custom_color(const Color &p_color) {""")
 
 print("GitHub import and Android Gallery protection patches applied successfully.")
+
+
+# Android immersive preview mode: hide editor chrome, use the whole display area,
+# and keep a small floating return control so the running game is not stopped.
+EDITOR_NODE_HEADER = ROOT / "editor/editor_node.h"
+EDITOR_NODE_SOURCE = ROOT / "editor/editor_node.cpp"
+if not EDITOR_NODE_HEADER.is_file() or not EDITOR_NODE_SOURCE.is_file():
+    sys.exit("Godot EditorNode source not found; cannot add immersive preview mode.")
+
+replace_once(EDITOR_NODE_HEADER,
+    "class EditorTitleBar;\n",
+    "class EditorTitleBar;\nclass CanvasLayer;\nclass Button;\n")
+replace_once(EDITOR_NODE_HEADER,
+    "EditorTitleBar *title_bar = nullptr;",
+    "EditorTitleBar *title_bar = nullptr;\n\tCanvasLayer *mobile_immersive_layer = nullptr;\n\tButton *mobile_immersive_exit_button = nullptr;\n\tbool mobile_immersive_preview = false;\n\tbool mobile_previous_distraction_free = false;\n\tint mobile_previous_window_mode = -1;")
+replace_once(EDITOR_NODE_HEADER,
+    "static Button *get_distraction_free_button() { return singleton->distraction_free; }",
+    "static Button *get_distraction_free_button() { return singleton->distraction_free; }\n\tvoid toggle_mobile_immersive_preview();\n\tvoid exit_mobile_immersive_preview();")
+replace_once(EDITOR_NODE_SOURCE,
+    '#include "scene/main/scene_tree.h"',
+    '#include "scene/main/scene_tree.h"\n#include "scene/main/canvas_layer.h"\n#include "scene/gui/button.h"')
+replace_once(EDITOR_NODE_SOURCE,
+    "distraction_free->connect(SceneStringName(pressed), callable_mp(this, &EditorNode::_toggle_distraction_free_mode));",
+    """distraction_free->connect(SceneStringName(pressed), callable_mp(this, &EditorNode::_toggle_distraction_free_mode));
+
+#ifdef ANDROID_ENABLED
+	// A floating return control stays available after the editor title bar is hidden.
+	mobile_immersive_layer = memnew(CanvasLayer);
+	mobile_immersive_layer->set_layer(128);
+	add_child(mobile_immersive_layer);
+	mobile_immersive_exit_button = memnew(Button);
+	mobile_immersive_exit_button->set_text(TTR("Volver"));
+	mobile_immersive_exit_button->set_tooltip_text(TTR("Volver al editor sin detener el juego."));
+	mobile_immersive_exit_button->set_accessibility_name(TTR("Salir de vista inmersiva"));
+	mobile_immersive_exit_button->set_custom_minimum_size(Size2(72, 48) * EDSCALE);
+	mobile_immersive_exit_button->set_anchors_and_offsets_preset(Control::PRESET_TOP_RIGHT);
+	mobile_immersive_exit_button->set_offset_left(-84 * EDSCALE);
+	mobile_immersive_exit_button->set_offset_top(8 * EDSCALE);
+	mobile_immersive_exit_button->set_offset_right(-8 * EDSCALE);
+	mobile_immersive_exit_button->set_offset_bottom(56 * EDSCALE);
+	mobile_immersive_exit_button->pressed.connect(callable_mp(this, &EditorNode::exit_mobile_immersive_preview));
+	mobile_immersive_layer->add_child(mobile_immersive_exit_button);
+	mobile_immersive_exit_button->hide();
+#endif""")
+replace_once(EDITOR_NODE_SOURCE,
+    "void EditorNode::_toggle_distraction_free_mode() {",
+    """void EditorNode::toggle_mobile_immersive_preview() {
+#ifdef ANDROID_ENABLED
+	if (mobile_immersive_preview) {
+		exit_mobile_immersive_preview();
+		return;
+	}
+	mobile_immersive_preview = true;
+	mobile_previous_window_mode = (int)DisplayServer::get_singleton()->window_get_mode();
+	mobile_previous_distraction_free = is_distraction_free_mode_enabled();
+	set_distraction_free_mode(true);
+	if (title_bar) {
+		title_bar->hide();
+	}
+	// Fullscreen makes the editor's game area use the Android display bounds.
+	// The game session is not stopped or relaunched by this UI-only transition.
+	DisplayServer::get_singleton()->window_set_mode(DisplayServerEnums::WINDOW_MODE_FULLSCREEN);
+	if (mobile_immersive_exit_button) {
+		mobile_immersive_exit_button->show();
+	}
+#endif
+}
+
+void EditorNode::exit_mobile_immersive_preview() {
+#ifdef ANDROID_ENABLED
+	if (!mobile_immersive_preview) {
+		return;
+	}
+	mobile_immersive_preview = false;
+	if (mobile_immersive_exit_button) {
+		mobile_immersive_exit_button->hide();
+	}
+	if (title_bar) {
+		title_bar->show();
+	}
+	if (mobile_previous_window_mode >= 0) {
+		DisplayServer::get_singleton()->window_set_mode((DisplayServerEnums::WindowMode)mobile_previous_window_mode);
+	}
+	set_distraction_free_mode(mobile_previous_distraction_free);
+	mobile_previous_window_mode = -1;
+#endif
+}
+
+void EditorNode::_toggle_distraction_free_mode() {""")
+replace_once(RUN_BAR_SOURCE,
+    "play_button = memnew(Button);",
+    """#ifdef ANDROID_ENABLED
+	Button *immersive_preview_button = memnew(Button);
+	main_hbox->add_child(immersive_preview_button);
+	immersive_preview_button->set_theme_type_variation("RunBarButton");
+	immersive_preview_button->set_text(TTR("⛶"));
+	immersive_preview_button->set_custom_minimum_size(Size2(44, 44) * EDSCALE);
+	immersive_preview_button->set_accessibility_name(TTR("Vista previa inmersiva"));
+	immersive_preview_button->set_tooltip_text(TTR("Expandir la vista previa a pantalla completa sin detener el juego."));
+	immersive_preview_button->connect(SceneStringName(pressed), callable_mp(EditorNode::get_singleton(), &EditorNode::toggle_mobile_immersive_preview));
+#endif
+	play_button = memnew(Button);""")
+
+print("GitHub import, debug overlays, and Android immersive-preview patches applied successfully.")
