@@ -1,8 +1,21 @@
 name: Build Godot Android Editor (source pipeline)
 
-# Full Android builds are deliberately manual so a series of source commits does not
-# repeatedly consume an hour-long ARM32+ARM64 build before the implementation is ready.
+# One consolidated ARM32+ARM64 build after the implementation batch is integrated.
+# Keep manual dispatch available for intentional rebuilds and diagnostics.
 on:
+  push:
+    branches: [feature/github-sync-and-safe-mcp]
+    paths:
+      - "scripts/apply_github_import_patch.py"
+      - "scripts/validate_debug_overlay_patch.py"
+      - "scripts/apply_github_sync_patch.py"
+      - "scripts/validate_github_sync_source.py"
+      - "scripts/github_sync_addon/**"
+      - "scripts/apply_android_startup_patch.py"
+      - "scripts/validate_android_startup_patch.py"
+      - "scripts/validate_terrain_3d_source.py"
+      - "scripts/terrain_3d_addon/**"
+      - ".github/workflows/build-godot-android-source.yml"
   workflow_dispatch:
     inputs:
       run_type:
