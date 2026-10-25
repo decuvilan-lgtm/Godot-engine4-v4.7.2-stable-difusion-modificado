@@ -631,112 +631,12 @@ replace_once(PROJECT_DIALOG,
 \t\t\tret = unzGoToFirstFile(pkg);""")
 
 
-# Add built-in run/debug visibility toggles to the editor's run bar. These write
-# the same per-project metadata consumed by EditorRun when launching the preview.
+# Keep the normal run bar dedicated to launching/stopping the game. Runtime debug
+# controls are injected into the running game's own window by SceneDebugger below.
 RUN_BAR_HEADER = ROOT / "editor/run/editor_run_bar.h"
 RUN_BAR_SOURCE = ROOT / "editor/run/editor_run_bar.cpp"
 if not RUN_BAR_HEADER.is_file() or not RUN_BAR_SOURCE.is_file():
-    sys.exit("Godot run-bar source not found; cannot add preview debug controls.")
-
-replace_once(RUN_BAR_SOURCE,
-    '#include "scene/gui/panel_container.h"\n#include "scene/main/scene_tree.h"',
-    '#include "scene/gui/panel_container.h"\n#include "scene/gui/popup_menu.h"\n#include "scene/main/scene_tree.h"')
-replace_once(RUN_BAR_HEADER,
-    "MenuButton *write_movie_button = nullptr;",
-    "MenuButton *write_movie_button = nullptr;\n\tMenuButton *preview_debug_button = nullptr;")
-replace_once(RUN_BAR_HEADER,
-    "\tvoid _movie_maker_item_pressed(int p_id);",
-    """\tenum PreviewDebugMenuItem {
-\t\tPREVIEW_DEBUG_COLLISIONS = 0,
-\t\tPREVIEW_DEBUG_PATHS,
-\t\tPREVIEW_DEBUG_NAVIGATION,
-\t\tPREVIEW_DEBUG_AVOIDANCE,
-\t\tPREVIEW_DEBUG_CANVAS_REDRAW,
-\t};
-
-\tvoid _preview_debug_item_pressed(int p_id);
-\tvoid _movie_maker_item_pressed(int p_id);""")
-replace_once(RUN_BAR_SOURCE,
-    "void EditorRunBar::_movie_maker_item_pressed(int p_id) {",
-    """void EditorRunBar::_preview_debug_item_pressed(int p_id) {
-\tif (preview_debug_button == nullptr) {
-\t\treturn;
-\t}
-
-\tPopupMenu *popup = preview_debug_button->get_popup();
-\tint item_index = popup->get_item_index(p_id);
-\tif (item_index < 0) {
-\t\treturn;
-\t}
-
-\tbool enabled = !popup->is_item_checked(item_index);
-\tpopup->set_item_checked(item_index, enabled);
-
-\tconst char *metadata_key = nullptr;
-\tswitch (p_id) {
-\t\tcase PREVIEW_DEBUG_COLLISIONS:
-\t\t\tmetadata_key = "run_debug_collisions";
-\t\t\tbreak;
-\t\tcase PREVIEW_DEBUG_PATHS:
-\t\t\tmetadata_key = "run_debug_paths";
-\t\t\tbreak;
-\t\tcase PREVIEW_DEBUG_NAVIGATION:
-\t\t\tmetadata_key = "run_debug_navigation";
-\t\t\tbreak;
-\t\tcase PREVIEW_DEBUG_AVOIDANCE:
-\t\t\tmetadata_key = "run_debug_avoidance";
-\t\t\tbreak;
-\t\tcase PREVIEW_DEBUG_CANVAS_REDRAW:
-\t\t\tmetadata_key = "run_debug_canvas_redraw";
-\t\t\tbreak;
-\t\tdefault:
-\t\t\treturn;
-\t}
-
-\tEditorSettings::get_singleton()->set_project_metadata("debug_options", metadata_key, enabled);
-
-\t// Collision overlays support live updates through Godot's remote debugger protocol.
-\t// Apply immediately to every active editor-debugged game, without restarting it.
-\tif (p_id == PREVIEW_DEBUG_COLLISIONS) {
-\t\tEditorDebuggerNode::get_singleton()->set_debug_collisions(enabled);
-\t} else if (p_id == PREVIEW_DEBUG_NAVIGATION) {
-\t\tEditorDebuggerNode::get_singleton()->set_debug_navigation(enabled);
-\t} else if (p_id == PREVIEW_DEBUG_AVOIDANCE) {
-\t\tEditorDebuggerNode::get_singleton()->set_debug_avoidance(enabled);
-\t}
-}
-
-void EditorRunBar::_movie_maker_item_pressed(int p_id) {""")
-replace_once(RUN_BAR_SOURCE,
-    "\tplay_button = memnew(Button);",
-    """\t// Quick access to Godot's built-in runtime debug overlays. All options
-\t// default to off unless the project already has an explicit preference.
-\tpreview_debug_button = memnew(MenuButton);
-\tmain_hbox->add_child(preview_debug_button);
-\tpreview_debug_button->set_theme_type_variation("RunBarButton");
-\tpreview_debug_button->set_text(TTR("COL."));
-	preview_debug_button->set_custom_minimum_size(Size2(48, 44));
-\tpreview_debug_button->set_accessibility_name(TTR("Opciones avanzadas de vista previa"));
-\tpreview_debug_button->set_tooltip_text(TTR("Colisiones 2D/3D y variantes · rutas · navegación · evasión · redibujado. Toca para abrir las opciones."));
-\tPopupMenu *preview_debug_popup = preview_debug_button->get_popup();
-\tpreview_debug_popup->add_check_item(TTRC("Colisiones 2D/3D, formas y raycasts"), PREVIEW_DEBUG_COLLISIONS);
-\tpreview_debug_popup->set_item_tooltip(preview_debug_popup->get_item_index(PREVIEW_DEBUG_COLLISIONS), TTRC("Muestra formas de colisión, CollisionShape2D/3D, Area2D/Area3D y RayCast2D/3D en la vista previa."));
-\tpreview_debug_popup->add_check_item(TTRC("Mostrar rutas Path2D/Path3D"), PREVIEW_DEBUG_PATHS);
-\tpreview_debug_popup->set_item_tooltip(preview_debug_popup->get_item_index(PREVIEW_DEBUG_PATHS), TTRC("Show curves used by path nodes."));
-\tpreview_debug_popup->add_check_item(TTRC("Mostrar mallas de navegación"), PREVIEW_DEBUG_NAVIGATION);
-\tpreview_debug_popup->set_item_tooltip(preview_debug_popup->get_item_index(PREVIEW_DEBUG_NAVIGATION), TTRC("Show navigation meshes and polygons."));
-\tpreview_debug_popup->add_check_item(TTRC("Mostrar áreas y velocidades de evasión"), PREVIEW_DEBUG_AVOIDANCE);
-\tpreview_debug_popup->set_item_tooltip(preview_debug_popup->get_item_index(PREVIEW_DEBUG_AVOIDANCE), TTRC("Show avoidance shapes, radiuses, and velocities."));
-\tpreview_debug_popup->add_separator();
-\tpreview_debug_popup->add_check_item(TTRC("Depurar redibujado 2D"), PREVIEW_DEBUG_CANVAS_REDRAW);
-\tpreview_debug_popup->set_item_tooltip(preview_debug_popup->get_item_index(PREVIEW_DEBUG_CANVAS_REDRAW), TTRC("Flash 2D items when they request redraws."));
-\tconst String debug_keys[] = {"run_debug_collisions", "run_debug_paths", "run_debug_navigation", "run_debug_avoidance", "run_debug_canvas_redraw"};
-\tfor (int i = 0; i < 5; i++) {
-\t\tpreview_debug_popup->set_item_checked(preview_debug_popup->get_item_index(i), EditorSettings::get_singleton()->get_project_metadata("debug_options", debug_keys[i], false));
-\t}
-\tpreview_debug_popup->connect(SceneStringName(id_pressed), callable_mp(this, &EditorRunBar::_preview_debug_item_pressed));
-
-\tplay_button = memnew(Button);""")
+    sys.exit("Godot run-bar source not found; cannot add immersive preview control.")
 
 
 # Extend the remote-debugger channel so physics, navigation, avoidance, and path
@@ -801,10 +701,10 @@ void ScriptEditorDebugger::set_debug_mute_audio(bool p_mute) {""")
 
 replace_once(SCENE_DEBUGGER_HEADER,
     "static Error _msg_debug_mute_audio(const Array &p_args);",
-    "static Error _msg_debug_mute_audio(const Array &p_args);\n\tstatic Error _msg_set_debug_collisions(const Array &p_args);\n\tstatic Error _msg_set_debug_navigation(const Array &p_args);\n\tstatic Error _msg_set_debug_avoidance(const Array &p_args);")
+    "static Error _msg_debug_mute_audio(const Array &p_args);\n\tstatic Error _msg_set_debug_collisions(const Array &p_args);\n\tstatic Error _msg_set_debug_navigation(const Array &p_args);\n\tstatic Error _msg_set_debug_avoidance(const Array &p_args);\n\tstatic Error _msg_set_debug_paths(const Array &p_args);\n\tstatic Error _msg_set_debug_canvas_item_redraw(const Array &p_args);\n\tstatic void _create_runtime_debug_overlay();\n\tstatic void _runtime_debug_button_pressed();\n\tstatic void _runtime_debug_item_pressed(int p_id);")
 replace_once(SCENE_DEBUGGER_SOURCE,
     '#include "servers/rendering/rendering_server.h"',
-    '#include "core/templates/list.h"\n#include "scene/2d/path_2d.h"\n#include "scene/3d/path_3d.h"\n#include "servers/rendering/rendering_server.h"\n#include "servers/navigation_2d/navigation_server_2d.h"\n#include "servers/navigation_3d/navigation_server_3d.h"')
+    '#include "core/templates/list.h"\n#include "scene/2d/path_2d.h"\n#include "scene/3d/path_3d.h"\n#include "scene/gui/button.h"\n#include "scene/gui/popup_menu.h"\n#include "scene/main/canvas_layer.h"\n#include "servers/rendering/rendering_server.h"\n#include "servers/navigation_2d/navigation_server_2d.h"\n#include "servers/navigation_3d/navigation_server_3d.h"')
 replace_once(SCENE_DEBUGGER_SOURCE,
     "Error SceneDebugger::_msg_debug_mute_audio(const Array &p_args) {",
     """Error SceneDebugger::_msg_set_debug_collisions(const Array &p_args) {
@@ -843,7 +743,7 @@ Error SceneDebugger::_msg_set_debug_avoidance(const Array &p_args) {
 Error SceneDebugger::_msg_debug_mute_audio(const Array &p_args) {""")
 replace_once(SCENE_DEBUGGER_SOURCE,
     'message_handlers["debug_mute_audio"] = _msg_debug_mute_audio;',
-    'message_handlers["debug_mute_audio"] = _msg_debug_mute_audio;\n\tmessage_handlers["set_debug_collisions"] = _msg_set_debug_collisions;\n\tmessage_handlers["set_debug_navigation"] = _msg_set_debug_navigation;\n\tmessage_handlers["set_debug_avoidance"] = _msg_set_debug_avoidance;')
+    'message_handlers["debug_mute_audio"] = _msg_debug_mute_audio;\n\tmessage_handlers["set_debug_collisions"] = _msg_set_debug_collisions;\n\tmessage_handlers["set_debug_navigation"] = _msg_set_debug_navigation;\n\tmessage_handlers["set_debug_avoidance"] = _msg_set_debug_avoidance;\n\t_create_runtime_debug_overlay();')
 
 
 
@@ -928,9 +828,7 @@ Error SceneDebugger::_msg_debug_mute_audio(const Array &p_args) {""")
 replace_once(SCENE_DEBUGGER_SOURCE,
     'message_handlers["set_debug_avoidance"] = _msg_set_debug_avoidance;',
     'message_handlers["set_debug_avoidance"] = _msg_set_debug_avoidance;\n\tmessage_handlers["set_debug_paths"] = _msg_set_debug_paths;\n\tmessage_handlers["set_debug_canvas_item_redraw"] = _msg_set_debug_canvas_item_redraw;')
-replace_once(RUN_BAR_SOURCE,
-    "EditorDebuggerNode::get_singleton()->set_debug_avoidance(enabled);\n\t}",
-    "EditorDebuggerNode::get_singleton()->set_debug_avoidance(enabled);\n\t} else if (p_id == PREVIEW_DEBUG_PATHS) {\n\t\tEditorDebuggerNode::get_singleton()->set_debug_paths(enabled);\n\t} else if (p_id == PREVIEW_DEBUG_CANVAS_REDRAW) {\n\t\tEditorDebuggerNode::get_singleton()->set_debug_canvas_item_redraw(enabled);\n\t}")
+# Runtime overlay owns these toggles; no COL button is placed in EditorRunBar.
 
 
 # Runtime path toggling must refresh Godot's actual built-in Path2D/Path3D
@@ -1142,6 +1040,85 @@ replace_once(SCENE_DEBUGGER_SOURCE,
     '#include "scene/3d/path_3d.h"\n#include "scene/main/window.h"')
 replace_once(SCENE_DEBUGGER_SOURCE,
     "Error SceneDebugger::_msg_set_debug_collisions(const Array &p_args) {",
+    """static void SceneDebugger::_create_runtime_debug_overlay() {
+\tSceneTree *tree = SceneTree::get_singleton();
+\tif (tree == nullptr || tree->get_root() == nullptr) {
+\t\treturn;
+\t}
+\tWindow *root = tree->get_root();
+\tif (root->has_node(NodePath("__GodotPreviewDebugOverlay"))) {
+\t\treturn;
+\t}
+\tCanvasLayer *layer = memnew(CanvasLayer);
+\tlayer->set_name("__GodotPreviewDebugOverlay");
+\tlayer->set_layer(127);
+\troot->add_child(layer);
+\tButton *button = memnew(Button);
+\tbutton->set_name("CollisionButton");
+\tbutton->set_text("COL.");
+\tbutton->set_tooltip_text("Colisiones, rutas, navegación y evasión de la vista previa");
+\tbutton->set_accessibility_name("Opciones de depuración de la vista previa");
+\tbutton->set_custom_minimum_size(Size2(60, 44));
+\tbutton->set_anchors_and_offsets_preset(Control::PRESET_TOP_RIGHT);
+\tbutton->set_offset_left(-68);
+\tbutton->set_offset_top(8);
+\tbutton->set_offset_right(-8);
+\tbutton->set_offset_bottom(52);
+\tlayer->add_child(button);
+\tPopupMenu *popup = memnew(PopupMenu);
+\tpopup->set_name("CollisionMenu");
+\tlayer->add_child(popup);
+\tpopup->add_check_item("Colisiones 2D/3D, formas y raycasts", 0);
+\tpopup->add_check_item("Rutas Path2D/Path3D", 1);
+\tpopup->add_check_item("Mallas de navegación", 2);
+\tpopup->add_check_item("Áreas y velocidades de evasión", 3);
+\tpopup->add_check_item("Redibujado 2D", 4);
+\tbutton->connect(SceneStringName(pressed), callable_mp_static(SceneDebugger, &SceneDebugger::_runtime_debug_button_pressed));
+\tpopup->connect(SceneStringName(id_pressed), callable_mp_static(SceneDebugger, &SceneDebugger::_runtime_debug_item_pressed));
+}
+
+static void SceneDebugger::_runtime_debug_button_pressed() {
+\tSceneTree *tree = SceneTree::get_singleton();
+\tif (tree == nullptr || tree->get_root() == nullptr) {
+\t\treturn;
+\t}
+\tControl *button = Object::cast_to<Control>(tree->get_root()->get_node_or_null(NodePath("__GodotPreviewDebugOverlay/CollisionButton")));
+\tPopupMenu *popup = Object::cast_to<PopupMenu>(tree->get_root()->get_node_or_null(NodePath("__GodotPreviewDebugOverlay/CollisionMenu")));
+\tif (button == nullptr || popup == nullptr) {
+\t\treturn;
+\t}
+\tpopup->set_position(button->get_screen_position());
+\tpopup->popup();
+}
+
+static void SceneDebugger::_runtime_debug_item_pressed(int p_id) {
+\tSceneTree *tree = SceneTree::get_singleton();
+\tif (tree == nullptr || tree->get_root() == nullptr) {
+\t\treturn;
+\t}
+\tPopupMenu *popup = Object::cast_to<PopupMenu>(tree->get_root()->get_node_or_null(NodePath("__GodotPreviewDebugOverlay/CollisionMenu")));
+\tif (popup == nullptr) {
+\t\treturn;
+\t}
+\tint index = popup->get_item_index(p_id);
+\tif (index < 0) {
+\t\treturn;
+\t}
+\tbool enabled = !popup->is_item_checked(index);
+\tpopup->set_item_checked(index, enabled);
+\tArray args;
+\targs.push_back(enabled);
+\tswitch (p_id) {
+\t\tcase 0: _msg_set_debug_collisions(args); break;
+\t\tcase 1: _msg_set_debug_paths(args); break;
+\t\tcase 2: _msg_set_debug_navigation(args); break;
+\t\tcase 3: _msg_set_debug_avoidance(args); break;
+\t\tcase 4: _msg_set_debug_canvas_item_redraw(args); break;
+\t\tdefault: break;
+\t}
+}
+
+void SceneDebugger::_msg_set_debug_collisions(const Array &p_args) {""")
     """static bool mobile_immersive_preview_active = false;
 static Window::ContentScaleAspect mobile_immersive_previous_aspect = Window::CONTENT_SCALE_ASPECT_IGNORE;
 static Window::ContentScaleMode mobile_immersive_previous_scale_mode = Window::CONTENT_SCALE_MODE_DISABLED;
