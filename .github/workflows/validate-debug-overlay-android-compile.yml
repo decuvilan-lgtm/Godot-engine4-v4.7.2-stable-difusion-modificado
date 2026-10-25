@@ -1,42 +1,7 @@
 name: Compile debug overlays for Android ARM32 (no APK)
 
 on:
-  push:
-    branches:
-      - feature/github-sync-and-safe-mcp
-    paths:
-      - "scripts/apply_github_import_patch.py"
-      - "scripts/validate_debug_overlay_patch.py"
-      - "scripts/apply_github_sync_patch.py"
-      - "scripts/validate_github_sync_source.py"
-      - "scripts/github_sync_addon/**"
-      - "scripts/apply_android_startup_patch.py"
-      - "scripts/validate_android_startup_patch.py"
-      - "scripts/validate_terrain_3d_source.py"
-      - "scripts/terrain_3d_addon/**"
-      - ".github/workflows/validate-debug-overlay-android-compile.yml"
-  pull_request:
-    branches:
-      - feature/github-sync-and-safe-mcp
-    paths:
-      - "scripts/apply_github_import_patch.py"
-      - "scripts/validate_debug_overlay_patch.py"
-      - "scripts/apply_github_sync_patch.py"
-      - "scripts/validate_github_sync_source.py"
-      - "scripts/github_sync_addon/**"
-      - "scripts/apply_android_startup_patch.py"
-      - "scripts/validate_android_startup_patch.py"
-      - "scripts/validate_terrain_3d_source.py"
-      - "scripts/terrain_3d_addon/**"
-      - ".github/workflows/validate-debug-overlay-android-compile.yml"
   workflow_dispatch:
-
-permissions:
-  contents: read
-
-concurrency:
-  group: godot-debug-overlay-android-arm32-compile-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   compile-native-editor:
