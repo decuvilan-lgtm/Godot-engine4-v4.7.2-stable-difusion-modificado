@@ -92,7 +92,6 @@ void ProjectManager::_show_github_import_dialog() {
 \t\tgithub_results_dialog->add_child(results_container);
 \t\tadd_child(github_results_dialog);
 \t\tgithub_results_dialog->connect("confirmed", callable_mp(this, &ProjectManager::_github_search_result_confirmed));
-		github_results_dialog->set_min_size(Size2i(640 * EDSCALE, 220 * EDSCALE));
 \t}
 \tgithub_import_dialog->popup_centered_clamped(Size2i(680 * EDSCALE, 560 * EDSCALE), 0.95);
 }
