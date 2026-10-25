@@ -20,9 +20,11 @@ func _ready() -> void:
 		terrain_material = existing_material
 
 func initialize_grid(p_width: int, p_depth: int, p_cell_size: float) -> void:
+	# Validate all dimensions before allocating arrays or generating geometry.
+	# Keep the existing quality ceiling, but never allow malformed serialized values.
 	grid_width = clampi(p_width, 9, 257)
 	grid_depth = clampi(p_depth, 9, 257)
-	cell_size = clampf(p_cell_size, 0.1, 16.0)
+	cell_size = clampf(p_cell_size, 0.1, 16.0) if is_finite(p_cell_size) else 1.0
 	heights.resize(grid_width * grid_depth)
 	vertex_colors.resize(grid_width * grid_depth)
 	layer_weights.resize(grid_width * grid_depth)
@@ -36,6 +38,12 @@ func set_heights(values: PackedFloat32Array, update_collision: bool = true) -> v
 	if values.size() != grid_width * grid_depth:
 		push_error("Terrain height array size does not match the grid.")
 		return
+	# Reject corrupt/non-finite heightmaps before they can poison mesh bounds,
+	# collision generation, camera framing, or serialized scene data.
+	for height in values:
+		if not is_finite(height) or absf(height) > 10000.0:
+			push_error("Terrain heights must be finite and within -10000..10000.")
+			return
 	heights = values.duplicate()
 	_rebuild_mesh()
 	if update_collision:
@@ -126,8 +134,15 @@ func _rebuild_mesh() -> void:
 			_add_vertex(st, x + 1, z, i10)
 			_add_vertex(st, x, z + 1, i01)
 			_add_vertex(st, x + 1, z + 1, i11)
+	# Vertices are emitted per triangle for simple winding, then indexed to share
+	# identical vertices. This cuts a 257x257 grid from ~393k to ~66k vertices,
+	# reducing mesh memory, upload time, and normal-generation cost on Android.
+	st.index()
 	st.generate_normals()
 	mesh = st.commit()
+	if mesh == null:
+		push_error("Could not build the terrain mesh.")
+		return
 	if terrain_material == null:
 		terrain_material = _create_terrain_material()
 	set_surface_override_material(0, terrain_material)
@@ -191,6 +206,9 @@ func rebuild_collision() -> void:
 	_rebuild_collision()
 
 func _rebuild_collision() -> void:
+	if mesh == null:
+		push_warning("Terrain collision was not rebuilt because the terrain mesh is empty.")
+		return
 	if collision_body and is_instance_valid(collision_body):
 		collision_body.free()
 	collision_body = StaticBody3D.new()
@@ -203,12 +221,21 @@ func _rebuild_collision() -> void:
 	var collision := CollisionShape3D.new()
 	collision.name = "CollisionShape3D"
 	collision.shape = mesh.create_trimesh_shape()
+	if collision.shape == null:
+		collision_body.free()
+		collision_body = null
+		push_error("Could not create a collision shape for this terrain mesh.")
+		return
 	collision_body.add_child(collision)
 	if owner:
 		collision.owner = owner
 
 func apply_heightmap(image: Image, height_scale: float) -> void:
 	if image.is_empty():
+		push_warning("The supplied heightmap image is empty.")
+		return
+	if not is_finite(height_scale) or height_scale <= 0.0:
+		push_error("Heightmap scale must be a finite positive number.")
 		return
 	var resized := image.duplicate()
 	resized.resize(grid_width, grid_depth, Image.INTERPOLATE_BILINEAR)

@@ -321,12 +321,20 @@ func _create_terrain() -> void:
 	if root == null:
 		_set_status("Primero crea o abre una escena.")
 		return
+	if terrain_width == null or terrain_depth == null or cell_size == null:
+		_set_status("El panel de terreno todavía no está inicializado.")
+		return
 	var terrain_script = load(TERRAIN_SCRIPT)
 	if terrain_script == null:
 		_set_status("No se encontró terrain_data.gd.")
 		return
 	var terrain = terrain_script.new()
-	terrain.name = "Terrain3D_%d" % (root.get_child_count() + 1)
+	# Never rely on child count for names: deleted nodes leave gaps and imported
+	# scenes may already contain Terrain3D_1, Terrain3D_2, etc.
+	var suffix := 1
+	while root.has_node(NodePath("Terrain3D_%d" % suffix)):
+		suffix += 1
+	terrain.name = "Terrain3D_%d" % suffix
 	terrain.set_meta(TERRAIN_META, true)
 	cached_terrain = terrain
 	cached_scene_root = root
@@ -751,6 +759,9 @@ func _export_heightmap(path: String) -> void:
 	if terrain == null:
 		_set_status("No hay terreno para exportar.")
 		return
+	if terrain.heights.size() != terrain.grid_width * terrain.grid_depth:
+		_set_status("El terreno tiene datos de altura incompletos; no se exportó.")
+		return
 	var image := Image.create(terrain.grid_width, terrain.grid_depth, false, Image.FORMAT_L8)
 	var minimum := INF
 	var maximum := -INF
@@ -777,6 +788,9 @@ func _import_layer_texture(path: String) -> void:
 	if terrain == null:
 		_set_status("Crea o selecciona un terreno antes de asignar texturas.")
 		return
+	if layer_picker == null or layer_picker.selected < 0 or layer_picker.selected > 3:
+		_set_status("Selecciona una capa válida: hierba, roca, arena o nieve.")
+		return
 	var image := Image.new()
 	var err := image.load(path)
 	if err != OK:
@@ -785,7 +799,13 @@ func _import_layer_texture(path: String) -> void:
 	# Cap imported texture dimensions to keep memory use manageable on the LG K51.
 	if image.get_width() > 512 or image.get_height() > 512:
 		image.resize(512, 512, Image.INTERPOLATE_BILINEAR)
+	if image.is_empty():
+		_set_status("La imagen no contiene píxeles utilizables.")
+		return
 	var texture := ImageTexture.create_from_image(image)
+	if texture == null:
+		_set_status("No se pudo convertir la imagen en textura.")
+		return
 	var selected_layer := layer_picker.selected
 	var previous: Texture2D = terrain.get_layer_texture(selected_layer)
 	var undo_redo := EditorInterface.get_editor_undo_redo()

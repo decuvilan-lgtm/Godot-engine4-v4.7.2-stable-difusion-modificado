@@ -609,3 +609,11 @@ The Windows workflow `.github/workflows/validate-debug-overlay-source.yml` now c
 - **PASS:** Windows ARM32 native editor compile, run [40104956513](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40104956513), including a strict check for the non-empty `libgodot_android.so` output. No APK was packaged and no Linux runner was used.
 - The sync plugin now also removes staging if the user cancels/closes the change preview or unloads the plugin. Source validation checks these paths.
 - **Still unverified:** GDScript parser/runtime behavior, terrain save/reopen and brush operation inside Godot, actual Android UI, and LG K51 performance. A native C++ compile must not be described as an on-device test.
+
+
+## Terrain editor hardening — 2026-10-25
+
+- Reduced generated terrain mesh memory and normal-generation work by indexing shared vertices after triangle emission. The grid retains the same dimensions and visual quality; it does not disable terrain features or lower resolution automatically.
+- Added validation for non-finite/out-of-range height data, invalid heightmap scales, empty meshes, and failed collision-shape generation so malformed resources stop with actionable errors rather than propagating into scene geometry.
+- Terrain creation now chooses a genuinely unused node name, and texture assignment / heightmap export validate their inputs before modifying the scene.
+- These safeguards are source changes and must pass the Windows source workflow and Android ARM32 native compile. Native compilation does not parse GDScript or prove editor runtime behavior; the LG K51 test remains deferred until the terrain editor is minimally complete.

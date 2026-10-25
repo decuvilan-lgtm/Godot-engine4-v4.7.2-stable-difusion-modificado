@@ -48,6 +48,9 @@ for token, label in [
     ('_make_tab_page(tabs, "Vegetación")', "dedicated interface has a foliage tab"),
     ('_make_tab_page(tabs, "Heightmaps")', "dedicated interface has a heightmap tab"),
     ("_create_terrain()", "opening the terrain editor can create a starter terrain"),
+    ("while root.has_node(NodePath(\"Terrain3D_%d\" % suffix)):", "terrain creation avoids node-name collisions"),
+    ("terrain.heights.size() != terrain.grid_width * terrain.grid_depth", "heightmap export rejects incomplete terrain data"),
+    ("layer_picker.selected < 0 or layer_picker.selected > 3", "texture assignment validates selected layer"),
     ("Base cuadrada creada con malla, material y colisiones", "starter terrain has generated mesh, material and collision"),
     ("var min_x := clampi(", "brush work is limited to the affected vertex region"),
     ("_set_heights_deferred", "height edits defer collision rebuilds until the stroke ends"),
@@ -64,6 +67,10 @@ for token, label in [
     require(token in plugin, label)
 for token, label in [
     ("SurfaceTool", "procedural terrain mesh"),
+    ("st.index()", "indexed terrain mesh avoids tripled vertex storage on mobile"),
+    ("is_finite(height)", "reject non-finite/corrupt height values before mesh generation"),
+    ("mesh == null", "mesh generation failure is handled safely"),
+    ("collision.shape == null", "collision generation failure is handled safely"),
     ("create_trimesh_shape", "terrain collision generation"),
     ("set_heights", "editable height data"),
     ("set_vertex_colors", "editable vertex color data"),
