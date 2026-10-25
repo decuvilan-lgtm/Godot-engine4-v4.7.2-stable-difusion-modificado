@@ -50,6 +50,10 @@ func _enter_tree() -> void:
 	terrain_button.pressed.connect(_toggle_panel)
 	add_control_to_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_MENU, terrain_button)
 	_build_panel()
+	var editor_base := EditorInterface.get_base_control()
+	if editor_base and not editor_base.theme_changed.is_connected(_refresh_ui_scale):
+		editor_base.theme_changed.connect(_refresh_ui_scale)
+	_refresh_ui_scale()
 	# Terrain brush input must remain available even when the terrain node is not selected.
 	set_input_event_forwarding_always_enabled()
 	set_process(true)
@@ -256,6 +260,17 @@ func _build_panel() -> void:
 	texture_dialog.add_filter("*.png,*.jpg,*.jpeg,*.webp", "Textura de terreno")
 	texture_dialog.file_selected.connect(_import_layer_texture)
 	add_child(texture_dialog)
+
+func _refresh_ui_scale() -> void:
+	# Custom touch targets follow Godot's current editor scale when the theme changes.
+	var scale := EditorInterface.get_editor_scale()
+	if panel:
+		panel.add_theme_constant_override("separation", roundi(8.0 * scale))
+	if joystick_pad:
+		joystick_pad.custom_minimum_size = Vector2(112, 112) * scale
+	if panel:
+		for spin in panel.find_children("*", "SpinBox", true, false):
+			spin.custom_minimum_size = Vector2(112, 44) * scale
 
 func _make_tab_page(tabs: TabContainer, title: String) -> VBoxContainer:
 	var scroll := ScrollContainer.new()
