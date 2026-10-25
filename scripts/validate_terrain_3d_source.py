@@ -78,6 +78,7 @@ for token, label in [
     ("NoiseTexture2D", "procedural texture generation for material layers"),
     ("@export_storage var heights", "terrain heights persist in saved scenes"),
     ("create_foliage", "procedural foliage placement"),
+    ("var canopy_mesh := CylinderMesh.new()", "foliage canopy uses a Godot 4.7 built-in mesh primitive"),
 ]:
     require(token in data, label)
 require("TERRAIN_DATA_GD" in patcher and "res://addons/terrain_3d/plugin.cfg" in patcher,
