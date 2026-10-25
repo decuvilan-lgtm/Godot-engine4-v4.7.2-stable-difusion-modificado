@@ -1069,6 +1069,7 @@ replace_once(SCENE_DEBUGGER_SOURCE,
 \tpopup->set_name("CollisionMenu");
 \tlayer->add_child(popup);
 \tpopup->add_check_item("Colisiones 2D/3D, formas y raycasts", 0);
+\tpopup->set_item_tooltip(popup->get_item_index(0), "Incluye rectángulos, círculos, cápsulas, polígonos, cajas 3D, Area2D/Area3D y RayCast2D/3D.");
 \tpopup->add_check_item("Rutas Path2D/Path3D", 1);
 \tpopup->add_check_item("Mallas de navegación", 2);
 \tpopup->add_check_item("Áreas y velocidades de evasión", 3);
