@@ -3,19 +3,7 @@ name: Build Godot Android Editor (source pipeline)
 # One consolidated ARM32+ARM64 build after the implementation batch is integrated.
 # Keep manual dispatch available for intentional rebuilds and diagnostics.
 on:
-  push:
-    branches: [feature/github-sync-and-safe-mcp]
-    paths:
-      - "scripts/apply_github_import_patch.py"
-      - "scripts/validate_debug_overlay_patch.py"
-      - "scripts/apply_github_sync_patch.py"
-      - "scripts/validate_github_sync_source.py"
-      - "scripts/github_sync_addon/**"
-      - "scripts/apply_android_startup_patch.py"
-      - "scripts/validate_android_startup_patch.py"
-      - "scripts/validate_terrain_3d_source.py"
-      - "scripts/terrain_3d_addon/**"
-      - ".github/workflows/build-godot-android-source.yml"
+  # Deliberately manual-only: source edits must never trigger a long Android build.
   workflow_dispatch:
     inputs:
       run_type:
@@ -36,7 +24,7 @@ concurrency:
 
 jobs:
   build-android-editor:
-    if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
+    if: ${{ inputs.run_type == 'full-android-build' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -246,7 +234,7 @@ jobs:
           fi
 
       - name: Upload ARM32+ARM64 Android editor APK
-        if: always() && (github.event_name == 'push' || inputs.run_type == 'full-android-build')
+        if: always() && inputs.run_type == 'full-android-build'
         uses: actions/upload-artifact@v4
         with:
           name: godot-4.7.2-android-editor-arm32-arm64
