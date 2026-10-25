@@ -1101,4 +1101,76 @@ replace_once(RUN_BAR_SOURCE,
 void EditorRunBar::_preview_debug_item_pressed(int p_id) {""")
 
 
+
+
+# While immersive preview is active, ask the running game through the existing
+# remote-debugger channel to ignore its design aspect ratio, then restore it on exit.
+replace_once(EDITOR_NODE_SOURCE,
+    "DisplayServer::get_singleton()->window_set_mode(DisplayServerEnums::WINDOW_MODE_FULLSCREEN);",
+    "DisplayServer::get_singleton()->window_set_mode(DisplayServerEnums::WINDOW_MODE_FULLSCREEN);\n\tEditorDebuggerNode::get_singleton()->set_mobile_immersive_preview(true);")
+replace_once(EDITOR_NODE_SOURCE,
+    "set_distraction_free_mode(mobile_previous_distraction_free);",
+    "set_distraction_free_mode(mobile_previous_distraction_free);\n\tEditorDebuggerNode::get_singleton()->set_mobile_immersive_preview(false);")
+
+replace_once(EDITOR_DEBUGGER_HEADER,
+    "void set_debug_avoidance(bool p_enabled);",
+    "void set_debug_avoidance(bool p_enabled);\n\tvoid set_mobile_immersive_preview(bool p_enabled);")
+replace_once(EDITOR_DEBUGGER_SOURCE,
+    "void EditorDebuggerNode::set_debug_mute_audio(bool p_mute) {",
+    """void EditorDebuggerNode::set_mobile_immersive_preview(bool p_enabled) {
+	_for_all(tabs, [&](ScriptEditorDebugger *dbg) {
+		dbg->set_mobile_immersive_preview(p_enabled);
+	});
+}
+
+void EditorDebuggerNode::set_debug_mute_audio(bool p_mute) {""")
+replace_once(SCRIPT_DEBUGGER_HEADER,
+    "void set_debug_avoidance(bool p_enable);",
+    "void set_debug_avoidance(bool p_enable);\n\tvoid set_mobile_immersive_preview(bool p_enable);")
+replace_once(SCRIPT_DEBUGGER_SOURCE,
+    "void ScriptEditorDebugger::set_debug_mute_audio(bool p_mute) {",
+    """void ScriptEditorDebugger::set_mobile_immersive_preview(bool p_enable) {
+	Array msg = { p_enable };
+	_put_msg("scene:set_mobile_immersive_preview", msg);
+}
+
+void ScriptEditorDebugger::set_debug_mute_audio(bool p_mute) {""")
+replace_once(SCENE_DEBUGGER_HEADER,
+    "static Error _msg_set_debug_canvas_item_redraw(const Array &p_args);",
+    "static Error _msg_set_debug_canvas_item_redraw(const Array &p_args);\n\tstatic Error _msg_set_mobile_immersive_preview(const Array &p_args);")
+replace_once(SCENE_DEBUGGER_SOURCE,
+    '#include "scene/3d/path_3d.h"',
+    '#include "scene/3d/path_3d.h"\n#include "scene/main/window.h"')
+replace_once(SCENE_DEBUGGER_SOURCE,
+    "Error SceneDebugger::_msg_set_debug_collisions(const Array &p_args) {",
+    """static bool mobile_immersive_preview_active = false;
+static Window::ContentScaleAspect mobile_immersive_previous_aspect = Window::CONTENT_SCALE_ASPECT_IGNORE;
+
+Error SceneDebugger::_msg_set_mobile_immersive_preview(const Array &p_args) {
+	ERR_FAIL_COND_V(p_args.is_empty(), ERR_INVALID_DATA);
+	SceneTree *tree = SceneTree::get_singleton();
+	ERR_FAIL_NULL_V(tree, ERR_UNCONFIGURED);
+	Window *window = tree->get_root();
+	ERR_FAIL_NULL_V(window, ERR_UNCONFIGURED);
+	const bool enabled = bool(p_args[0]);
+	if (enabled) {
+		if (!mobile_immersive_preview_active) {
+			mobile_immersive_previous_aspect = window->get_content_scale_aspect();
+			mobile_immersive_preview_active = true;
+		}
+		// Fill the entire 720x1600 display area instead of preserving a
+		// landscape/letterboxed design aspect while immersive preview is active.
+		window->set_content_scale_aspect(Window::CONTENT_SCALE_ASPECT_IGNORE);
+	} else if (mobile_immersive_preview_active) {
+		window->set_content_scale_aspect(mobile_immersive_previous_aspect);
+		mobile_immersive_preview_active = false;
+	}
+	return OK;
+}
+
+Error SceneDebugger::_msg_set_debug_collisions(const Array &p_args) {""")
+replace_once(SCENE_DEBUGGER_SOURCE,
+    'message_handlers["set_debug_canvas_item_redraw"] = _msg_set_debug_canvas_item_redraw;',
+    'message_handlers["set_debug_canvas_item_redraw"] = _msg_set_debug_canvas_item_redraw;\n\tmessage_handlers["set_mobile_immersive_preview"] = _msg_set_mobile_immersive_preview;')
+
 print("GitHub import, debug overlays, and Android immersive-preview patches applied successfully.")
