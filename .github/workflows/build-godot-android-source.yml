@@ -1,7 +1,7 @@
 name: Build Godot Android Editor (source pipeline)
 
-# Android APK builds start automatically on every push to the implementation branch.
-# Manual dispatch remains available when GitHub exposes it from the default branch.
+# Pushes run a fast integration preflight only. Full ARM32+ARM64 APK builds are manual,
+# so each source fix does not trigger another long Android compilation.
 on:
   push:
     branches:
@@ -26,8 +26,45 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  preflight-integration:
+    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.run_type == 'validate-import-only') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+      - name: Checkout official Godot 4.7.2 source
+        uses: actions/checkout@v4
+        with:
+          repository: godotengine/godot
+          ref: 4.7.2-stable
+          path: godot-source
+      - name: Validate Python syntax for all patchers and validators
+        run: python - <<'PY'
+          import ast
+          from pathlib import Path
+          files = sorted(Path("scripts").glob("*.py"))
+          for path in files:
+              ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+          print(f"Validated Python syntax for {len(files)} scripts")
+          PY
+      - name: Apply GitHub import integration
+        run: python scripts/apply_github_import_patch.py
+      - name: Validate preview overlays and immersive mode
+        run: python scripts/validate_debug_overlay_patch.py
+      - name: Validate incremental GitHub sync safety
+        run: python scripts/validate_github_sync_source.py
+      - name: Apply GitHub sync and terrain editor integration
+        run: python scripts/apply_github_sync_patch.py
+      - name: Apply Android startup/loading patch
+        run: python scripts/apply_android_startup_patch.py
+      - name: Validate Android startup/loading resources
+        run: python scripts/validate_android_startup_patch.py
+      - name: Validate terrain editor source
+        run: python scripts/validate_terrain_3d_source.py
+
   build-android-editor:
-    if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_type == 'full-android-build' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -216,7 +253,7 @@ jobs:
           fi
 
       - name: Upload ARM32+ARM64 Android editor APK
-        if: always() && (github.event_name == 'push' || inputs.run_type == 'full-android-build')
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.run_type == 'full-android-build'
         uses: actions/upload-artifact@v4
         with:
           name: godot-4.7.2-android-editor-arm32-arm64
