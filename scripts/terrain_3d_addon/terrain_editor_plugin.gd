@@ -45,8 +45,7 @@ var status_label: Label
 func _enter_tree() -> void:
 	terrain_button = Button.new()
 	terrain_button.text = "Terreno 3D"
-	terrain_button.custom_minimum_size = Vector2(0, 48)
-	terrain_button.add_theme_font_size_override("font_size", 17)
+	terrain_button.custom_minimum_size = Vector2(0, 0)
 	terrain_button.tooltip_text = "Abrir las herramientas de terreno 3D"
 	terrain_button.pressed.connect(_toggle_panel)
 	add_control_to_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_MENU, terrain_button)
@@ -79,12 +78,14 @@ func _exit_tree() -> void:
 func _build_panel() -> void:
 	panel = VBoxContainer.new()
 	panel.name = "Terrain3DEditorPanel"
-	panel.custom_minimum_size = Vector2(340, 0)
+	panel.custom_minimum_size = Vector2(0, 0)
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.add_theme_font_size_override("font_size", 18)
-	panel.add_theme_constant_override("separation", 12)
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.add_theme_constant_override("separation", 8)
 	panel.hide()
-	add_control_to_dock(EditorPlugin.DOCK_SLOT_LEFT_UL, panel)
+	# Behave like a native Godot inspector dock: share the right dock area and
+	# never reserve a custom-width column or resize the whole editor UI.
+	add_control_to_dock(EditorPlugin.DOCK_SLOT_RIGHT_UL, panel)
 	var tabs := TabContainer.new()
 	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -228,7 +229,7 @@ func _build_panel() -> void:
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status_label.text = "Abre una escena 3D para comenzar."
 	panel.add_child(status_label)
-	# Keep the terrain tools in the dock; the viewport remains the main work area.
+	# Keep the dock closed at startup; the toolbar button always reopens it.
 	panel.hide()
 	_create_cursor()
 	_create_terrain_preview()
@@ -314,12 +315,15 @@ func _add_slider(parent: Control, label_text: String, value: float, minimum: flo
 	return slider
 
 func _toggle_panel() -> void:
+	if panel == null or not is_instance_valid(panel):
+		_build_panel()
 	if panel.visible:
 		panel.hide()
 		return
 	panel.show()
 	_update_terrain_preview()
-	# Opening the dedicated terrain editor gives the scene a ready-to-edit square base.
+	# Open the tools in their dock first. Create a starter base only when there
+	# is an editable scene; never interrupt other editor actions if none is open.
 	if _get_terrain() == null:
 		_create_terrain()
 	else:
@@ -493,6 +497,11 @@ func _update_joystick_vector(position: Vector2) -> void:
 	joystick_vector = ((position - center) / extent).limit_length(1.0)
 
 func _process(delta: float) -> void:
+	# Do no polling/redraw work while the terrain tools are closed and no edit
+	# stroke/collision rebuild is pending. This avoids stealing input or CPU from
+	# the rest of the mobile editor.
+	if (panel == null or not panel.visible) and not stroke_active and not collision_dirty and not joystick_pressed:
+		return
 	cursor_update_timer += delta
 	stroke_timer += delta
 	# Cap terrain raycasts to 20 Hz on mobile; the cursor remains responsive without
