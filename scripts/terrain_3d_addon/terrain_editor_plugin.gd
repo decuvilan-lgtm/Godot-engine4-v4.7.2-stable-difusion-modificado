@@ -43,6 +43,8 @@ var stroke_timer := 0.0
 var import_dialog: FileDialog
 var export_dialog: FileDialog
 var texture_dialog: FileDialog
+var surface_texture_dialog: FileDialog
+var stretch_surface_image: CheckButton
 var status_label: Label
 
 func _enter_tree() -> void:
@@ -79,6 +81,8 @@ func _exit_tree() -> void:
 		export_dialog.queue_free()
 	if texture_dialog:
 		texture_dialog.queue_free()
+	if surface_texture_dialog:
+		surface_texture_dialog.queue_free()
 	if terrain_preview and is_instance_valid(terrain_preview):
 		terrain_preview.queue_free()
 
@@ -203,6 +207,21 @@ func _build_panel() -> void:
 	texture_button.text = "Cargar textura para la capa elegida"
 	texture_button.pressed.connect(_open_layer_texture)
 	paint.add_child(texture_button)
+	var surface_section := Label.new()
+	surface_section.text = "Imagen para toda la superficie"
+	paint.add_child(surface_section)
+	stretch_surface_image = CheckButton.new()
+	stretch_surface_image.text = "Ajustar al ancho y fondo completos"
+	stretch_surface_image.button_pressed = true
+	paint.add_child(stretch_surface_image)
+	var surface_image_button := Button.new()
+	surface_image_button.text = "Reemplazar superficie con imagen…"
+	surface_image_button.pressed.connect(_open_surface_texture)
+	paint.add_child(surface_image_button)
+	var surface_help := Label.new()
+	surface_help.text = "Acepta PNG, JPG/JPEG o WebP. Ajustar estira la imagen sobre todo el terreno; desactivado repite la textura. La imagen no cambia el relieve ni la colisión."
+	surface_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	paint.add_child(surface_help)
 	var paint_help := Label.new()
 	paint_help.text = "Selecciona un modo de pintura en la lista del pincel de Esculpir; el color y la capa se configuran aquí."
 	paint_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -270,6 +289,14 @@ func _build_panel() -> void:
 	texture_dialog.add_filter("*.png,*.jpg,*.jpeg,*.webp", "Textura de terreno")
 	texture_dialog.file_selected.connect(_import_layer_texture)
 	add_child(texture_dialog)
+
+	surface_texture_dialog = FileDialog.new()
+	surface_texture_dialog.title = "Imagen para toda la superficie del terreno"
+	surface_texture_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	surface_texture_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	surface_texture_dialog.add_filter("*.png,*.jpg,*.jpeg,*.webp", "Imágenes de superficie (PNG, JPG, WebP)")
+	surface_texture_dialog.file_selected.connect(_import_surface_texture)
+	add_child(surface_texture_dialog)
 
 func _refresh_ui_scale() -> void:
 	# Custom touch targets follow Godot's current editor scale when the theme changes.
@@ -864,6 +891,40 @@ func _export_heightmap(path: String) -> void:
 
 func _open_layer_texture() -> void:
 	texture_dialog.popup_centered(Vector2i(640, 480))
+
+func _open_surface_texture() -> void:
+	if _get_terrain() == null:
+		_set_status("Crea o selecciona un terreno antes de asignar una imagen.")
+		return
+	surface_texture_dialog.popup_centered(Vector2i(640, 480))
+
+func _import_surface_texture(path: String) -> void:
+	var terrain = _get_terrain()
+	if terrain == null:
+		_set_status("Crea o selecciona un terreno antes de asignar una imagen.")
+		return
+	var image := Image.new()
+	var err := image.load(path)
+	if err != OK or image.is_empty():
+		_set_status("No se pudo abrir la imagen. Usa un PNG, JPG/JPEG o WebP válido (error %d)." % err)
+		return
+	# Bound decoded image memory for the target Android phone.
+	if image.get_width() > 1024 or image.get_height() > 1024:
+		image.resize(1024, 1024, Image.INTERPOLATE_LANCZOS)
+	var texture := ImageTexture.create_from_image(image)
+	if texture == null:
+		_set_status("No se pudo convertir la imagen en textura.")
+		return
+	var previous: Texture2D = terrain.get("full_surface_texture")
+	var previous_stretch: bool = terrain.get("stretch_full_surface_texture") if terrain.get("stretch_full_surface_texture") != null else true
+	var stretch := stretch_surface_image.button_pressed if stretch_surface_image else true
+	var undo_redo := EditorInterface.get_editor_undo_redo()
+	undo_redo.create_action("Reemplazar superficie del terreno con imagen")
+	undo_redo.add_do_method(terrain, "set_full_surface_texture", texture, stretch)
+	undo_redo.add_undo_method(terrain, "set_full_surface_texture", previous, previous_stretch)
+	undo_redo.add_do_reference(texture)
+	undo_redo.commit_action()
+	_set_status("Imagen aplicada a toda la superficie X/Z. Guarda la escena para conservarla; el relieve y las colisiones no cambian.")
 
 func _import_layer_texture(path: String) -> void:
 	var terrain = _get_terrain()
