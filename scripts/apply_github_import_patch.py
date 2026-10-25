@@ -1086,7 +1086,7 @@ replace_once(RUN_BAR_SOURCE,
 	play_button = memnew(Button);""")
 replace_once(RUN_BAR_HEADER,
     "void _preview_debug_item_pressed(int p_id);",
-    "void _preview_debug_item_pressed(int p_id);\\n\\tvoid _immersive_preview_pressed();")
+    "void _preview_debug_item_pressed(int p_id);\n\tvoid _immersive_preview_pressed();")
 replace_once(RUN_BAR_SOURCE,
     "void EditorRunBar::_preview_debug_item_pressed(int p_id) {",
     """void EditorRunBar::_immersive_preview_pressed() {
