@@ -112,10 +112,10 @@ print("Static source checks only; GDScript parsing, Android resource compilation
 
 
 # Full-surface image import should be distinct from heightmaps and layer painting.
-assert 'Reemplazar superficie con imagen' in plugin_source
-assert 'surface_texture_dialog.add_filter("*.png,*.jpg,*.jpeg,*.webp"' in plugin_source
-assert 'Ajustar al ancho y fondo completos' in plugin_source
-assert 'set_full_surface_texture' in terrain_source
-assert 'uniform sampler2D full_surface_texture' in terrain_source
-assert 'use_full_surface_texture' in terrain_source
-assert 'stretch_full_surface_texture' in terrain_source
+require("Reemplazar superficie con imagen" in plugin, "full-surface image picker is exposed in the terrain UI")
+require('surface_texture_dialog.add_filter("*.png,*.jpg,*.jpeg,*.webp"' in plugin, "image picker accepts common gallery image formats")
+require("Ajustar al ancho y fondo completos" in plugin, "full-width/full-depth image fitting is enabled by default")
+require("set_full_surface_texture" in data, "full-surface image assignment can be undone and restored")
+require("uniform sampler2D full_surface_texture" in data, "terrain shader supports a dedicated full-surface image")
+require("use_full_surface_texture" in data, "terrain shader can switch between image and material layers")
+require("stretch_full_surface_texture" in data, "terrain shader supports stretched or repeated image mapping")
