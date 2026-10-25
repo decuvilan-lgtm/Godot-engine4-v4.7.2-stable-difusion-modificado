@@ -676,3 +676,12 @@ Esta sección prevalece sobre notas antiguas de este README cuando describan un 
 - Se guardaron cambios de fuente y de validadores en la rama de trabajo. No se ha compilado ni se ha iniciado un workflow de Android.
 - No se ha hecho una prueba en el LG K51 ni se ha confirmado el parser GDScript o la compilación C++ de estos cambios. Las comprobaciones textuales del patcher no equivalen a una prueba funcional.
 - El workflow Android queda manual para evitar compilaciones automáticas al hacer push. No ejecutar builds, pruebas en Linux ni empaquetado APK hasta que el propietario lo autorice.
+
+
+## Imagen personalizada para cubrir todo el terreno — 2026-10-25
+
+- La pestaña **Pintar** incorpora **Reemplazar superficie con imagen…** para cargar una imagen de galería en formatos PNG, JPG/JPEG o WebP y usarla como textura de toda la superficie superior del terreno.
+- **Ajustar al ancho y fondo completos** está activado por defecto: la imagen se estira desde un borde hasta el otro del terreno, independientemente de su proporción. Al desactivarlo, la textura se repite en vez de estirarse.
+- La operación se integra con Deshacer/Rehacer y no modifica alturas, forma, dimensiones, base ni colisiones. La textura se limita a 1024×1024 para contener el uso de memoria en el LG K51; hay que guardar la escena para conservarla.
+- Esto sustituye visualmente la textura de la superficie, no convierte la imagen en geometría ni en un heightmap. Para crear relieve a partir de una imagen en escala de grises se conserva **Importar heightmap**.
+- **Verificación:** cambios de fuente y validación estática añadida; parser GDScript, guardado/reapertura, importación real de imágenes y visualización en Android siguen pendientes. No se inició compilación ni prueba Linux.
