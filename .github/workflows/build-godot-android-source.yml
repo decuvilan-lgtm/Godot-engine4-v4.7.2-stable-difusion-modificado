@@ -36,7 +36,7 @@ concurrency:
 
 jobs:
   build-android-editor:
-    if: ${{ inputs.run_type == 'full-android-build' }}
+    if: ${{ github.event_name == 'push' || inputs.run_type == 'full-android-build' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
