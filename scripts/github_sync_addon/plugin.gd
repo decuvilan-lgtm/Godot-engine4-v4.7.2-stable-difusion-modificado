@@ -573,8 +573,54 @@ func _apply_changes() -> void:
 		return
 	_cleanup_staging()
 	EditorInterface.get_resource_filesystem().scan()
+	var changed_scene_paths := PackedStringArray()
+	for operation in operations:
+		var changed_path := str(operation.get("path", ""))
+		if operation.kind != "delete" and changed_path.ends_with(".tscn"):
+			changed_scene_paths.append("res://" + changed_path)
+	if not changed_scene_paths.is_empty():
+		call_deferred("_organize_synced_scenes", changed_scene_paths)
 	_log_sync("ACTUALIZACIÓN TERMINADA\nCambios aplicados: %d\nArchivos temporales eliminados. No se subió ningún archivo a GitHub." % operations.size())
 	_show_notice("Sincronización completada. Se aplicaron los cambios de GitHub directamente; los temporales se eliminaron y no se subió ningún archivo.")
+
+func _organize_synced_scenes(initial_paths: PackedStringArray) -> void:
+	# Keep imported scenes as separate editor tabs; never instance their nodes into
+	# the main scene tree. Traverse PackedScene instance references so nested scenes
+	# are also opened when they are dependencies of a changed scene.
+	var pending: Array[String] = []
+	var visited: Dictionary = {}
+	var unreadable: PackedStringArray = PackedStringArray()
+	for scene_path in initial_paths:
+		pending.append(scene_path)
+	while not pending.is_empty():
+		var scene_path: String = pending.pop_front()
+		if visited.has(scene_path):
+			continue
+		visited[scene_path] = true
+		if not FileAccess.file_exists(scene_path):
+			continue
+		var resource := ResourceLoader.load(scene_path, "PackedScene")
+		if resource == null or not resource is PackedScene:
+			unreadable.append(scene_path)
+			continue
+		var packed_scene: PackedScene = resource
+		var state := packed_scene.get_state()
+		if state != null:
+			for node_index in range(state.get_node_count()):
+				var instance: PackedScene = state.get_node_instance(node_index)
+				if instance != null and not instance.resource_path.is_empty():
+					var dependency_path := instance.resource_path
+					if dependency_path.begins_with("res://") and dependency_path.ends_with(".tscn") and not visited.has(dependency_path):
+						pending.append(dependency_path)
+		# Opening a scene creates a scene tab, not nodes in the current main scene.
+		EditorInterface.open_scene_from_path(scene_path)
+	if not unreadable.is_empty():
+		var dialog := AcceptDialog.new()
+		dialog.title = "Escenas que no se pudieron abrir"
+		dialog.dialog_text = "Solo estas escenas .tscn no se pudieron cargar como PackedScene. Los errores de scripts siguen en Output/Debugger.\n\n" + "\n".join(unreadable)
+		add_child(dialog)
+		dialog.popup_centered(Vector2i(560, 360))
+	_log_sync("Organización de escenas: %d pestañas válidas abiertas; %d escenas no legibles." % [visited.size() - unreadable.size(), unreadable.size()])
 
 func _detect_possible_moves() -> Dictionary:
 	var deleted_by_sha: Dictionary = {}
