@@ -109,3 +109,13 @@ for token, label in [
 require("TERRAIN_DATA_GD" in patcher and "res://addons/terrain_3d/plugin.cfg" in patcher,
         "ZIP-installed projects receive and enable the terrain addon")
 print("Static source checks only; GDScript parsing, Android resource compilation and viewport runtime are still required.")
+
+
+# Full-surface image import should be distinct from heightmaps and layer painting.
+assert 'Reemplazar superficie con imagen' in plugin_source
+assert 'surface_texture_dialog.add_filter("*.png,*.jpg,*.jpeg,*.webp"' in plugin_source
+assert 'Ajustar al ancho y fondo completos' in plugin_source
+assert 'set_full_surface_texture' in terrain_source
+assert 'uniform sampler2D full_surface_texture' in terrain_source
+assert 'use_full_surface_texture' in terrain_source
+assert 'stretch_full_surface_texture' in terrain_source
