@@ -67,7 +67,7 @@ for token, label in [
     ("EditorInterface.open_scene_from_path(scene_path)", "opens scene resources as independent editor tabs"),
     ('EditorInterface.open_scene_from_path(main_scene)', "restores the configured main scene as the active tab"),
     ("Escenas que no se pudieron abrir", "reports unreadable scenes separately from script errors"),
-    ("func _organize_synced_scenes(initial_paths: PackedStringArray)", "organizes changed scenes into separate editor tabs"),
+    ("func _organize_synced_scenes(initial_paths: PackedStringArray, open_all_project_scenes: bool = false)", "organizes changed scenes into separate editor tabs"),
     ("state.get_node_instance(node_index)", "traverses nested instanced-scene dependencies"),
     ("EditorInterface.open_scene_from_path(scene_path)", "opens valid imported scenes as tabs without merging their nodes"),
     ("Escenas que no se pudieron abrir", "reports only unreadable scene resources after synchronization"),
