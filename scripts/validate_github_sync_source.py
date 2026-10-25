@@ -53,7 +53,7 @@ for token, label in [
     ('str(parsed.get("repository", "")) == active_repo', "only same-repository baseline permits deletion"),
     ("if not local_exists or local_sha != remote_sha:", "always compares local bytes directly to GitHub even when the previous upstream baseline is unchanged"),
     ("GitHub is the source of truth", "explicitly treats GitHub as authoritative over local edits"),
-    ("Do not rewrite project.godot to preserve local editor/plugin settings", "stages project.godot exactly as downloaded from GitHub"),
+    ("GitHub is authoritative.", "stages project.godot exactly as downloaded from GitHub"),
     ('relative.begins_with("addons/github_sync/")', "sync cannot overwrite its own addon"),
     ('relative.begins_with("addons/terrain_3d/")', "sync cannot overwrite the terrain addon"),
     ('"delete"', "handles files removed from upstream"),
