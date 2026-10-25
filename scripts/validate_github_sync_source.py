@@ -48,7 +48,7 @@ for token, label in [
     ("_cleanup_staging()\n\tif request and is_instance_valid(request):", "cleans staging when the plugin unloads"),
     ("Se aplicaron los cambios de GitHub directamente", "applies GitHub files directly as the source of truth"),
     ("No se crearon copias de respaldo.", "reports retryable sync failure without creating backups"),
-    ("Deliberately create no backup or transaction copies", "documents the no-backup mobile-storage policy"),
+    ("No crea copias ni sube archivos.", "documents the no-backup mobile-storage policy"),
     ("_save_manifest()", "persists baseline for later deletions"),
     ('str(parsed.get("repository", "")) == active_repo', "only same-repository baseline permits deletion"),
     ("_ensure_sync_plugin_enabled(staged_path)", "keeps editor plugins enabled when project.godot changes"),
