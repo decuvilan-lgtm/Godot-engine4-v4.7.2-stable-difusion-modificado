@@ -38,6 +38,8 @@ jobs:
             editor/project_manager/project_manager.h
             editor/project_manager/project_manager.cpp
             editor/project_manager/project_dialog.cpp
+            editor/editor_node.h
+            editor/editor_node.cpp
             platform/android/java/editor/src/main/res/layout/godot_editor_layout.xml
             platform/android/java/editor/src/main/res/values/themes.xml
             editor/run/editor_run_bar.h
