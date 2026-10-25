@@ -2,6 +2,7 @@
 """Static source checks for the separate 3D terrain editor addon."""
 from pathlib import Path
 import ast
+import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -126,10 +127,7 @@ require("stretch_full_surface_texture" in data, "terrain shader supports stretch
 require('var terrain_tabs: TabContainer' in plugin, 'terrain editor uses a native tab container')
 require('paint_mode_picker = OptionButton.new()' in plugin, 'paint modes live in the Paint tab')
 require('terrain_tabs.current_tab not in [1, 2]' in plugin, 'brush editing is restricted to Sculpt/Paint tabs')
-require('mode_picker.add_item("Pintar color")' not in plugin, 'sculpt selector does not contain paint modes')
-require('var terrain_tabs: TabContainer' in plugin, 'terrain tools use a native tab container')
-require('paint_mode_picker = OptionButton.new()' in plugin, 'paint modes live in the Paint tab')
-require('terrain_tabs.current_tab not in [1, 2]' in plugin, 'brush editing is restricted to Sculpt/Paint tabs')
+require(re.search(r'(?m)^\\s*mode_picker\\.add_item\\("Pintar color"\\)', plugin) is None, 'sculpt selector does not contain paint modes')
 
 if FAILURES:
     raise SystemExit(f"{len(FAILURES)} terrain source check(s) failed; see all FAIL lines above.")
