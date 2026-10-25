@@ -34,7 +34,7 @@ layout = ROOT / "godot-source/platform/android/java/editor/src/main/res/layout/g
 themes = ROOT / "godot-source/platform/android/java/editor/src/main/res/values/themes.xml"
 require(layout.is_file() and themes.is_file(), "patched Android startup resources exist")
 asset = ROOT / "godot-source/platform/android/java/editor/src/main/res/drawable-nodpi/goku_ultra_instinto.jpg"
-require(asset.is_file() and asset.stat().st_size > 1000 and asset.read_bytes().startswith(b"\\xff\\xd8"),
+require(asset.is_file() and asset.stat().st_size > 1000 and asset.read_bytes().startswith(bytes((0xFF, 0xD8))),
         "Goku splash drawable was decoded as a real JPEG asset")
 layout_root = ET.parse(layout).getroot()
 themes_root = ET.parse(themes).getroot()
