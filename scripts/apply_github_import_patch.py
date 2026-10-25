@@ -982,10 +982,10 @@ replace_once(RUN_BAR_SOURCE,
 #endif
 	play_button = memnew(Button);""")
 replace_once(RUN_BAR_HEADER,
-    "void _preview_debug_item_pressed(int p_id);",
+    "void _write_movie_toggled(bool p_enabled);",
     "void _preview_debug_item_pressed(int p_id);\n\tvoid _immersive_preview_pressed();")
 replace_once(RUN_BAR_SOURCE,
-    "void EditorRunBar::_preview_debug_item_pressed(int p_id) {",
+    "void EditorRunBar::_write_movie_toggled(bool p_enabled) {",
     """void EditorRunBar::_immersive_preview_pressed() {
 #ifdef ANDROID_ENABLED
 	// Do not enter immersive mode from an idle editor; the preview must already be running.
