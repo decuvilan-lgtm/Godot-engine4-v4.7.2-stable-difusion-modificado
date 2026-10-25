@@ -61,7 +61,7 @@ func _exit_tree() -> void:
 		remove_control_from_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_MENU, terrain_button)
 		terrain_button.queue_free()
 	if panel:
-		remove_control_from_bottom_panel(panel)
+		remove_control_from_docks(panel)
 		panel.queue_free()
 	if cursor_mesh and is_instance_valid(cursor_mesh):
 		cursor_mesh.queue_free()
@@ -78,6 +78,8 @@ func _build_panel() -> void:
 	panel = VBoxContainer.new()
 	panel.name = "Terrain3DEditorPanel"
 	panel.custom_minimum_size = Vector2(280, 0)
+	panel.hide()
+	add_control_to_dock(EditorPlugin.DOCK_SLOT_LEFT_UL, panel)
 	var tabs := TabContainer.new()
 	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -306,9 +308,9 @@ func _add_slider(parent: Control, label_text: String, value: float, minimum: flo
 
 func _toggle_panel() -> void:
 	if panel.visible:
-		hide_bottom_panel()
+		panel.hide()
 		return
-	make_bottom_panel_item_visible(panel)
+	panel.show()
 	_update_terrain_preview()
 	# Opening the dedicated terrain editor gives the scene a ready-to-edit square base.
 	if _get_terrain() == null:
