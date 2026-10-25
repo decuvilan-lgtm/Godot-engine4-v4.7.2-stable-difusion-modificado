@@ -362,7 +362,7 @@ void ProjectManager::_github_search_completed(int p_result, int p_response_code,
 	if (github_search_more_btn) {
 		github_search_more_btn->set_text(github_search_page >= max_page ? TTR("Volver a los primeros 20") : TTR("Recargar siguientes 20"));
 	}
-	github_results_dialog->popup_centered(Size2i(560 * EDSCALE, 0));
+	github_results_dialog->popup_centered_clamped(Size2i(680 * EDSCALE, 560 * EDSCALE), 0.95);
 }
 
 void ProjectManager::_github_search_result_confirmed() {
