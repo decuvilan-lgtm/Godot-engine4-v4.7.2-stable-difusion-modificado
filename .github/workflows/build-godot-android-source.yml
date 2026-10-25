@@ -113,6 +113,12 @@ jobs:
       - name: Apply GitHub import integration
         run: python "$GITHUB_WORKSPACE/scripts/apply_github_import_patch.py"
 
+      - name: Validate preview overlays and immersive mode
+        run: python "$GITHUB_WORKSPACE/scripts/validate_debug_overlay_patch.py"
+
+      - name: Validate incremental GitHub sync safety
+        run: python "$GITHUB_WORKSPACE/scripts/validate_github_sync_source.py"
+
       - name: Apply GitHub sync and terrain editor integration
         run: python "$GITHUB_WORKSPACE/scripts/apply_github_sync_patch.py"
 
