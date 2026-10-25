@@ -587,6 +587,9 @@ func _apply_changes() -> void:
 	_show_notice("Sincronización completada. Se aplicaron los cambios de GitHub directamente; los temporales se eliminaron y no se subió ningún archivo.")
 
 func _auto_organize_project_scenes() -> void:
+	# Let the editor's initial filesystem scan finish before loading scene resources.
+	await get_tree().process_frame
+	await get_tree().process_frame
 	# Enumerate every scene in the project, not only scenes referenced by Main.
 	# This means a project opens ready to inspect without manually arranging tabs.
 	var scene_paths := PackedStringArray()
