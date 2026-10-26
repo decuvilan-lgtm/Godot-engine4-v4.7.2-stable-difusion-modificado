@@ -79,7 +79,7 @@ def main() -> int:
 
         output = result.stdout or ""
         if log_file.is_file():
-            output += "\\n" + log_file.read_text(encoding="utf-8", errors="replace")
+            output += "\n" + log_file.read_text(encoding="utf-8", errors="replace")
         print(output[-18000:])
         error_markers = (
             "SCRIPT ERROR:",
