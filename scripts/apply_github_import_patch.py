@@ -1178,6 +1178,10 @@ static Window::ContentScaleMode mobile_immersive_previous_scale_mode = Window::C
 
 Error SceneDebugger::_msg_set_mobile_immersive_preview(const Array &p_args) {
 	ERR_FAIL_COND_V(p_args.is_empty(), ERR_INVALID_DATA);
+	// This remote-debugger message is received only after the game window exists.
+	// Retry overlay creation here as well as at debugger initialization, where the
+	// SceneTree root may not yet be ready. This prevents the preview tools vanishing.
+	_create_runtime_debug_overlay();
 	SceneTree *tree = SceneTree::get_singleton();
 	ERR_FAIL_NULL_V(tree, ERR_UNCONFIGURED);
 	Window *window = tree->get_root();
