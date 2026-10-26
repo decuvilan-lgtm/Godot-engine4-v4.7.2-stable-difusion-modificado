@@ -637,7 +637,7 @@ The Windows workflow `.github/workflows/validate-debug-overlay-source.yml` now c
 ## Auditoría de zonas grises — terreno 3D y controles de vista previa (2026-10-25)
 
 - **Reapertura del dock de terreno:** el botón vuelve a registrar el panel en el dock derecho antes de mostrarlo, para cubrir el caso en que Godot cierre/desacople el dock pero conserve vivo el control. Se agregó una comprobación estática para esta ruta. Sigue pendiente confirmar el comportamiento en el editor Android real.
-- **La interfaz de terreno no equivale a una prueba funcional:** el código contiene las pestañas Inicio, Esculpir, Pintar, Vegetación y Heightmaps. La apertura del dock ya no crea nodos: solo el botón explícito Crear terreno debe insertar la malla en una escena editable. Si el panel aparece vacío, todavía falta confirmar que el addon pase el parser GDScript y se cargue correctamente.
+- **La interfaz de terreno no equivale a una prueba funcional:** el código contiene las pestañas Inicio, Esculpir, Pintar, Vegetación y Heightmaps. Al abrir el dock, si la escena no contiene terreno, se inserta una base editable inicial de 8 × 8 bloques; el botón «Crear terreno» sigue disponible para añadir otro con dimensiones personalizadas. Si el panel aparece vacío, todavía falta confirmar que el addon pase el parser GDScript y se cargue correctamente.
 - **Riesgo de addons antiguos en proyectos ya abiertos:** el instalador del editor solo escribe los archivos de los addons cuando faltan. Eso evita sobrescribir archivos locales del usuario, pero también significa que un proyecto que ya tenga una versión anterior de `addons/terrain_3d` o `addons/github_sync` puede seguir usando esa versión aunque el editor incorpore código más reciente. Hace falta un mecanismo explícito de actualización segura/consentida antes de dar por actualizadas las herramientas en proyectos existentes.
 - **Colisiones: ubicación corregida en el código fuente:** se retiró `COL.` de `EditorRunBar` y se añadió un botón a la capa de interfaz del juego en ejecución. El menú incluye formas 2D/3D, raycasts, rutas, navegación, evasión y redibujado. Falta comprobar su compilación, visibilidad y respuesta en el juego real; no está validado en el dispositivo.
 - **Cobertura funcional pendiente:** la lista del menú contempla colisiones 2D/3D, formas, raycasts, rutas, navegación, evasión y redibujado 2D. Aun así, no se ha demostrado en el dispositivo que cada variante se vea correctamente, ni que las opciones para `Area2D/Area3D` y `RayCast2D/3D` sean visibles en todos los escenarios relevantes.
@@ -657,9 +657,9 @@ Esta sección prevalece sobre notas antiguas de este README cuando describan un 
 - `project.godot` también se sincroniza con los bytes de GitHub; el sincronizador ya no reescribe esa copia para conservar ajustes locales. Por tanto, los ajustes locales que no estén en el repositorio no se preservan.
 - Se mantienen las exclusiones internas de los addons `addons/github_sync/` y `addons/terrain_3d/`, para evitar que el proyecto sobrescriba las herramientas que el editor inyecta.
 
-### Terreno 3D: espacio vacío hasta pedirlo
+### Terreno 3D: base inicial editable
 
-- Abrir el dock Terreno 3D **no crea ni inserta nodos** en la escena. El espacio 3D normal permanece vacío.
+- Al abrir el dock Terreno 3D en una escena abierta que aún no tenga terreno, se crea una base cuadrada editable de 8 × 8 bloques para empezar a esculpir de inmediato.
 - La pestaña Inicio incluye creación explícita con resolución X/Z, tamaño de celda, forma cuadrada/rectangular o circular/elíptica, grosor de base Y y rango vertical de esculpido Y.
 - El terreno generado incluye superficie, base inferior, paredes de perímetro, material y colisión derivada de la malla. Esculpir e importar heightmaps respetan el rango vertical configurado.
 - Las pestañas Esculpir, Pintar, Vegetación y Heightmaps siguen siendo parte de la interfaz dedicada. La forma circular se aproxima con la resolución de la cuadrícula; esto es un heightfield sólido, no un sistema voxel con cuevas o voladizos arbitrarios.
@@ -719,7 +719,7 @@ Para iniciar una compilación completa ARM32 (`armeabi-v7a`) + ARM64 (`arm64-v8a
 
 - El editor de terreno usa el dock nativo izquierdo superior de Godot en lugar de una ventana flotante; conserva las pestañas Inicio, Esculpir, Pintar, Vegetación y Heightmaps.
 - La base inicial se configura como 9 × 9 vértices, equivalente a 8 × 8 celdas/bloques.
-- **Sensibilidad del lápiz (0–100)** controla el seguimiento del cursor; no es velocidad de cámara ni intensidad del pincel. El valor se guarda en los ajustes del editor.
+- **Sensibilidad del lápiz (0–100)** controla directamente la rapidez del cursor: 0 lo deja inmóvil, 100 permite seguir el dedo hasta 1200 píxeles por segundo y los valores intermedios permiten ajustar precisión. No cambia la intensidad ni el radio del pincel. El valor se guarda en los ajustes del editor.
 - Un único botón **ACCIÓN** aplica la herramienta activa. El lápiz cambia entre negro/inactivo y color activo; moverlo por sí solo no debe modificar el terreno.
 - La entrada táctil se pasa a Godot para conservar los controles nativos. Las esquinas inferiores se reservan para los joysticks; un segundo dedo cancela el gesto del lápiz.
 - Las pruebas de integración de fuente y del parche del editor de terreno pasaron después de corregir una aserción multitáctil del validador.
