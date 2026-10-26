@@ -60,7 +60,8 @@ def main() -> int:
             encoding="utf-8",
         )
         write_scene_fixtures(project)
-        command = [str(godot), "--headless", "--editor", "--path", str(project), "--quit"]
+        log_file = project / "godot-test.log"
+        command = [str(godot), "--headless", "--editor", "--path", str(project), "--quit", "--log-file", str(log_file)]
         print("Running actual Godot editor parser/plugin-load test:")
         print(" ".join(command))
         try:
@@ -77,6 +78,8 @@ def main() -> int:
             return 1
 
         output = result.stdout or ""
+        if log_file.is_file():
+            output += "\\n" + log_file.read_text(encoding="utf-8", errors="replace")
         print(output[-18000:])
         error_markers = (
             "SCRIPT ERROR:",
