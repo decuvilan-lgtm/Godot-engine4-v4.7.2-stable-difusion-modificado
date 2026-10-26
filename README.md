@@ -720,7 +720,7 @@ Para iniciar una compilación completa ARM32 (`armeabi-v7a`) + ARM64 (`arm64-v8a
 - El editor de terreno usa el dock nativo izquierdo superior de Godot en lugar de una ventana flotante; conserva las pestañas Inicio, Esculpir, Pintar, Vegetación y Heightmaps.
 - La base inicial se configura como 9 × 9 vértices, equivalente a 8 × 8 celdas/bloques.
 - **Sensibilidad del lápiz (0–100)** controla directamente la rapidez del cursor: 0 lo deja inmóvil, 100 permite seguir el dedo hasta 1200 píxeles por segundo y los valores intermedios permiten ajustar precisión. No cambia la intensidad ni el radio del pincel. El valor se guarda en los ajustes del editor.
-- Un único botón **ACCIÓN** aplica la herramienta activa. El lápiz cambia entre negro/inactivo y color activo; moverlo por sí solo no debe modificar el terreno.
+- Un único botón **ACCIÓN** se superpone a la vista 3D, justo encima del joystick nativo izquierdo, y aplica la herramienta activa; no se duplica ningún joystick. El lápiz cambia entre negro/inactivo y color activo; moverlo por sí solo no debe modificar el terreno. Esta colocación está implementada en fuente y aún requiere prueba táctil en Android.
 - La entrada táctil se pasa a Godot para conservar los controles nativos. Las esquinas inferiores se reservan para los joysticks; un segundo dedo cancela el gesto del lápiz.
 - Las pruebas de integración de fuente y del parche del editor de terreno pasaron después de corregir una aserción multitáctil del validador.
 - La compilación Android ARM32 + ARM64 se ejecuta después de estas comprobaciones. Una compilación exitosa no sustituye la prueba real en el LG K51.
