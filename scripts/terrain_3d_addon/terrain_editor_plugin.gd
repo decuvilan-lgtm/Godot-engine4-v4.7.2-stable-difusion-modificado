@@ -28,6 +28,10 @@ var grid_snap: CheckButton
 var foliage_count: SpinBox
 var continuous_stroke: CheckButton
 var pencil_sensitivity: HSlider
+var native_joystick_size: HSlider
+var native_joystick_inset_x: HSlider
+var native_joystick_inset_y: HSlider
+var native_joystick_options: VBoxContainer
 var pencil_state_label: Label
 var action_button: Button
 var action_overlay: Control
@@ -127,6 +131,27 @@ func _build_panel() -> void:
 	continuous_stroke = CheckButton.new()
 	continuous_stroke.text = "Trazo continuo mientras mantienes ACCIÓN"
 	panel.add_child(continuous_stroke)
+
+	_add_section(panel, "Joysticks nativos de escena 3D")
+	var joystick_customization_button := Button.new()
+	joystick_customization_button.text = "Personalizar joystick de escena 3D nativa"
+	joystick_customization_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.add_child(joystick_customization_button)
+	native_joystick_options = VBoxContainer.new()
+	native_joystick_options.name = "NativeJoystickOptions"
+	native_joystick_options.hide()
+	panel.add_child(native_joystick_options)
+	native_joystick_size = _add_slider(native_joystick_options, "Tamaño de ambos joysticks", 150.0, 80.0, 240.0, 1.0)
+	_bind_editor_int_setting(native_joystick_size, "editors/3d/navigation/native_joystick_size", 150, 80, 240)
+	native_joystick_inset_x = _add_slider(native_joystick_options, "Separación horizontal de los bordes", 0.0, 0.0, 120.0, 1.0)
+	_bind_editor_int_setting(native_joystick_inset_x, "editors/3d/navigation/native_joystick_inset_x", 0, 0, 120)
+	native_joystick_inset_y = _add_slider(native_joystick_options, "Separación vertical desde abajo", 0.0, 0.0, 300.0, 1.0)
+	_bind_editor_int_setting(native_joystick_inset_y, "editors/3d/navigation/native_joystick_inset_y", 0, 0, 300)
+	for joystick_slider in [native_joystick_size, native_joystick_inset_x, native_joystick_inset_y]:
+		joystick_slider.value_changed.connect(func(_value: float) -> void: _position_action_button())
+	joystick_customization_button.pressed.connect(func() -> void: native_joystick_options.visible = not native_joystick_options.visible)
+	_position_action_button()
+
 	# Place the single ACTION control over the 3D workspace, directly above
 	# Godot's native left navigation joystick. The transparent parent passes all
 	# other touches through to the original viewport controls.
@@ -346,6 +371,20 @@ func _refresh_ui_scale() -> void:
 			if spin:
 				spin.custom_minimum_size = Vector2(112, 44) * scale
 
+	# Integer-valued native layout settings are shared with Godot's C++ viewport controls.
+func _bind_editor_int_setting(slider: HSlider, setting_name: String, default_value: int, minimum: int, maximum: int) -> void:
+	var settings := EditorInterface.get_editor_settings()
+	if settings == null or slider == null:
+		return
+	if settings.has_setting(setting_name):
+		slider.value = clampi(int(settings.get_setting(setting_name)), minimum, maximum)
+	else:
+		settings.set_setting(setting_name, default_value)
+	slider.value_changed.connect(func(value: float) -> void:
+		settings.set_setting(setting_name, clampi(roundi(value), minimum, maximum))
+	)
+	slider.drag_ended.connect(func(_changed: bool) -> void: settings.save())
+
 func _bind_editor_float_setting(slider: HSlider, setting_name: String, default_value: float, minimum: float, maximum: float) -> void:
 	# Store terrain-tool preferences in Godot's editor settings, not in scene data.
 	var settings := EditorInterface.get_editor_settings()
@@ -432,14 +471,18 @@ func _position_action_button() -> void:
 	if action_overlay == null or not is_instance_valid(action_overlay) or action_button.get_parent() != action_overlay:
 		return
 	var scale := EditorInterface.get_editor_scale()
-	# The native navigation joystick is 150 editor-scaled pixels tall by default.
-	# Keep the button above it with a fixed, deliberate gap rather than responsive
-	# repositioning that changes the touch target while editing.
+	var joystick_size := native_joystick_size.value if native_joystick_size else 150.0
+	var inset_x := native_joystick_inset_x.value if native_joystick_inset_x else 0.0
+	var inset_y := native_joystick_inset_y.value if native_joystick_inset_y else 0.0
+	var left := (12.0 + inset_x) * scale
+	var bottom := (joystick_size + inset_y + 20.0) * scale
+	# Keep ACTION 20 scaled pixels above the native left joystick, even when its
+	# size or corner inset changes. Touch targets do not auto-reflow.
 	action_button.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	action_button.set_offset(Control.SIDE_LEFT, 12.0 * scale)
-	action_button.set_offset(Control.SIDE_TOP, -230.0 * scale)
-	action_button.set_offset(Control.SIDE_RIGHT, 132.0 * scale)
-	action_button.set_offset(Control.SIDE_BOTTOM, -178.0 * scale)
+	action_button.set_offset(Control.SIDE_LEFT, left)
+	action_button.set_offset(Control.SIDE_TOP, -(joystick_size + inset_y + 72.0) * scale)
+	action_button.set_offset(Control.SIDE_RIGHT, left + 120.0 * scale)
+	action_button.set_offset(Control.SIDE_BOTTOM, -bottom)
 
 func _update_action_overlay_visibility() -> void:
 	if action_overlay == null or not is_instance_valid(action_overlay):
@@ -764,9 +807,12 @@ func _is_native_joystick_zone(position: Vector2) -> bool:
 	# Reserving only their rectangles lets the pencil work immediately above
 	# the left joystick and avoids the old oversized 22% corner dead zones.
 	var size := viewport.size
-	var joystick_size := 150.0 * EditorInterface.get_editor_scale()
-	var left_zone := Rect2(Vector2(0.0, size.y - joystick_size), Vector2(joystick_size, joystick_size))
-	var right_zone := Rect2(Vector2(size.x - joystick_size, size.y - joystick_size), Vector2(joystick_size, joystick_size))
+	var editor_scale := EditorInterface.get_editor_scale()
+	var joystick_size := (native_joystick_size.value if native_joystick_size else 150.0) * editor_scale
+	var inset_x := (native_joystick_inset_x.value if native_joystick_inset_x else 0.0) * editor_scale
+	var inset_y := (native_joystick_inset_y.value if native_joystick_inset_y else 0.0) * editor_scale
+	var left_zone := Rect2(Vector2(inset_x, size.y - joystick_size - inset_y), Vector2(joystick_size, joystick_size))
+	var right_zone := Rect2(Vector2(size.x - joystick_size - inset_x, size.y - joystick_size - inset_y), Vector2(joystick_size, joystick_size))
 	return left_zone.has_point(position) or right_zone.has_point(position)
 
 func _update_pencil_state() -> void:
