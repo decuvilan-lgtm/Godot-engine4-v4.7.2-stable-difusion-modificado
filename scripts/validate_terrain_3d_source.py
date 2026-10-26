@@ -29,12 +29,15 @@ ast.parse(patcher, filename=str(PATCHER))
 require(True, "terrain embedding patcher has valid Python syntax")
 for token, label in [
     ("CONTAINER_SPATIAL_EDITOR_MENU", "separate 3D editor toolbar entry"),
-    ("_create_terrain_preview", "pre-creation terrain footprint preview"),
+    ("_create_terrain_preview", "terrain preview support remains available"),
+    ('intro.text = "Terreno integrado en la escena de Godot. La base inicial es de 8 × 8 bloques y se crea al abrir esta herramienta. Selecciona el nodo Terrain3D en el árbol de escena para cambiar geometría, resolución y materiales desde el Inspector nativo."', "terrain dock directs geometry configuration to native Inspector"),
+    ('undo_redo.add_do_method(terrain, "initialize_grid", 9, 9, 1.0)', "new terrain starts at eight by eight cells"),
+    ('terrain.set("footprint_shape", 0)', "new terrain starts with a square footprint"),
+    ('terrain.set("base_thickness", 2.0)', "new terrain starts with a default base thickness"),
+    ('terrain.set("max_height", 100.0)', "new terrain starts with a default height range"),
     ("PlaneMesh", "square/rectangular preview follows the chosen dimensions"),
     ("CylinderMesh.new()", "circular terrain preview follows the selected footprint"),
     ("shape_picker.add_item(\"Circular / elíptica\", 1)", "terrain creation offers a circular/elliptical footprint"),
-    ("base_thickness = _add_spin(home, \"Grosor de base Y\"", "terrain creation exposes a configurable solid base thickness"),
-    ("max_height = _add_spin(home, \"Rango de altura Y\"", "terrain creation exposes a vertical sculpting range"),
     ("terrain.set(\"footprint_shape\"", "creation applies the selected footprint shape"),
     ("terrain.set(\"base_thickness\"", "creation applies the selected volume thickness"),
     ("terrain.set(\"max_height\"", "creation applies the selected vertical range"),
@@ -62,10 +65,6 @@ for token, label in [
     ('if not pencil_active or not cursor_valid:', "action button refuses to edit until pencil is active on terrain"),
     ('_bind_editor_float_setting(pencil_sensitivity, "terrain_3d/pencil_sensitivity"', "pencil sensitivity persists through Godot editor settings"),
     ('add_control_to_dock(EditorPlugin.DOCK_SLOT_LEFT_UL, panel)', "terrain editor is integrated into a native dock"),
-    ('terrain_width = _add_spin(home, "Resolución X (vértices)", 9, 9, 257, 8)', "default terrain is eight blocks wide"),
-    ('terrain_depth = _add_spin(home, "Resolución Z (vértices)", 9, 9, 257, 8)', "default terrain is eight blocks deep"),
-    ('terrain_width = _add_spin(home, "Resolución X (vértices)", 9, 9, 257, 8)', "default terrain footprint is eight cells wide"),
-    ('terrain_depth = _add_spin(home, "Resolución Z (vértices)", 9, 9, 257, 8)', "default terrain footprint is eight cells deep"),
     ('action_overlay.add_child(action_button)', "single ACTION button overlays the 3D workspace instead of living in the dock"),
     ('var bottom := (joystick_size + inset_y + 20.0) * scale', "ACTION button stays above the native left joystick as its size/position changes"),
     ('terrain_tabs.tab_changed.connect', "ACTION visibility follows the selected terrain tool tab"),
@@ -97,7 +96,6 @@ for token, label in [
     ("while root.has_node(NodePath(\"Terrain3D_%d\" % suffix)):", "terrain creation avoids node-name collisions"),
     ("terrain.heights.size() != terrain.grid_width * terrain.grid_depth", "heightmap export rejects incomplete terrain data"),
     ("layer_picker.selected < 0 or layer_picker.selected > 3", "texture assignment validates selected layer"),
-    ("Terreno creado con la forma, dimensiones X/Z, rango Y, base y colisiones configuradas", "terrain creation reports its configured shape, dimensions, height and collision"),
     ("var min_x := clampi(", "brush work is limited to the affected vertex region"),
     ("_set_heights_deferred", "height edits defer collision rebuilds until the stroke ends"),
     ("collision_dirty and not stroke_active and not action_held", "collision rebuild is coalesced after touch/mouse strokes"),
@@ -113,7 +111,8 @@ for token, label in [
     require(token in plugin, label)
 toggle_body = plugin[plugin.index("func _toggle_panel()"):plugin.index("func _create_terrain()")]
 require("_create_terrain()" in toggle_body, "opening Terreno 3D creates its initial editable terrain when absent")
-require('create_button.text = "Crear terreno"' in plugin, "manual terrain creation remains available for customized terrain dimensions")
+require("terrain_width = _add_spin(home" not in plugin and "terrain_depth = _add_spin(home" not in plugin, "geometry configuration is not duplicated in the custom dock")
+require("create_button.text = \"Crear terreno\"" not in plugin, "terrain creation is automatic when opening the workspace")
 
 for token, label in [
     ("@export_enum(\"Cuadrada / rectangular\", \"Circular / elíptica\") var footprint_shape: int = 0:", "terrain footprint is exposed as a native Inspector property and rebuilds geometry"),
