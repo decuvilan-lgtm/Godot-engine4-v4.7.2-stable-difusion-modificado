@@ -18,25 +18,25 @@ extends MeshInstance3D
 @export_range(0.1, 16.0, 0.1) var cell_size: float = 1.0:
 	set(value):
 		cell_size = clampf(value, 0.1, 16.0) if is_finite(value) else 1.0
-		if is_inside_tree() and heights.size() == grid_width * grid_depth:
+		if is_inside_tree() and not _suppress_grid_setters and heights.size() == grid_width * grid_depth:
 			_rebuild_mesh()
 			_rebuild_collision()
 @export_enum("Cuadrada / rectangular", "Circular / elíptica") var footprint_shape: int = 0:
 	set(value):
 		footprint_shape = clampi(value, 0, 1)
-		if is_inside_tree() and heights.size() == grid_width * grid_depth:
+		if is_inside_tree() and not _suppress_grid_setters and heights.size() == grid_width * grid_depth:
 			_rebuild_mesh()
 			_rebuild_collision()
 @export_range(0.1, 100.0, 0.1) var base_thickness: float = 2.0:
 	set(value):
 		base_thickness = clampf(value, 0.1, 100.0) if is_finite(value) else 2.0
-		if is_inside_tree() and heights.size() == grid_width * grid_depth:
+		if is_inside_tree() and not _suppress_grid_setters and heights.size() == grid_width * grid_depth:
 			_rebuild_mesh()
 			_rebuild_collision()
 @export_range(1.0, 1000.0, 1.0) var max_height: float = 100.0:
 	set(value):
 		max_height = clampf(value, 1.0, 1000.0) if is_finite(value) else 100.0
-		if is_inside_tree() and heights.size() == grid_width * grid_depth:
+		if is_inside_tree() and not _suppress_grid_setters and heights.size() == grid_width * grid_depth:
 			for i in range(heights.size()):
 				heights[i] = clampf(heights[i], -max_height, max_height)
 			_rebuild_mesh()
