@@ -39,6 +39,8 @@ jobs:
           repository: godotengine/godot
           ref: 4.7.2-stable
           path: godot-source
+      - name: Audit custom GDScript API calls against Godot 4.7.2 docs
+        run: python scripts/validate_gdscript_api.py
       - name: Validate Python syntax for all patchers and validators
         run: |
           python - <<'PY'
