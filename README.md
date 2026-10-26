@@ -701,3 +701,11 @@ Esta sección prevalece sobre notas antiguas de este README cuando describan un 
 - El contador queda anclado arriba a la derecha, debajo del botón COL., en la capa superpuesta de la vista previa. Ignora los toques para no bloquear los controles del juego.
 - Actualiza el valor cuatro veces por segundo con los FPS reportados por el motor. Está desactivado por defecto; al desactivarlo, el contador se oculta y se detiene su temporizador.
 - La validación estática comprueba la opción, ubicación, lectura de FPS y paso de entrada táctil. La compilación C++ y la prueba visual en Android siguen siendo necesarias.
+
+
+## Corrección de pantalla inmersiva Android — 2026-10-26
+
+- El botón de vista previa inmersiva ahora solicita también el modo inmersivo nativo de Android mediante la API Java que ya usa Godot, para ocultar las barras de estado y navegación del sistema; cambiar solo `WINDOW_MODE_FULLSCREEN` no era suficiente para garantizarlo.
+- Antes de entrar se guarda el estado previo de las barras del sistema. Al volver al editor se restaura ese estado junto con el modo de ventana, la barra superior del editor y el modo de distracción libre. El juego no debe detenerse ni reiniciarse.
+- El validador estático comprueba que las llamadas para activar, guardar y restaurar el modo inmersivo están presentes. Esto no sustituye la compilación C++ ni la comprobación visual en el LG K51; la corrección queda pendiente de esas verificaciones.
+- El texto de la pantalla de carga se mantiene como **AZIZA**; el validador de inicio comprueba ese texto.
