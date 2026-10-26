@@ -46,6 +46,7 @@ for token, label in [
     ('message_handlers["set_debug_paths"] = _msg_set_debug_paths', "path handler is registered"),
     ('message_handlers["set_debug_canvas_item_redraw"] = _msg_set_debug_canvas_item_redraw', "redraw handler is registered"),
     ("Android immersive preview mode", "Android immersive preview patch is present"),
+    ('#include "platform/android/java_godot_wrapper.h"', "Android immersive mode includes the complete GodotJavaWrapper definition"),
     ("mobile_immersive_exit_button->show()", "immersive mode keeps a floating return button"),
     ("title_bar->hide()", "immersive mode hides the editor top bar"),
     ("window_set_mode(DisplayServerEnums::WINDOW_MODE_FULLSCREEN)", "immersive mode requests fullscreen"),
