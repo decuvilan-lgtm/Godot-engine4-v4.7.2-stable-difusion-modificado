@@ -436,10 +436,10 @@ func _position_action_button() -> void:
 	# Keep the button above it with a fixed, deliberate gap rather than responsive
 	# repositioning that changes the touch target while editing.
 	action_button.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	action_button.set_offset(SIDE_LEFT, 12.0 * scale)
-	action_button.set_offset(SIDE_TOP, -230.0 * scale)
-	action_button.set_offset(SIDE_RIGHT, 132.0 * scale)
-	action_button.set_offset(SIDE_BOTTOM, -178.0 * scale)
+	action_button.set_offset(Control.SIDE_LEFT, 12.0 * scale)
+	action_button.set_offset(Control.SIDE_TOP, -230.0 * scale)
+	action_button.set_offset(Control.SIDE_RIGHT, 132.0 * scale)
+	action_button.set_offset(Control.SIDE_BOTTOM, -178.0 * scale)
 
 func _update_action_overlay_visibility() -> void:
 	if action_overlay == null or not is_instance_valid(action_overlay):
