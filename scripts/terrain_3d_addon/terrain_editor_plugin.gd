@@ -79,10 +79,11 @@ func _exit_tree() -> void:
 	if terrain_button:
 		remove_control_from_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_MENU, terrain_button)
 		terrain_button.queue_free()
+	if panel and is_instance_valid(panel):
+		remove_control_from_docks(panel)
+		panel.queue_free()
 	if terrain_window and is_instance_valid(terrain_window):
 		terrain_window.queue_free()
-	elif panel and is_instance_valid(panel):
-		panel.queue_free()
 	if cursor_mesh and is_instance_valid(cursor_mesh):
 		cursor_mesh.queue_free()
 	if import_dialog:
@@ -104,18 +105,9 @@ func _build_panel() -> void:
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.add_theme_constant_override("separation", roundi(8.0 * EditorInterface.get_editor_scale()))
 	panel.hide()
-	# Keep the 3D viewport geometry unchanged on mobile. A dock makes Godot
-	# resize/reflow the central viewport and can push its touch joysticks off-screen.
-	# Use a bounded floating editor window instead; its height leaves the lower
-	# viewport corners available for Godot's built-in navigation joysticks.
-	terrain_window = Window.new()
-	terrain_window.name = "Terrain3DEditorWindow"
-	terrain_window.title = "Editor de terreno 3D"
-	terrain_window.size = Vector2i(460, 800)
-	terrain_window.min_size = Vector2i(340, 520)
-	terrain_window.unresizable = false
-	terrain_window.add_child(panel)
-	add_child(terrain_window)
+	# Use Godot's native dock workspace instead of a floating window. The dock
+	# inherits editor theme, tab behavior and available-height constraints.
+	add_control_to_dock(EditorPlugin.DOCK_SLOT_LEFT_UL, panel)
 	terrain_tabs = TabContainer.new()
 	terrain_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	terrain_tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -153,7 +145,7 @@ func _build_panel() -> void:
 	title.text = "EDITOR DE TERRENO 3D"
 	home.add_child(title)
 	var intro := Label.new()
-	intro.text = "El espacio 3D permanece vacío hasta que pulses Crear terreno. Configura X/Z, rango vertical Y, grosor de base y forma antes de añadirlo a la escena."
+	intro.text = "Editor integrado en el espacio de trabajo 3D. La base inicial es de 8 × 8 bloques; puedes ajustar X/Z, altura y forma antes de crearla."
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	home.add_child(intro)
 	_add_section(home, "Tamaño y forma")
@@ -415,17 +407,10 @@ func _add_slider(parent: Control, label_text: String, value: float, minimum: flo
 func _toggle_panel() -> void:
 	if panel == null or not is_instance_valid(panel):
 		_build_panel()
-	if terrain_window and terrain_window.visible:
-		terrain_window.hide()
-		return
-
-	# A popup window does not change the central 3D viewport's size or offset.
-	# Its bounded height keeps the lower touch-joystick area clear on phones.
-	if terrain_window == null or not is_instance_valid(terrain_window):
-		_set_status("No se pudo abrir la ventana de herramientas de terreno.")
+	if panel.visible:
+		panel.hide()
 		return
 	panel.show()
-	terrain_window.popup_centered_clamped(Vector2i(460, 800))
 	_update_terrain_preview()
 	# Opening the terrain tools never mutates the current scene. Creation is
 	# explicit so the ordinary 3D workspace remains empty until requested.
@@ -596,7 +581,7 @@ func _process(delta: float) -> void:
 	# Do no polling/redraw work while the terrain tools are closed and no edit
 	# stroke/collision rebuild is pending. This avoids stealing input or CPU from
 	# the rest of the mobile editor.
-	if (terrain_window == null or not terrain_window.visible) and not stroke_active and not collision_dirty and not action_held:
+	if (panel == null or not panel.visible) and not stroke_active and not collision_dirty and not action_held:
 		return
 	cursor_update_timer += delta
 	stroke_timer += delta
@@ -621,7 +606,7 @@ func _process(delta: float) -> void:
 			if terrain_preview.get_parent():
 				terrain_preview.get_parent().remove_child(terrain_preview)
 			root.add_child(terrain_preview)
-		terrain_preview.visible = terrain_window != null and terrain_window.visible and root != null and _get_terrain() == null
+		terrain_preview.visible = panel != null and panel.visible and root != null and _get_terrain() == null
 		if terrain_preview.visible:
 			terrain_preview.global_position = Vector3(0.0, 0.05, 0.0)
 	var terrain = _get_terrain()
@@ -656,7 +641,7 @@ func _process(delta: float) -> void:
 func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 	# Track only gestures forwarded by the 3D viewport. Always pass input on to
 	# Godot so native joysticks and editor controls retain their own behaviour.
-	if terrain_window == null or not terrain_window.visible or terrain_tabs == null or terrain_tabs.current_tab not in [1, 2]:
+	if panel == null or not panel.visible or terrain_tabs == null or terrain_tabs.current_tab not in [1, 2]:
 		return AFTER_GUI_INPUT_PASS
 	if _get_terrain() == null:
 		return AFTER_GUI_INPUT_PASS
