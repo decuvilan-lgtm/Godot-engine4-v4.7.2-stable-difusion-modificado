@@ -52,7 +52,6 @@ var stroke_timer := 0.0
 var import_dialog: FileDialog
 var export_dialog: FileDialog
 var surface_texture_dialog: FileDialog
-var stretch_surface_image: CheckButton
 var status_label: Label
 
 func _enter_tree() -> void:
@@ -227,10 +226,10 @@ func _build_panel() -> void:
 	var surface_section := Label.new()
 	surface_section.text = "Imagen para toda la superficie"
 	paint.add_child(surface_section)
-	stretch_surface_image = CheckButton.new()
-	stretch_surface_image.text = "Ajustar al ancho y fondo completos"
-	stretch_surface_image.button_pressed = true
-	paint.add_child(stretch_surface_image)
+	var surface_mapping_help := Label.new()
+	surface_mapping_help.text = "El ajuste o repetición de esta imagen se configura en Inspector → Material → Estirar textura de superficie."
+	surface_mapping_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	paint.add_child(surface_mapping_help)
 	var surface_image_button := Button.new()
 	surface_image_button.text = "Reemplazar superficie con imagen…"
 	surface_image_button.pressed.connect(_open_surface_texture)
@@ -1016,7 +1015,8 @@ func _import_surface_texture(path: String) -> void:
 		return
 	var previous: Texture2D = terrain.get("full_surface_texture")
 	var previous_stretch: bool = terrain.get("stretch_full_surface_texture") if terrain.get("stretch_full_surface_texture") != null else true
-	var stretch := stretch_surface_image.button_pressed if stretch_surface_image else true
+	# The Inspector is the single source of truth for persistent material settings.
+	var stretch: bool = terrain.stretch_full_surface_texture
 	var undo_redo := EditorInterface.get_editor_undo_redo()
 	undo_redo.create_action("Reemplazar superficie del terreno con imagen")
 	undo_redo.add_do_method(terrain, "set_full_surface_texture", texture, stretch)
