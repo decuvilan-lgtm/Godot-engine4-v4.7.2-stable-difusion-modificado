@@ -80,7 +80,7 @@ require("state.get_node_instance(node_index)" in sync, "scene organization follo
 require("PackedScene" in sync and "get_state()" in sync, "scene hierarchy traversal uses serialized scene state")
 require("_is_native_joystick_zone(event.position)" in terrain, "terrain pencil does not capture native joystick zones")
 require("event.index == pencil_touch_index and not pencil_touch_cancelled" in terrain, "multitouch cancellation cannot resume the same pencil gesture")
-require("create_button.text = \"Crear terreno\"" in terrain, "entering the terrain editor does not auto-create nodes")
+require("_create_terrain()" in terrain[terrain.index("func _toggle_panel()"):terrain.index("func _create_terrain()")], "terrain editor opens on an editable base")
 require("terrain_tabs.current_tab not in [1, 2]" in terrain, "terrain viewport editing is limited to Sculpt/Paint tabs")
 
 if FAILURES:
