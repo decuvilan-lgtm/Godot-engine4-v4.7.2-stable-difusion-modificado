@@ -52,7 +52,7 @@ def main() -> int:
         shutil.copytree(ROOT / "scripts/github_sync_addon", addons / "github_sync")
         shutil.copytree(ROOT / "scripts/terrain_3d_addon", addons / "terrain_3d")
         (project / "project.godot").write_text(
-            '[application]\nconfig/name="Godot Addon Integration Test"\n'
+            'config_version=5\n\n[application]\nconfig/name="Godot Addon Integration Test"\n'
             'run/main_scene="res://scenes/main.tscn"\n\n'
             '[editor_plugins]\n'
             'enabled=PackedStringArray("res://addons/github_sync/plugin.cfg", '
