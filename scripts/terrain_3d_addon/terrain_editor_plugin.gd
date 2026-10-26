@@ -371,7 +371,7 @@ func _refresh_ui_scale() -> void:
 			if spin:
 				spin.custom_minimum_size = Vector2(112, 44) * scale
 
-	# Integer-valued native layout settings are shared with Godot's C++ viewport controls.
+# Integer-valued native layout settings are shared with Godot's C++ viewport controls.
 func _bind_editor_int_setting(slider: HSlider, setting_name: String, default_value: int, minimum: int, maximum: int) -> void:
 	var settings := EditorInterface.get_editor_settings()
 	if settings == null or slider == null:
