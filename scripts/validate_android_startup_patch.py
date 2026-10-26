@@ -25,7 +25,7 @@ for token, label in [
     ("scripts/assets/goku_ultra_instinto.jpg.b64", "the provided image is stored as a build-time asset"),
     ("@+id/editor_loading_indicator", "loading overlay keeps the existing readiness hook ID"),
     ("Preparing your workspace", "startup overlay includes a status message"),
-    ('android:text="lo logre bro"', "startup overlay displays the requested lo logre bro text"),
+    ('android:text="AZIZA"', "startup overlay displays the documented AZIZA text"),
     ("Goku Ultra Instinto", "startup image accessibility label is configured for Goku Ultra Instinto"),
     ("onGodotMainLoopStarted", "patch documents the existing overlay hide lifecycle"),
 ]:
