@@ -115,9 +115,9 @@ require("_create_terrain()" in toggle_body, "opening Terreno 3D creates its init
 require('create_button.text = "Crear terreno"' in plugin, "manual terrain creation remains available for customized terrain dimensions")
 
 for token, label in [
-    ("@export_enum(\"Cuadrada / rectangular\", \"Circular / elíptica\") var footprint_shape", "terrain data persists its footprint shape"),
-    ("@export_range(0.1, 100.0, 0.1) var base_thickness", "terrain data persists its solid base thickness"),
-    ("@export_range(1.0, 1000.0, 1.0) var max_height", "terrain data persists its vertical sculpt range"),
+    ("@export_enum(\"Cuadrada / rectangular\", \"Circular / elíptica\") var footprint_shape: int = 0:", "terrain footprint is exposed as a native Inspector property and rebuilds geometry"),
+    ("@export_range(0.1, 100.0, 0.1) var base_thickness: float = 2.0:", "terrain base thickness is exposed as a native Inspector property and rebuilds geometry"),
+    ("@export_range(1.0, 1000.0, 1.0) var max_height: float = 100.0:", "terrain height range is exposed as a native Inspector property and clamps terrain data"),
     ("SurfaceTool", "procedural terrain mesh"),
     ("_add_bottom_vertex", "terrain mesh includes an underside"),
     ("_add_wall(st", "terrain mesh creates perimeter walls for a solid volume"),
@@ -131,6 +131,11 @@ for token, label in [
     ("set_layer_weights", "editable four-channel material weights"),
     ("NoiseTexture2D", "procedural texture generation for material layers"),
     ("@export_storage var heights", "terrain heights persist in saved scenes"),
+    ("@export_group(\"Geometría\")", "terrain geometry properties are grouped in the native Inspector"),
+    ("func _resize_grid_preserving_data", "Inspector grid-size changes preserve sculpted height/color/material data"),
+    ("func _sample_float_grid", "terrain resizing resamples height data instead of discarding it"),
+    ("@export_group(\"Material\")", "terrain texture options are grouped in the native Inspector"),
+    ("if terrain_material:\n\t\t\tterrain_material.set_shader_parameter(\"use_full_surface_texture\"", "Inspector texture changes update the terrain material live"),
     ("create_foliage", "procedural foliage placement"),
     ("var canopy_mesh := CylinderMesh.new()", "foliage canopy uses a Godot 4.7 built-in mesh primitive"),
 ]:
