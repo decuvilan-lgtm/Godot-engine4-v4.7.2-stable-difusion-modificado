@@ -900,7 +900,7 @@ replace_once(EDITOR_NODE_HEADER,
     "class EditorTitleBar;\nclass CanvasLayer;\nclass Button;\n")
 replace_once(EDITOR_NODE_HEADER,
     "EditorTitleBar *title_bar = nullptr;",
-    "EditorTitleBar *title_bar = nullptr;\n\tCanvasLayer *mobile_immersive_layer = nullptr;\n\tButton *mobile_immersive_exit_button = nullptr;\n\tbool mobile_immersive_preview = false;\n\tbool mobile_previous_distraction_free = false;\n\tbool mobile_previous_system_immersive = false;\n\tint mobile_previous_window_mode = -1;")
+    "EditorTitleBar *title_bar = nullptr;\n\tCanvasLayer *mobile_immersive_layer = nullptr;\n\tButton *mobile_immersive_exit_button = nullptr;\n\tbool mobile_immersive_preview = false;\n\tbool mobile_previous_distraction_free = false;\n\tbool mobile_previous_system_immersive = false;\n\tbool mobile_previous_run_bar_visible = true;\n\tint mobile_previous_window_mode = -1;")
 replace_once(EDITOR_NODE_HEADER,
     "static Button *get_distraction_free_button() { return singleton->distraction_free; }",
     "static Button *get_distraction_free_button() { return singleton->distraction_free; }\n\tvoid toggle_mobile_immersive_preview();\n\tvoid exit_mobile_immersive_preview();")
@@ -946,6 +946,7 @@ replace_once(EDITOR_NODE_SOURCE,
 		mobile_previous_system_immersive = OS_Android::get_singleton()->get_godot_java()->is_in_immersive_mode();
 	}
 	set_distraction_free_mode(true);
+	mobile_previous_run_bar_visible = project_run_bar != nullptr && project_run_bar->is_visible();
 	if (title_bar) {
 		title_bar->hide();
 	}
@@ -981,7 +982,7 @@ void EditorNode::exit_mobile_immersive_preview() {
 		title_bar->show();
 	}
 	if (project_run_bar) {
-		project_run_bar->show();
+		project_run_bar->set_visible(mobile_previous_run_bar_visible);
 	}
 	if (mobile_previous_window_mode >= 0) {
 		DisplayServer::get_singleton()->window_set_mode((DisplayServerEnums::WindowMode)mobile_previous_window_mode);
