@@ -713,3 +713,15 @@ Esta sección prevalece sobre notas antiguas de este README cuando describan un 
 ## Compilación completa del APK Android
 
 Para iniciar una compilación completa ARM32 (`armeabi-v7a`) + ARM64 (`arm64-v8a`) desde un commit de la rama `feature/github-sync-and-safe-mcp`, usa `[build-apk]` en el mensaje del commit. El flujo también puede ejecutarse manualmente desde GitHub Actions con `run_type=full-android-build`.
+
+
+## Integración táctil del editor de terreno — 2026-10-26
+
+- El editor de terreno usa el dock nativo izquierdo superior de Godot en lugar de una ventana flotante; el panel conserva las pestañas Inicio, Esculpir, Pintar, Vegetación y Heightmaps.
+- La base inicial se configura como 9 × 9 vértices, equivalente a 8 × 8 celdas/bloques. El tamaño puede seguir modificándose desde Inicio.
+- El control **Sensibilidad del lápiz (0–100)** se guarda en los ajustes del editor. El radio de acción del pincel también conserva su ajuste.
+- Se mantiene un único botón **ACCIÓN** para aplicar la herramienta activa. El lápiz cambia entre negro/inactivo y color activo, y los eventos táctiles se pasan a Godot para no sustituir los joysticks nativos por controles duplicados.
+- La zona inferior izquierda y derecha del visor se reserva para los joysticks nativos al iniciar un gesto; un segundo dedo cancela la propiedad del lápiz para permitir el uso inmediato de otros controles.
+- El cambio a dock nativo requiere validar la distribución real en el editor Android, ya que un dock puede reducir el área central del visor. El botón ACCIÓN aún está dentro del panel del complemento, no superpuesto sobre el joystick; no debe confundirse esa limitación de ubicación con una implementación completa del diseño táctil.
+- La barra superior de controles de la vista previa en ejecución es distinta de la barra de título del editor y de las barras de sistema Android. El parche de pantalla inmersiva actual oculta la barra de título del editor y las barras de sistema; la ocultación específica de la barra negra de controles de la vista previa debe confirmarse/corregirse en la integración nativa.
+- La validación estática del addon se actualizó para comprobar el dock nativo. No se afirma que el código GDScript o C++ haya sido compilado ni que la interacción táctil se haya probado en el teléfono.
