@@ -190,31 +190,13 @@ func _build_panel() -> void:
 	title.text = "EDITOR DE TERRENO 3D"
 	home.add_child(title)
 	var intro := Label.new()
-	intro.text = "Editor integrado en el espacio de trabajo 3D. La base inicial es de 8 × 8 bloques; puedes ajustar X/Z, altura y forma antes de crearla."
+	intro.text = "Terreno integrado en la escena de Godot. La base inicial es de 8 × 8 bloques y se crea al abrir esta herramienta. Selecciona el nodo Terrain3D en el árbol de escena para cambiar geometría, resolución y materiales desde el Inspector nativo."
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	home.add_child(intro)
-	_add_section(home, "Tamaño y forma")
-	# 9 x 9 vertices produce 8 x 8 terrain blocks by default.
-	terrain_width = _add_spin(home, "Resolución X (vértices)", 9, 9, 257, 8)
-	terrain_depth = _add_spin(home, "Resolución Z (vértices)", 9, 9, 257, 8)
-	cell_size = _add_spin(home, "Tamaño de celda (unidades)", 1.0, 0.1, 16.0, 0.1)
-	shape_picker = OptionButton.new()
-	shape_picker.add_item("Cuadrada / rectangular", 0)
-	shape_picker.add_item("Circular / elíptica", 1)
-	home.add_child(_make_labeled_control("Forma del terreno", shape_picker))
-	base_thickness = _add_spin(home, "Grosor de base Y", 2.0, 0.1, 100.0, 0.5)
-	max_height = _add_spin(home, "Rango de altura Y", 100.0, 1.0, 1000.0, 1.0)
-	resolution_preview_label = Label.new()
-	resolution_preview_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	home.add_child(resolution_preview_label)
-	terrain_width.value_changed.connect(_update_terrain_preview)
-	terrain_depth.value_changed.connect(_update_terrain_preview)
-	cell_size.value_changed.connect(_update_terrain_preview)
-	shape_picker.item_selected.connect(_update_terrain_preview)
-	var create_button := Button.new()
-	create_button.text = "Crear terreno"
-	create_button.pressed.connect(_create_terrain)
-	home.add_child(create_button)
+	var inspector_help := Label.new()
+	inspector_help.text = "Configuración del terreno: Inspector → Geometría / Material. Esta pestaña contiene solo acciones de escena y edición."
+	inspector_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	home.add_child(inspector_help)
 	var focus_button := Button.new()
 	focus_button.text = "Enfocar terreno en la vista 3D"
 	focus_button.pressed.connect(_focus_terrain)
@@ -521,9 +503,6 @@ func _create_terrain() -> void:
 	if root == null:
 		_set_status("Primero crea o abre una escena.")
 		return
-	if terrain_width == null or terrain_depth == null or cell_size == null or shape_picker == null or base_thickness == null or max_height == null:
-		_set_status("El panel de terreno todavía no está inicializado.")
-		return
 	var terrain_script = load(TERRAIN_SCRIPT)
 	if terrain_script == null:
 		_set_status("No se encontró terrain_data.gd.")
@@ -536,22 +515,24 @@ func _create_terrain() -> void:
 		suffix += 1
 	terrain.name = "Terrain3D_%d" % suffix
 	terrain.set_meta(TERRAIN_META, true)
-	terrain.set("footprint_shape", shape_picker.get_selected_id())
-	terrain.set("base_thickness", base_thickness.value)
-	terrain.set("max_height", max_height.value)
+	# Start with a usable 8 x 8-cell square base. All geometry settings are
+	# edited on the real node through Godot's native Inspector, not duplicated here.
+	terrain.set("footprint_shape", 0)
+	terrain.set("base_thickness", 2.0)
+	terrain.set("max_height", 100.0)
 	cached_terrain = terrain
 	cached_scene_root = root
 	var undo_redo := EditorInterface.get_editor_undo_redo()
 	undo_redo.create_action("Crear terreno 3D")
 	undo_redo.add_do_method(root, "add_child", terrain)
 	undo_redo.add_do_method(terrain, "set_owner", root)
-	undo_redo.add_do_method(terrain, "initialize_grid", int(terrain_width.value), int(terrain_depth.value), cell_size.value)
+	undo_redo.add_do_method(terrain, "initialize_grid", 9, 9, 1.0)
 	undo_redo.add_undo_method(root, "remove_child", terrain)
 	undo_redo.add_do_reference(terrain)
 	undo_redo.commit_action()
 	EditorInterface.get_selection().clear()
 	EditorInterface.get_selection().add_node(terrain)
-	_set_status("Terreno creado con la forma, dimensiones X/Z, rango Y, base y colisiones configuradas. Edita desde las pestañas del editor de terreno.")
+	_set_status("Terreno 8 × 8 creado. Cambia geometría, resolución y material desde el Inspector nativo.")
 	_focus_terrain()
 	_update_action_overlay_visibility()
 
