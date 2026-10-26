@@ -505,7 +505,12 @@ func _toggle_panel() -> void:
 	# The terrain workspace opens on a real editable 8 × 8-cell base when
 	# the scene has no terrain yet. Users can immediately sculpt instead of
 	# having to create the starting surface as a separate setup step.
-	if _get_terrain() != null:
+	var terrain = _get_terrain()
+	if terrain != null:
+		# Opening the terrain workspace must enter Godot's native selection flow:
+		# select the actual scene node so its exported properties appear in Inspector.
+		EditorInterface.get_selection().clear()
+		EditorInterface.get_selection().add_node(terrain)
 		_focus_terrain()
 	else:
 		_create_terrain()
