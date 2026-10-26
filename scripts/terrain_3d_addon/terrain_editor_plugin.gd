@@ -119,6 +119,28 @@ func _build_panel() -> void:
 	terrain_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	terrain_tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.add_child(terrain_tabs)
+
+	# Keep the pencil controls available while switching between Sculpt and Paint.
+	_add_section(panel, "Lápiz táctil")
+	pencil_sensitivity = _add_slider(panel, "Sensibilidad del lápiz (0–100)", 50.0, 0.0, 100.0, 1.0)
+	pencil_state_label = Label.new()
+	pencil_state_label.text = "Lápiz negro / inactivo"
+	pencil_state_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	panel.add_child(pencil_state_label)
+	continuous_stroke = CheckButton.new()
+	continuous_stroke.text = "Trazo continuo mientras mantienes ACCIÓN"
+	panel.add_child(continuous_stroke)
+	action_button = Button.new()
+	action_button.text = "ACCIÓN"
+	action_button.custom_minimum_size = Vector2(0, 52) * EditorInterface.get_editor_scale()
+	action_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	action_button.button_down.connect(_on_action_down)
+	action_button.button_up.connect(_on_action_up)
+	panel.add_child(action_button)
+	var pencil_help := Label.new()
+	pencil_help.text = "Desliza sobre el visor 3D para mover el lápiz. Tocar controles o soltar el dedo lo desactiva; ACCIÓN aplica la herramienta elegida."
+	pencil_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	panel.add_child(pencil_help)
 	var home := _make_tab_page(terrain_tabs, "Inicio")
 	var sculpt := _make_tab_page(terrain_tabs, "Esculpir")
 	var paint := _make_tab_page(terrain_tabs, "Pintar")
@@ -186,26 +208,6 @@ func _build_panel() -> void:
 	grid_snap = CheckButton.new()
 	grid_snap.text = "Ajustar pincel a cuadrícula"
 	sculpt.add_child(grid_snap)
-	_add_section(sculpt, "Lápiz táctil")
-	pencil_sensitivity = _add_slider(sculpt, "Sensibilidad del lápiz (0–100)", 50.0, 0.0, 100.0, 1.0)
-	pencil_state_label = Label.new()
-	pencil_state_label.text = "Lápiz negro / inactivo"
-	pencil_state_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	sculpt.add_child(pencil_state_label)
-	continuous_stroke = CheckButton.new()
-	continuous_stroke.text = "Trazo continuo mientras mantienes ACCIÓN"
-	sculpt.add_child(continuous_stroke)
-	action_button = Button.new()
-	action_button.text = "ACCIÓN"
-	action_button.custom_minimum_size = Vector2(0, 52) * EditorInterface.get_editor_scale()
-	action_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	action_button.button_down.connect(_on_action_down)
-	action_button.button_up.connect(_on_action_up)
-	sculpt.add_child(action_button)
-	var pencil_help := Label.new()
-	pencil_help.text = "Desliza sobre el visor 3D para mover el lápiz. Tocar controles o soltar el dedo lo desactiva; ACCIÓN aplica la herramienta elegida."
-	pencil_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	sculpt.add_child(pencil_help)
 
 	_add_section(paint, "Pintura de terreno")
 	paint_mode_picker = OptionButton.new()
@@ -577,7 +579,7 @@ func _process(delta: float) -> void:
 	# Do no polling/redraw work while the terrain tools are closed and no edit
 	# stroke/collision rebuild is pending. This avoids stealing input or CPU from
 	# the rest of the mobile editor.
-	if (panel == null or not panel.visible) and not stroke_active and not collision_dirty and not action_held:
+	if (terrain_window == null or not terrain_window.visible) and not stroke_active and not collision_dirty and not action_held:
 		return
 	cursor_update_timer += delta
 	stroke_timer += delta
@@ -602,7 +604,7 @@ func _process(delta: float) -> void:
 			if terrain_preview.get_parent():
 				terrain_preview.get_parent().remove_child(terrain_preview)
 			root.add_child(terrain_preview)
-		terrain_preview.visible = panel.visible and root != null and _get_terrain() == null
+		terrain_preview.visible = terrain_window != null and terrain_window.visible and root != null and _get_terrain() == null
 		if terrain_preview.visible:
 			terrain_preview.global_position = Vector3(0.0, 0.05, 0.0)
 	var terrain = _get_terrain()
@@ -637,7 +639,7 @@ func _process(delta: float) -> void:
 func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 	# Track only gestures forwarded by the 3D viewport. Always pass input on to
 	# Godot so native joysticks and editor controls retain their own behaviour.
-	if panel == null or not panel.visible or terrain_tabs == null or terrain_tabs.current_tab not in [1, 2]:
+	if terrain_window == null or not terrain_window.visible or terrain_tabs == null or terrain_tabs.current_tab not in [1, 2]:
 		return AFTER_GUI_INPUT_PASS
 	if _get_terrain() == null:
 		return AFTER_GUI_INPUT_PASS
