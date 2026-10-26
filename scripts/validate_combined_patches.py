@@ -42,7 +42,7 @@ editor_settings_cpp = read(GODOT / "editor/settings/editor_settings.cpp")
 for symbol, source, label in [
     (r"void EditorNode::toggle_mobile_immersive_preview\(\)", editor_node_cpp, "immersive toggle has exactly one definition"),
     (r"void EditorNode::exit_mobile_immersive_preview\(\)", editor_node_cpp, "immersive exit has exactly one definition"),
-    (r"void EditorRunBar::_immersive_preview_pressed\(\)", runbar_cpp, "run-bar fullscreen callback has exactly one definition"),
+    (r"void EditorNode::_mobile_preview_debug_item_pressed\(int p_id\)", editor_node_cpp, "native workspace preview debug menu callback has exactly one definition"),
     (r"void EditorDebuggerNode::set_mobile_immersive_preview\(bool p_enabled\)", debugger_cpp, "editor debugger forwarding has exactly one definition"),
     (r"void ScriptEditorDebugger::set_mobile_immersive_preview\(bool p_enable\)", script_debugger_cpp, "remote debugger forwarding has exactly one definition"),
     (r"Error SceneDebugger::_msg_set_mobile_immersive_preview\(const Array &p_args\)", scene_debugger_cpp, "runtime immersive handler has exactly one definition"),
@@ -55,7 +55,9 @@ for symbol, source, label in [
 for symbol, source, label in [
     ("toggle_mobile_immersive_preview", editor_node_h, "EditorNode declares the fullscreen toggle"),
     ("exit_mobile_immersive_preview", editor_node_h, "EditorNode declares fullscreen exit"),
-    ("_immersive_preview_pressed", runbar_h, "run bar declares fullscreen callback"),
+    ("mobile_immersive_toolbar_button->set_text(TTR(\"Inm\"))", editor_node_cpp, "immersive control is placed beside the native 2D/3D workspace buttons"),
+    ("mobile_preview_debug_button->set_text(TTR(\"☀️\"))", editor_node_cpp, "preview debug dropdown is placed in the native workspace toolbar"),
+    ("set_debug_fps", editor_node_cpp, "toolbar FPS toggle is connected to the remote preview debugger"),
     ("set_mobile_immersive_preview", debugger_h, "editor debugger declares fullscreen forwarding"),
     ("set_mobile_immersive_preview", script_debugger_h, "script debugger declares fullscreen forwarding"),
     ("_msg_set_mobile_immersive_preview", scene_debugger_h, "runtime debugger declares fullscreen handler"),
