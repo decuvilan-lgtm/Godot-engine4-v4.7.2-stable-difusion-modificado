@@ -32,6 +32,7 @@ var pencil_sensitivity: HSlider
 var pencil_state_label: Label
 var action_button: Button
 var pencil_active := false
+var pencil_touch_cancelled := false
 var pencil_touch_index := -1
 var pencil_target_position := Vector2.ZERO
 var pencil_screen_position := Vector2.ZERO
@@ -645,18 +646,31 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 		return AFTER_GUI_INPUT_PASS
 	if event is InputEventScreenTouch:
 		if event.pressed:
-			# Do not steal a second finger from a native joystick or another control.
-			if pencil_touch_index == -1:
+			# Native joystick corners are reserved for Godot navigation; never
+			# claim those touches as pencil gestures.
+			if _is_native_joystick_zone(event.position):
+				pencil_active = false
+				pencil_touch_cancelled = true if pencil_touch_index != -1 else false
+				_update_pencil_state()
+			elif pencil_touch_index == -1:
 				pencil_touch_index = event.index
 				pencil_target_position = event.position
+				pencil_touch_cancelled = false
 				pencil_active = false
+				_update_pencil_state()
+			else:
+				# A second finger immediately releases pencil ownership without
+				# stealing the first finger's ID or blocking the native joystick.
+				pencil_active = false
+				pencil_touch_cancelled = true
 				_update_pencil_state()
 		elif event.index == pencil_touch_index:
 			pencil_active = false
 			pencil_touch_index = -1
+			pencil_touch_cancelled = false
 			stroke_active = false
 			_update_pencil_state()
-	elif event is InputEventScreenDrag and event.index == pencil_touch_index:
+	elif event is InputEventScreenDrag and event.index == pencil_touch_index and not pencil_touch_cancelled:
 		pencil_target_position = event.position
 		if not pencil_active:
 			pencil_screen_position = event.position
@@ -689,6 +703,15 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 			_update_cursor_mesh(cursor_hit)
 		_update_pencil_state()
 	return AFTER_GUI_INPUT_PASS
+
+func _is_native_joystick_zone(position: Vector2) -> bool:
+	var viewport := EditorInterface.get_editor_viewport_3d(0)
+	if viewport == null:
+		return false
+	# The native editor navigation joysticks occupy the lower left/right corners.
+	# Keep these regions free of pencil ownership so Godot can receive their drags.
+	var size := viewport.size
+	return position.y >= size.y * 0.68 and (position.x <= size.x * 0.30 or position.x >= size.x * 0.70)
 
 func _update_pencil_state() -> void:
 	if pencil_state_label:
