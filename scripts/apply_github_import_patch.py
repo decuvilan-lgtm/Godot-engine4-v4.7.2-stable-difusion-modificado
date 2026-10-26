@@ -631,14 +631,6 @@ replace_once(PROJECT_DIALOG,
 \t\t\tret = unzGoToFirstFile(pkg);""")
 
 
-# Keep the normal run bar dedicated to launching/stopping the game. Runtime debug
-# controls are injected into the running game's own window by SceneDebugger below.
-RUN_BAR_HEADER = ROOT / "editor/run/editor_run_bar.h"
-RUN_BAR_SOURCE = ROOT / "editor/run/editor_run_bar.cpp"
-if not RUN_BAR_HEADER.is_file() or not RUN_BAR_SOURCE.is_file():
-    sys.exit("Godot run-bar source not found; cannot add immersive preview control.")
-
-
 # Extend the remote-debugger channel so physics, navigation, avoidance, and path
 # overlays can be toggled in the running game without restarting the preview.
 SCENE_DEBUGGER_HEADER = ROOT / "scene/debugger/scene_debugger.h"
@@ -899,6 +891,15 @@ replace_once(EDITOR_NODE_HEADER,
     "class EditorTitleBar;\n",
     "class EditorTitleBar;\nclass CanvasLayer;\nclass Button;\n")
 replace_once(EDITOR_NODE_HEADER,
+    "class Button;\n",
+    "class Button;\nclass PopupMenu;\n")
+replace_once(EDITOR_NODE_HEADER,
+    "Button *mobile_immersive_exit_button = nullptr;",
+    "Button *mobile_immersive_exit_button = nullptr;\n\tButton *mobile_preview_debug_button = nullptr;\n\tPopupMenu *mobile_preview_debug_menu = nullptr;")
+replace_once(EDITOR_NODE_HEADER,
+    "void exit_mobile_immersive_preview();",
+    "void exit_mobile_immersive_preview();\n\tvoid _mobile_preview_debug_menu_pressed();\n\tvoid _mobile_preview_debug_item_pressed(int p_id);")
+replace_once(EDITOR_NODE_HEADER,
     "EditorTitleBar *title_bar = nullptr;",
     "EditorTitleBar *title_bar = nullptr;\n\tCanvasLayer *mobile_immersive_layer = nullptr;\n\tButton *mobile_immersive_exit_button = nullptr;\n\tbool mobile_immersive_preview = false;\n\tbool mobile_previous_distraction_free = false;\n\tbool mobile_previous_system_immersive = false;\n\tbool mobile_previous_run_bar_visible = true;\n\tint mobile_previous_window_mode = -1;")
 replace_once(EDITOR_NODE_HEADER,
@@ -907,6 +908,37 @@ replace_once(EDITOR_NODE_HEADER,
 replace_once(EDITOR_NODE_SOURCE,
     '#include "scene/main/scene_tree.h"',
     '#include "scene/main/scene_tree.h"\n#include "scene/main/canvas_layer.h"\n#include "scene/gui/button.h"\n#ifdef ANDROID_ENABLED\n#include "platform/android/os_android.h"\n#include "platform/android/java_godot_wrapper.h"\n#endif')
+replace_once(EDITOR_NODE_SOURCE,
+    '#include "scene/gui/button.h"',
+    '#include "scene/gui/button.h"\n#include "scene/gui/popup_menu.h"')
+replace_once(EDITOR_NODE_SOURCE,
+    "editor_main_screen->set_button_container(main_editor_button_hb);",
+    """editor_main_screen->set_button_container(main_editor_button_hb);
+#ifdef ANDROID_ENABLED
+	Button *mobile_immersive_toolbar_button = memnew(Button);
+	mobile_immersive_toolbar_button->set_text(TTR("Inm"));
+	mobile_immersive_toolbar_button->set_custom_minimum_size(Size2(48, 44) * EDSCALE);
+	mobile_immersive_toolbar_button->set_accessibility_name(TTR("Vista previa inmersiva"));
+	mobile_immersive_toolbar_button->set_tooltip_text(TTR("Ampliar el juego en ejecución a pantalla completa."));
+	mobile_immersive_toolbar_button->connect(SceneStringName(pressed), callable_mp(this, &EditorNode::toggle_mobile_immersive_preview));
+	main_editor_button_hb->add_child(mobile_immersive_toolbar_button);
+	mobile_preview_debug_button = memnew(Button);
+	mobile_preview_debug_button->set_text(TTR("☀️"));
+	mobile_preview_debug_button->set_custom_minimum_size(Size2(48, 44) * EDSCALE);
+	mobile_preview_debug_button->set_accessibility_name(TTR("Opciones de depuración de la vista previa"));
+	mobile_preview_debug_button->set_tooltip_text(TTR("Colisiones, rutas, navegación, evasión y redibujado 2D."));
+	mobile_preview_debug_button->connect(SceneStringName(pressed), callable_mp(this, &EditorNode::_mobile_preview_debug_menu_pressed));
+	main_editor_button_hb->add_child(mobile_preview_debug_button);
+	mobile_preview_debug_menu = memnew(PopupMenu);
+	mobile_preview_debug_menu->add_check_item(TTR("Colisiones 2D/3D, formas y raycasts"), 0);
+	mobile_preview_debug_menu->add_check_item(TTR("Rutas Path2D/Path3D"), 1);
+	mobile_preview_debug_menu->add_check_item(TTR("Mallas de navegación"), 2);
+	mobile_preview_debug_menu->add_check_item(TTR("Áreas y velocidades de evasión"), 3);
+	mobile_preview_debug_menu->add_check_item(TTR("Redibujado 2D"), 4);
+	mobile_preview_debug_menu->connect(SceneStringName(id_pressed), callable_mp(this, &EditorNode::_mobile_preview_debug_item_pressed));
+	add_child(mobile_preview_debug_menu);
+#endif""")
+
 replace_once(EDITOR_NODE_SOURCE,
     "distraction_free->connect(SceneStringName(pressed), callable_mp(this, &EditorNode::_toggle_distraction_free_mode));",
     """distraction_free->connect(SceneStringName(pressed), callable_mp(this, &EditorNode::_toggle_distraction_free_mode));
@@ -932,6 +964,41 @@ replace_once(EDITOR_NODE_SOURCE,
 #endif""")
 replace_once(EDITOR_NODE_SOURCE,
     "void EditorNode::_toggle_distraction_free_mode() {",
+    """void EditorNode::_mobile_preview_debug_menu_pressed() {
+#ifdef ANDROID_ENABLED
+	if (mobile_preview_debug_menu == nullptr || mobile_preview_debug_button == nullptr) {
+		return;
+	}
+	mobile_preview_debug_menu->set_position(mobile_preview_debug_button->get_screen_position());
+	mobile_preview_debug_menu->reset_size();
+	mobile_preview_debug_menu->popup();
+#endif
+}
+
+void EditorNode::_mobile_preview_debug_item_pressed(int p_id) {
+#ifdef ANDROID_ENABLED
+	if (mobile_preview_debug_menu == nullptr || EditorDebuggerNode::get_singleton() == nullptr) {
+		return;
+	}
+	const int item_index = mobile_preview_debug_menu->get_item_index(p_id);
+	if (item_index < 0) {
+		return;
+	}
+	const bool enabled = !mobile_preview_debug_menu->is_item_checked(item_index);
+	mobile_preview_debug_menu->set_item_checked(item_index, enabled);
+	EditorDebuggerNode *debugger = EditorDebuggerNode::get_singleton();
+	switch (p_id) {
+		case 0: debugger->set_debug_collisions(enabled); break;
+		case 1: debugger->set_debug_paths(enabled); break;
+		case 2: debugger->set_debug_navigation(enabled); break;
+		case 3: debugger->set_debug_avoidance(enabled); break;
+		case 4: debugger->set_debug_canvas_item_redraw(enabled); break;
+		default: break;
+	}
+#endif
+}
+
+void EditorNode::_toggle_distraction_free_mode() {""")
     """void EditorNode::toggle_mobile_immersive_preview() {
 #ifdef ANDROID_ENABLED
 	if (mobile_immersive_preview) {
@@ -997,38 +1064,6 @@ void EditorNode::exit_mobile_immersive_preview() {
 }
 
 void EditorNode::_toggle_distraction_free_mode() {""")
-replace_once(RUN_BAR_SOURCE,
-    "play_button = memnew(Button);",
-    """#ifdef ANDROID_ENABLED
-	Button *immersive_preview_button = memnew(Button);
-	main_hbox->add_child(immersive_preview_button);
-	immersive_preview_button->set_theme_type_variation("RunBarButton");
-	immersive_preview_button->set_text(TTR("⛶"));
-	immersive_preview_button->set_custom_minimum_size(Size2(44, 44) * EDSCALE);
-	immersive_preview_button->set_accessibility_name(TTR("Vista previa inmersiva"));
-	immersive_preview_button->set_tooltip_text(TTR("Expandir la vista previa a pantalla completa sin detener el juego."));
-	immersive_preview_button->connect(SceneStringName(pressed), callable_mp(this, &EditorRunBar::_immersive_preview_pressed));
-#endif
-	play_button = memnew(Button);""")
-replace_once(RUN_BAR_HEADER,
-    "void _write_movie_toggled(bool p_enabled);",
-    "void _write_movie_toggled(bool p_enabled);\n\tvoid _immersive_preview_pressed();")
-replace_once(RUN_BAR_SOURCE,
-    "void EditorRunBar::_write_movie_toggled(bool p_enabled) {",
-    """void EditorRunBar::_immersive_preview_pressed() {
-#ifdef ANDROID_ENABLED
-	// Do not enter immersive mode from an idle editor; the preview must already be running.
-	if (is_playing()) {
-		EditorNode::get_singleton()->toggle_mobile_immersive_preview();
-	}
-#endif
-}
-
-void EditorRunBar::_write_movie_toggled(bool p_enabled) {""")
-
-
-
-
 # While immersive preview is active, ask the running game through the existing
 # remote-debugger channel to ignore its design aspect ratio, then restore it on exit.
 replace_once(EDITOR_NODE_SOURCE,
@@ -1081,7 +1116,7 @@ replace_once(SCENE_DEBUGGER_SOURCE,
 \troot->add_child(layer);
 \tButton *button = memnew(Button);
 \tbutton->set_name("CollisionButton");
-\tbutton->set_text("COL.");
+\tbutton->set_text("☀️");
 \tbutton->set_tooltip_text("Colisiones, rutas, navegación y evasión de la vista previa");
 \tbutton->set_accessibility_name("Opciones de depuración de la vista previa");
 \tbutton->set_custom_minimum_size(Size2(60, 44));
