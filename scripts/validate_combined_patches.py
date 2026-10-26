@@ -34,6 +34,9 @@ script_debugger_h = read(GODOT / "editor/debugger/script_editor_debugger.h")
 script_debugger_cpp = read(GODOT / "editor/debugger/script_editor_debugger.cpp")
 scene_debugger_h = read(GODOT / "scene/debugger/scene_debugger.h")
 scene_debugger_cpp = read(GODOT / "scene/debugger/scene_debugger.cpp")
+native_3d_h = read(GODOT / "editor/scene/3d/node_3d_editor_plugin.h")
+native_3d_cpp = read(GODOT / "editor/scene/3d/node_3d_editor_plugin.cpp")
+editor_settings_cpp = read(GODOT / "editor/settings/editor_settings.cpp")
 
 # Ensure patchers did not collide and leave duplicate definitions/declarations.
 for symbol, source, label in [
@@ -45,6 +48,7 @@ for symbol, source, label in [
     (r"Error SceneDebugger::_msg_set_mobile_immersive_preview\(const Array &p_args\)", scene_debugger_cpp, "runtime immersive handler has exactly one definition"),
     (r"void SceneDebugger::_runtime_debug_button_pressed\(\)", scene_debugger_cpp, "preview overlay button callback has exactly one definition"),
     (r"void SceneDebugger::_runtime_debug_item_pressed\(int p_id\)", scene_debugger_cpp, "preview overlay menu callback has exactly one definition"),
+    (r"void Node3DEditorViewport::_update_native_navigation_control_layout\(\)", native_3d_cpp, "native joystick layout updater has exactly one definition"),
 ]:
     require(len(re.findall(symbol, source)) == 1, label)
 
@@ -56,6 +60,12 @@ for symbol, source, label in [
     ("set_mobile_immersive_preview", script_debugger_h, "script debugger declares fullscreen forwarding"),
     ("_msg_set_mobile_immersive_preview", scene_debugger_h, "runtime debugger declares fullscreen handler"),
     ('message_handlers["set_mobile_immersive_preview"]', scene_debugger_cpp, "runtime message is registered"),
+    ("_update_native_navigation_control_layout", native_3d_h, "native 3D viewport declares joystick relayout"),
+    ("native_joystick_size", editor_settings_cpp, "native joystick size setting is registered"),
+    ("native_joystick_inset_x", editor_settings_cpp, "native joystick horizontal position setting is registered"),
+    ("native_joystick_inset_y", editor_settings_cpp, "native joystick vertical position setting is registered"),
+    ("position_control->set_custom_minimum_size(Size2(native_size, native_size)", native_3d_cpp, "native left joystick uses configured size"),
+    ("_update_native_navigation_control_layout();", native_3d_cpp, "native joysticks relayout at creation and on settings changes"),
     ("play_button = memnew(Button);", runbar_cpp, "native Run control remains present"),
     ("is_playing()", runbar_cpp, "fullscreen toggle is blocked until a game is running"),
     ("mobile_immersive_exit_button->show()", editor_node_cpp, "fullscreen mode exposes a return control"),
