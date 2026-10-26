@@ -2,19 +2,66 @@
 extends MeshInstance3D
 ## Editable grid terrain for the custom Godot Android editor.
 
-@export var grid_width: int = 65
-@export var grid_depth: int = 65
-@export var cell_size: float = 1.0
-@export_enum("Cuadrada / rectangular", "Circular / elíptica") var footprint_shape: int = 0
-@export_range(0.1, 100.0, 0.1) var base_thickness: float = 2.0
-@export_range(1.0, 1000.0, 1.0) var max_height: float = 100.0
+@export_group("Geometría")
+@export var grid_width: int = 65:
+	set(value):
+		var previous_width := grid_width
+		grid_width = clampi(value, 9, 257)
+		if is_inside_tree() and not _suppress_grid_setters and previous_width != grid_width:
+			_resize_grid_preserving_data(previous_width, grid_depth)
+@export var grid_depth: int = 65:
+	set(value):
+		var previous_depth := grid_depth
+		grid_depth = clampi(value, 9, 257)
+		if is_inside_tree() and not _suppress_grid_setters and previous_depth != grid_depth:
+			_resize_grid_preserving_data(grid_width, previous_depth)
+@export_range(0.1, 16.0, 0.1) var cell_size: float = 1.0:
+	set(value):
+		cell_size = clampf(value, 0.1, 16.0) if is_finite(value) else 1.0
+		if is_inside_tree() and heights.size() == grid_width * grid_depth:
+			_rebuild_mesh()
+			_rebuild_collision()
+@export_enum("Cuadrada / rectangular", "Circular / elíptica") var footprint_shape: int = 0:
+	set(value):
+		footprint_shape = clampi(value, 0, 1)
+		if is_inside_tree() and heights.size() == grid_width * grid_depth:
+			_rebuild_mesh()
+			_rebuild_collision()
+@export_range(0.1, 100.0, 0.1) var base_thickness: float = 2.0:
+	set(value):
+		base_thickness = clampf(value, 0.1, 100.0) if is_finite(value) else 2.0
+		if is_inside_tree() and heights.size() == grid_width * grid_depth:
+			_rebuild_mesh()
+			_rebuild_collision()
+@export_range(1.0, 1000.0, 1.0) var max_height: float = 100.0:
+	set(value):
+		max_height = clampf(value, 1.0, 1000.0) if is_finite(value) else 100.0
+		if is_inside_tree() and heights.size() == grid_width * grid_depth:
+			for i in range(heights.size()):
+				heights[i] = clampf(heights[i], -max_height, max_height)
+			_rebuild_mesh()
+			_rebuild_collision()
+
+@export_group("Material")
+@export var full_surface_texture: Texture2D:
+	set(value):
+		full_surface_texture = value
+		if terrain_material:
+			terrain_material.set_shader_parameter("use_full_surface_texture", full_surface_texture != null)
+			if full_surface_texture:
+				terrain_material.set_shader_parameter("full_surface_texture", full_surface_texture)
+@export var stretch_full_surface_texture: bool = true:
+	set(value):
+		stretch_full_surface_texture = value
+		if terrain_material:
+			terrain_material.set_shader_parameter("stretch_full_surface_texture", stretch_full_surface_texture)
+
 @export_storage var heights: PackedFloat32Array = PackedFloat32Array()
 @export_storage var vertex_colors: PackedColorArray = PackedColorArray()
 @export_storage var layer_weights: PackedColorArray = PackedColorArray()
-@export var full_surface_texture: Texture2D
-@export var stretch_full_surface_texture: bool = true
 var collision_body: StaticBody3D
 var terrain_material: ShaderMaterial
+var _suppress_grid_setters := false
 
 func _ready() -> void:
 	var existing_collision := get_node_or_null("TerrainCollision")
@@ -29,12 +76,66 @@ func _ready() -> void:
 			terrain_material.set_shader_parameter("full_surface_texture", full_surface_texture)
 		terrain_material.set_shader_parameter("stretch_full_surface_texture", stretch_full_surface_texture)
 
+func _resize_grid_preserving_data(old_width: int, old_depth: int) -> void:
+	var new_width := grid_width
+	var new_depth := grid_depth
+	var old_heights := heights.duplicate()
+	var old_colors := vertex_colors.duplicate()
+	var old_weights := layer_weights.duplicate()
+	var valid_old := old_width >= 2 and old_depth >= 2 and old_heights.size() == old_width * old_depth
+	heights.resize(new_width * new_depth)
+	vertex_colors.resize(new_width * new_depth)
+	layer_weights.resize(new_width * new_depth)
+	for z in range(new_depth):
+		for x in range(new_width):
+			var index := z * new_width + x
+			if valid_old:
+				var source_x := float(x) * float(old_width - 1) / float(maxi(1, new_width - 1))
+				var source_z := float(z) * float(old_depth - 1) / float(maxi(1, new_depth - 1))
+				heights[index] = _sample_float_grid(old_heights, old_width, old_depth, source_x, source_z)
+				vertex_colors[index] = _sample_color_grid(old_colors, old_width, old_depth, source_x, source_z, Color.WHITE)
+				layer_weights[index] = _sample_color_grid(old_weights, old_width, old_depth, source_x, source_z, Color(1.0, 0.0, 0.0, 0.0))
+			else:
+				heights[index] = 0.0
+				vertex_colors[index] = Color.WHITE
+				layer_weights[index] = Color(1.0, 0.0, 0.0, 0.0)
+	_rebuild_mesh()
+	_rebuild_collision()
+
+func _sample_float_grid(values: PackedFloat32Array, width: int, depth: int, x: float, z: float) -> float:
+	if values.size() != width * depth:
+		return 0.0
+	var x0 := clampi(floori(x), 0, width - 1)
+	var z0 := clampi(floori(z), 0, depth - 1)
+	var x1 := mini(x0 + 1, width - 1)
+	var z1 := mini(z0 + 1, depth - 1)
+	var tx := x - float(x0)
+	var tz := z - float(z0)
+	var top := lerpf(values[z0 * width + x0], values[z0 * width + x1], tx)
+	var bottom := lerpf(values[z1 * width + x0], values[z1 * width + x1], tx)
+	return lerpf(top, bottom, tz)
+
+func _sample_color_grid(values: PackedColorArray, width: int, depth: int, x: float, z: float, fallback: Color) -> Color:
+	if values.size() != width * depth:
+		return fallback
+	var x0 := clampi(floori(x), 0, width - 1)
+	var z0 := clampi(floori(z), 0, depth - 1)
+	var x1 := mini(x0 + 1, width - 1)
+	var z1 := mini(z0 + 1, depth - 1)
+	var tx := x - float(x0)
+	var tz := z - float(z0)
+	var top := values[z0 * width + x0].lerp(values[z0 * width + x1], tx)
+	var bottom := values[z1 * width + x0].lerp(values[z1 * width + x1], tx)
+	return top.lerp(bottom, tz)
+
 func initialize_grid(p_width: int, p_depth: int, p_cell_size: float) -> void:
 	# Validate all dimensions before allocating arrays or generating geometry.
 	# Keep the existing quality ceiling, but never allow malformed serialized values.
+	_suppress_grid_setters = true
 	grid_width = clampi(p_width, 9, 257)
 	grid_depth = clampi(p_depth, 9, 257)
 	cell_size = clampf(p_cell_size, 0.1, 16.0) if is_finite(p_cell_size) else 1.0
+	_suppress_grid_setters = false
 	heights.resize(grid_width * grid_depth)
 	vertex_colors.resize(grid_width * grid_depth)
 	layer_weights.resize(grid_width * grid_depth)
