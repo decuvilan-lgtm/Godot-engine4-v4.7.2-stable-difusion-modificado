@@ -1,6 +1,25 @@
 @tool
 extends EditorPlugin
 
+class TerrainInspectorTools extends EditorInspectorPlugin:
+	var editor_plugin: EditorPlugin
+
+	func _init(p_editor_plugin: EditorPlugin) -> void:
+		editor_plugin = p_editor_plugin
+
+	func _can_handle(object: Object) -> bool:
+		return object is Node and object.has_meta("github_terrain_3d")
+
+	func _parse_end(object: Object) -> void:
+		var plugin := editor_plugin as EditorPlugin
+		if plugin == null:
+			return
+		var terrain_plugin := plugin as EditorPlugin
+		var tools = terrain_plugin.get("panel")
+		if tools is Control and is_instance_valid(tools):
+			add_custom_control(tools)
+
+
 const TERRAIN_SCRIPT := "res://addons/terrain_3d/terrain_data.gd"
 const TERRAIN_META := "github_terrain_3d"
 
@@ -53,6 +72,7 @@ var import_dialog: FileDialog
 var export_dialog: FileDialog
 var surface_texture_dialog: FileDialog
 var status_label: Label
+var inspector_tools: EditorInspectorPlugin
 
 func _enter_tree() -> void:
 	terrain_button = Button.new()
@@ -66,6 +86,8 @@ func _enter_tree() -> void:
 	if editor_settings and not editor_settings.settings_changed.is_connected(_refresh_ui_scale):
 		editor_settings.settings_changed.connect(_refresh_ui_scale)
 	_refresh_ui_scale()
+	inspector_tools = TerrainInspectorTools.new(self)
+	add_inspector_plugin(inspector_tools)
 	# Terrain brush input must remain available even when the terrain node is not selected.
 	set_input_event_forwarding_always_enabled()
 	set_process(true)
@@ -77,8 +99,12 @@ func _exit_tree() -> void:
 	if terrain_button:
 		remove_control_from_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_MENU, terrain_button)
 		terrain_button.queue_free()
+	if inspector_tools:
+		remove_inspector_plugin(inspector_tools)
+		inspector_tools = null
 	if panel and is_instance_valid(panel):
-		remove_control_from_docks(panel)
+		if panel.get_parent():
+			panel.get_parent().remove_child(panel)
 		panel.queue_free()
 	if cursor_mesh and is_instance_valid(cursor_mesh):
 		cursor_mesh.queue_free()
@@ -104,9 +130,7 @@ func _build_panel() -> void:
 	panel.add_theme_constant_override("separation", roundi(8.0 * EditorInterface.get_editor_scale()))
 	panel.hide()
 	panel.visibility_changed.connect(_update_action_overlay_visibility)
-	# Use Godot's native dock workspace instead of a floating window. The dock
-	# inherits editor theme, tab behavior and available-height constraints.
-	add_control_to_dock(EditorPlugin.DOCK_SLOT_LEFT_UL, panel)
+	# The tool UI is attached to the native Inspector for the selected Terrain3D node.
 	terrain_tabs = TabContainer.new()
 	terrain_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	terrain_tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -277,9 +301,8 @@ func _build_panel() -> void:
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status_label.text = "Abre una escena 3D para comenzar."
 	panel.add_child(status_label)
-	# Keep the floating tools closed at startup; the 3D toolbar button opens them.
+	# This control is attached by TerrainInspectorTools only while Terrain3D is selected.
 	panel.show()
-	panel.hide()
 	_create_cursor()
 	_create_terrain_preview()
 
@@ -432,13 +455,7 @@ func _update_action_overlay_visibility() -> void:
 		action_button.visible = can_show
 
 func _toggle_panel() -> void:
-	if panel == null or not is_instance_valid(panel):
-		_build_panel()
-	if panel.visible:
-		panel.hide()
-		_update_action_overlay_visibility()
-		return
-	panel.show()
+	# Selecting Terreno 3D uses Godot's native Inspector; no separate dock/panel.
 	_update_terrain_preview()
 	# The terrain workspace opens on a real editable 8 × 8-cell base when
 	# the scene has no terrain yet. Users can immediately sculpt instead of
