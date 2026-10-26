@@ -18,6 +18,16 @@
 - Replaced the lone spinner with a full-screen loading overlay containing the editor icon, title, status text, and spinner. It keeps the existing editor_loading_indicator ID so the current onGodotMainLoopStarted() callback hides the overlay only when the engine main loop starts.
 - This is a source/resource change only. The Windows source workflow checks the patch anchors; Android resource/Gradle compilation and actual startup on the LG K51 are still pending. No APK was packaged.
 
+## Principio obligatorio de integración nativa en Godot (2026-10-26)
+
+- **Objetivo de arquitectura:** las funciones nuevas deben integrarse en los sistemas nativos de Godot, no crear un editor paralelo con paneles independientes que dupliquen lo que el motor ya ofrece.
+- **Inspector como punto de configuración:** los nodos y herramientas que tengan propiedades propias deben exponerlas mediante el Inspector nativo, agrupadas en categorías y secciones plegables usando el comportamiento habitual de Godot. Las subopciones deben aparecer de forma contextual cuando corresponda.
+- **Accesos y comandos:** una función como «Terreno 3D» debe estar disponible en el flujo de interfaz nativo adecuado y actuar sobre el nodo seleccionado. Debe crear o seleccionar el nodo, seleccionarlo en el árbol y dejar que el Inspector muestre sus propiedades. No debe depender exclusivamente de abrir un panel personalizado.
+- **Separación correcta de responsabilidades:** las propiedades persistentes/configurables pertenecen al Inspector; las acciones que requieren interacción directa (por ejemplo, esculpir o pintar sobre la vista 3D) pueden usar herramientas contextuales, pero deben conservar la vista de trabajo y evitar duplicar ajustes que ya están en el Inspector.
+- **Compatibilidad nativa:** respetar, cuando aplique, serialización de escenas/recursos, deshacer/rehacer, selección, edición contextual, guardado y reapertura. No inventar controles alternativos si ya existe un control nativo apropiado.
+- **Criterio de aceptación:** una función no se considera integrada solo porque funcione; también debe sentirse y comportarse como parte de Godot. Revisar este criterio al diseñar cada función nueva y durante la validación.
+- **Aplicación inmediata a Terreno 3D:** las dimensiones, forma, grosor, altura, materiales/texturas y preferencias persistentes deben configurarse desde propiedades nativas del nodo en el Inspector cuando sean propiedades del terreno. El panel de terreno existente no debe seguir siendo el centro de configuración; se debe reducir a acciones contextuales que realmente necesiten controles especializados y trasladar los ajustes duplicados al Inspector.
+
 ## Separate 3D terrain editor — source implementation (2026-10-24)
 
 - Added a dedicated **Terreno 3D** entry in the 3D editor menu and a scrollable terrain panel designed for narrow/mobile layouts.
