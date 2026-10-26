@@ -649,7 +649,13 @@ replace_once(EDITOR_DEBUGGER_HEADER,
     "void set_debug_collisions(bool p_enabled);\n\tvoid set_debug_navigation(bool p_enabled);\n\tvoid set_debug_avoidance(bool p_enabled);\n\tvoid set_debug_mute_audio(bool p_mute);")
 replace_once(EDITOR_DEBUGGER_SOURCE,
     "void EditorDebuggerNode::set_debug_mute_audio(bool p_mute) {",
-    """void EditorDebuggerNode::set_debug_collisions(bool p_enabled) {
+    """void EditorDebuggerNode::set_debug_fps(bool p_enabled) {
+\t_for_all(tabs, [&](ScriptEditorDebugger *dbg) {
+\t\tdbg->set_debug_fps(p_enabled);
+\t});
+}
+
+void EditorDebuggerNode::set_debug_collisions(bool p_enabled) {
 \t_for_all(tabs, [&](ScriptEditorDebugger *dbg) {
 \t\tdbg->set_debug_collisions(p_enabled);
 \t});
@@ -681,7 +687,12 @@ replace_once(SCRIPT_DEBUGGER_SOURCE,
 
 replace_once(SCRIPT_DEBUGGER_SOURCE,
     "void ScriptEditorDebugger::set_debug_mute_audio(bool p_mute) {",
-    """void ScriptEditorDebugger::set_debug_collisions(bool p_enable) {
+    """void ScriptEditorDebugger::set_debug_fps(bool p_enable) {
+\tArray msg = { p_enable };
+\t_put_msg("scene:set_debug_fps", msg);
+}
+
+void ScriptEditorDebugger::set_debug_collisions(bool p_enable) {
 \tArray msg = { p_enable };
 \t_put_msg("scene:set_debug_collisions", msg);
 }
@@ -705,7 +716,29 @@ replace_once(SCENE_DEBUGGER_SOURCE,
     '#include "servers/rendering/rendering_server.h"',
     '#include "core/templates/list.h"\n#include "scene/2d/path_2d.h"\n#include "scene/3d/path_3d.h"\n#include "scene/gui/button.h"\n#include "scene/gui/popup_menu.h"\n#include "scene/gui/label.h"\n#include "scene/main/timer.h"\n#include "core/config/engine.h"\n#include "scene/main/canvas_layer.h"\n#include "servers/rendering/rendering_server.h"\n#include "servers/navigation_2d/navigation_server_2d.h"\n#include "servers/navigation_3d/navigation_server_3d.h"')
 replace_once(SCENE_DEBUGGER_SOURCE,
-    "Error SceneDebugger::_msg_debug_mute_audio(const Array &p_args) {",
+    "Error SceneDebugger::_msg_set_debug_fps(const Array &p_args) {
+\tERR_FAIL_COND_V(p_args.is_empty(), ERR_INVALID_DATA);
+\t_create_runtime_debug_overlay();
+\tSceneTree *tree = SceneTree::get_singleton();
+\tERR_FAIL_NULL_V(tree, ERR_UNCONFIGURED);
+\tWindow *root = tree->get_root();
+\tERR_FAIL_NULL_V(root, ERR_UNCONFIGURED);
+\tLabel *fps_label = Object::cast_to<Label>(root->get_node_or_null(NodePath("__GodotPreviewDebugOverlay/FPSLabel")));
+\tTimer *fps_timer = Object::cast_to<Timer>(root->get_node_or_null(NodePath("__GodotPreviewDebugOverlay/FPSTimer")));
+\tERR_FAIL_NULL_V(fps_label, ERR_DOES_NOT_EXIST);
+\tERR_FAIL_NULL_V(fps_timer, ERR_DOES_NOT_EXIST);
+\tif (bool(p_args[0])) {
+\t\tfps_label->show();
+\t\tfps_timer->start();
+\t\t_runtime_fps_timer_timeout();
+\t} else {
+\t\tfps_timer->stop();
+\t\tfps_label->hide();
+\t}
+\treturn OK;
+}
+
+Error SceneDebugger::_msg_debug_mute_audio(const Array &p_args) {",
     """Error SceneDebugger::_msg_set_debug_collisions(const Array &p_args) {
 \tERR_FAIL_COND_V(p_args.is_empty(), ERR_INVALID_DATA);
 \tSceneTree *tree = SceneTree::get_singleton();
@@ -752,7 +785,7 @@ replace_once(SCENE_DEBUGGER_SOURCE,
 # engine's existing path debug rendering implementation.
 replace_once(EDITOR_DEBUGGER_HEADER,
     "void set_debug_avoidance(bool p_enabled);",
-    "void set_debug_avoidance(bool p_enabled);\n\tvoid set_debug_paths(bool p_enabled);\n\tvoid set_debug_canvas_item_redraw(bool p_enabled);")
+    "void set_debug_avoidance(bool p_enabled);\n\tvoid set_debug_paths(bool p_enabled);\n\tvoid set_debug_canvas_item_redraw(bool p_enabled);\n\tvoid set_debug_fps(bool p_enabled);")
 replace_once(EDITOR_DEBUGGER_SOURCE,
     "void EditorDebuggerNode::set_debug_collisions(bool p_enabled) {",
     """void EditorDebuggerNode::set_debug_paths(bool p_enabled) {
@@ -770,7 +803,7 @@ void EditorDebuggerNode::set_debug_canvas_item_redraw(bool p_enabled) {
 void EditorDebuggerNode::set_debug_collisions(bool p_enabled) {""")
 replace_once(SCRIPT_DEBUGGER_HEADER,
     "void set_debug_avoidance(bool p_enable);",
-    "void set_debug_avoidance(bool p_enable);\n\tvoid set_debug_paths(bool p_enable);\n\tvoid set_debug_canvas_item_redraw(bool p_enable);")
+    "void set_debug_avoidance(bool p_enable);\n\tvoid set_debug_paths(bool p_enable);\n\tvoid set_debug_canvas_item_redraw(bool p_enable);\n\tvoid set_debug_fps(bool p_enable);")
 replace_once(SCRIPT_DEBUGGER_SOURCE,
     "void ScriptEditorDebugger::set_debug_collisions(bool p_enable) {",
     """void ScriptEditorDebugger::set_debug_paths(bool p_enable) {
@@ -786,7 +819,7 @@ void ScriptEditorDebugger::set_debug_canvas_item_redraw(bool p_enable) {
 void ScriptEditorDebugger::set_debug_collisions(bool p_enable) {""")
 replace_once(SCENE_DEBUGGER_HEADER,
     "static Error _msg_set_debug_avoidance(const Array &p_args);",
-    "static Error _msg_set_debug_avoidance(const Array &p_args);\n\tstatic Error _msg_set_debug_paths(const Array &p_args);\n\tstatic Error _msg_set_debug_canvas_item_redraw(const Array &p_args);")
+    "static Error _msg_set_debug_avoidance(const Array &p_args);\n\tstatic Error _msg_set_debug_paths(const Array &p_args);\n\tstatic Error _msg_set_debug_canvas_item_redraw(const Array &p_args);\n\tstatic Error _msg_set_debug_fps(const Array &p_args);")
 replace_once(SCENE_DEBUGGER_SOURCE,
     "Error SceneDebugger::_msg_debug_mute_audio(const Array &p_args) {",
     """Error SceneDebugger::_msg_set_debug_paths(const Array &p_args) {
@@ -826,7 +859,7 @@ Error SceneDebugger::_msg_set_debug_canvas_item_redraw(const Array &p_args) {
 Error SceneDebugger::_msg_debug_mute_audio(const Array &p_args) {""")
 replace_once(SCENE_DEBUGGER_SOURCE,
     'message_handlers["set_debug_avoidance"] = _msg_set_debug_avoidance;',
-    'message_handlers["set_debug_avoidance"] = _msg_set_debug_avoidance;\n\tmessage_handlers["set_debug_paths"] = _msg_set_debug_paths;\n\tmessage_handlers["set_debug_canvas_item_redraw"] = _msg_set_debug_canvas_item_redraw;')
+    'message_handlers["set_debug_avoidance"] = _msg_set_debug_avoidance;\n\tmessage_handlers["set_debug_paths"] = _msg_set_debug_paths;\n\tmessage_handlers["set_debug_canvas_item_redraw"] = _msg_set_debug_canvas_item_redraw;\n\tmessage_handlers["set_debug_fps"] = _msg_set_debug_fps;')
 # Runtime overlay owns these toggles; no COL button is placed in EditorRunBar.
 
 
@@ -934,7 +967,7 @@ replace_once(EDITOR_NODE_SOURCE,
 	mobile_preview_debug_menu->add_check_item(TTR("Rutas Path2D/Path3D"), 1);
 	mobile_preview_debug_menu->add_check_item(TTR("Mallas de navegación"), 2);
 	mobile_preview_debug_menu->add_check_item(TTR("Áreas y velocidades de evasión"), 3);
-	mobile_preview_debug_menu->add_check_item(TTR("Redibujado 2D"), 4);
+	mobile_preview_debug_menu->add_check_item(TTR("Redibujado 2D"), 4);\n\tmobile_preview_debug_menu->add_check_item(TTR("Mostrar FPS"), 5);
 	mobile_preview_debug_menu->connect(SceneStringName(id_pressed), callable_mp(this, &EditorNode::_mobile_preview_debug_item_pressed));
 	add_child(mobile_preview_debug_menu);
 #endif""")
