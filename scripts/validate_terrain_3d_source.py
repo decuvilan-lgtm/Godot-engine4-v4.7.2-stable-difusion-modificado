@@ -45,6 +45,7 @@ for token, label in [
     ("var center: Vector3 = terrain.global_position", "terrain focus center has an explicit Vector3 type"),
     ("panel.custom_minimum_size = Vector2(0, 0)", "terrain dock does not force a wider custom column"),
     ("func _refresh_ui_scale() -> void:", "terrain controls refresh their touch sizing when editor scale changes"),
+    ("panel.visibility_changed.connect(_update_action_overlay_visibility)", "ACTION overlay hides when the native dock is closed"),
     ("editor_settings.settings_changed.connect(_refresh_ui_scale)", "terrain listens for editor scale setting changes"),
     ('pencil_sensitivity = _add_slider(panel, "Sensibilidad del lápiz (0–100)"', "pencil sensitivity slider ranges from 0 to 100"),
     ('action_button.text = "ACCIÓN"', "single reusable action button is available"),
