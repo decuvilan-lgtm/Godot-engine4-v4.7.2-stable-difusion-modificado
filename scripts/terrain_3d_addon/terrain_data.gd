@@ -98,10 +98,14 @@ func _ready() -> void:
 			terrain_material.set_shader_parameter("full_surface_texture", full_surface_texture)
 		terrain_material.set_shader_parameter("stretch_full_surface_texture", stretch_full_surface_texture)
 		# Keep texture layers directly editable through the native Inspector.
-		if grass_texture: terrain_material.set_shader_parameter("grass_texture", grass_texture)
-		if rock_texture: terrain_material.set_shader_parameter("rock_texture", rock_texture)
-		if sand_texture: terrain_material.set_shader_parameter("sand_texture", sand_texture)
-		if snow_texture: terrain_material.set_shader_parameter("snow_texture", snow_texture)
+		if grass_texture:
+			terrain_material.set_shader_parameter("grass_texture", grass_texture)
+		if rock_texture:
+			terrain_material.set_shader_parameter("rock_texture", rock_texture)
+		if sand_texture:
+			terrain_material.set_shader_parameter("sand_texture", sand_texture)
+		if snow_texture:
+			terrain_material.set_shader_parameter("snow_texture", snow_texture)
 
 func _resize_grid_preserving_data(old_width: int, old_depth: int) -> void:
 	var new_width := grid_width
