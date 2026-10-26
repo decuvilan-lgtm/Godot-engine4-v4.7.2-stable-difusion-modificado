@@ -1025,39 +1025,6 @@ func _import_surface_texture(path: String) -> void:
 	undo_redo.commit_action()
 	_set_status("Imagen aplicada a toda la superficie X/Z. Guarda la escena para conservarla; el relieve y las colisiones no cambian.")
 
-func _import_layer_texture(path: String) -> void:
-	var terrain = _get_terrain()
-	if terrain == null:
-		_set_status("Crea o selecciona un terreno antes de asignar texturas.")
-		return
-	if layer_picker == null or layer_picker.selected < 0 or layer_picker.selected > 3:
-		_set_status("Selecciona una capa válida: hierba, roca, arena o nieve.")
-		return
-	var image := Image.new()
-	var err := image.load(path)
-	if err != OK:
-		_set_status("No se pudo abrir la textura (error %d)." % err)
-		return
-	# Cap imported texture dimensions to keep memory use manageable on the LG K51.
-	if image.get_width() > 512 or image.get_height() > 512:
-		image.resize(512, 512, Image.INTERPOLATE_BILINEAR)
-	if image.is_empty():
-		_set_status("La imagen no contiene píxeles utilizables.")
-		return
-	var texture := ImageTexture.create_from_image(image)
-	if texture == null:
-		_set_status("No se pudo convertir la imagen en textura.")
-		return
-	var selected_layer := layer_picker.selected
-	var previous: Texture2D = terrain.get_layer_texture(selected_layer)
-	var undo_redo := EditorInterface.get_editor_undo_redo()
-	undo_redo.create_action("Asignar textura de terreno")
-	undo_redo.add_do_method(terrain, "set_layer_texture", selected_layer, texture)
-	undo_redo.add_undo_method(terrain, "set_layer_texture", selected_layer, previous)
-	undo_redo.add_do_reference(texture)
-	undo_redo.commit_action()
-	_set_status("Textura asignada a la capa seleccionada. Guarda la escena para conservarla.")
-
 func _set_status(message: String) -> void:
 	if status_label:
 		status_label.text = message
