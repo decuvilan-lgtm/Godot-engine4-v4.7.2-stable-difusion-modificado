@@ -28,9 +28,14 @@ var layer_picker: OptionButton
 var grid_snap: CheckButton
 var foliage_count: SpinBox
 var continuous_stroke: CheckButton
-var joystick_pad: Control
-var joystick_vector := Vector2.ZERO
-var joystick_pressed := false
+var pencil_sensitivity: HSlider
+var pencil_state_label: Label
+var action_button: Button
+var pencil_active := false
+var pencil_touch_index := -1
+var pencil_target_position := Vector2.ZERO
+var pencil_screen_position := Vector2.ZERO
+var action_held := false
 var stroke_active := false
 var cursor_update_timer := 0.0
 var last_viewport_brush_msec := 0
@@ -128,8 +133,9 @@ func _build_panel() -> void:
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	home.add_child(intro)
 	_add_section(home, "Tamaño y forma")
-	terrain_width = _add_spin(home, "Resolución X", 65, 9, 257, 8)
-	terrain_depth = _add_spin(home, "Resolución Z", 65, 9, 257, 8)
+	# 9 x 9 vertices produce 8 x 8 terrain blocks by default.
+	terrain_width = _add_spin(home, "Resolución X (vértices)", 9, 9, 257, 8)
+	terrain_depth = _add_spin(home, "Resolución Z (vértices)", 9, 9, 257, 8)
 	cell_size = _add_spin(home, "Tamaño de celda (unidades)", 1.0, 0.1, 16.0, 0.1)
 	shape_picker = OptionButton.new()
 	shape_picker.add_item("Cuadrada / rectangular", 0)
@@ -180,30 +186,27 @@ func _build_panel() -> void:
 	grid_snap = CheckButton.new()
 	grid_snap.text = "Ajustar pincel a cuadrícula"
 	sculpt.add_child(grid_snap)
-	_add_section(sculpt, "Control táctil")
-	var joystick_row := HBoxContainer.new()
-	joystick_pad = Panel.new()
-	joystick_pad.custom_minimum_size = Vector2(112, 112) * EditorInterface.get_editor_scale()
-	joystick_pad.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	joystick_pad.gui_input.connect(_on_joystick_input)
-	joystick_row.add_child(joystick_pad)
-	var joystick_help := Label.new()
-	joystick_help.text = "Mantén y arrastra para mover el cursor por el terreno."
-	joystick_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	joystick_help.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	joystick_row.add_child(joystick_help)
-	sculpt.add_child(joystick_row)
-	var recenter := Button.new()
-	recenter.text = "Centrar cursor"
-	recenter.pressed.connect(func(): joystick_vector = Vector2.ZERO)
-	sculpt.add_child(recenter)
+	_add_section(sculpt, "Lápiz táctil")
+	pencil_sensitivity = _add_slider(sculpt, "Sensibilidad del lápiz (0–100)", 50.0, 0.0, 100.0, 1.0)
+	pencil_state_label = Label.new()
+	pencil_state_label.text = "Lápiz negro / inactivo"
+	pencil_state_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	sculpt.add_child(pencil_state_label)
 	continuous_stroke = CheckButton.new()
-	continuous_stroke.text = "Trazo continuo con el joystick"
+	continuous_stroke.text = "Trazo continuo mientras mantienes ACCIÓN"
 	sculpt.add_child(continuous_stroke)
-	var apply_button := Button.new()
-	apply_button.text = "Aplicar pincel en cursor"
-	apply_button.pressed.connect(_apply_at_cursor)
-	sculpt.add_child(apply_button)
+	action_button = Button.new()
+	action_button.text = "ACCIÓN"
+	action_button.custom_minimum_size = Vector2(0, 52) * EditorInterface.get_editor_scale()
+	action_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	action_button.button_down.connect(_on_action_down)
+	action_button.button_up.connect(_on_action_up)
+	action_button.pressed.connect(_apply_at_cursor)
+	sculpt.add_child(action_button)
+	var pencil_help := Label.new()
+	pencil_help.text = "Desliza sobre el visor 3D para mover el lápiz. Tocar controles o soltar el dedo lo desactiva; ACCIÓN aplica la herramienta elegida."
+	pencil_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	sculpt.add_child(pencil_help)
 
 	_add_section(paint, "Pintura de terreno")
 	paint_mode_picker = OptionButton.new()
@@ -319,8 +322,8 @@ func _refresh_ui_scale() -> void:
 	var scale := EditorInterface.get_editor_scale()
 	if panel:
 		panel.add_theme_constant_override("separation", roundi(8.0 * scale))
-	if joystick_pad:
-		joystick_pad.custom_minimum_size = Vector2(112, 112) * scale
+	if action_button:
+		action_button.custom_minimum_size = Vector2(0, 52) * scale
 	if panel:
 		for control in panel.find_children("*", "SpinBox", true, false):
 			var spin := control as SpinBox
@@ -571,38 +574,11 @@ func _raycast_terrain(camera: Camera3D, screen_position: Vector2) -> Dictionary:
 		return {}
 	return result
 
-func _on_joystick_input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch:
-		joystick_pressed = event.pressed
-		if event.pressed:
-			_update_joystick_vector(event.position)
-		else:
-			joystick_vector = Vector2.ZERO
-		joystick_pad.accept_event()
-	elif event is InputEventScreenDrag and joystick_pressed:
-		_update_joystick_vector(event.position)
-		joystick_pad.accept_event()
-	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		joystick_pressed = event.pressed
-		if event.pressed:
-			_update_joystick_vector(event.position)
-		else:
-			joystick_vector = Vector2.ZERO
-		joystick_pad.accept_event()
-	elif event is InputEventMouseMotion and joystick_pressed:
-		_update_joystick_vector(event.position)
-		joystick_pad.accept_event()
-
-func _update_joystick_vector(position: Vector2) -> void:
-	var center := joystick_pad.size * 0.5
-	var extent := maxf(1.0, minf(center.x, center.y) - 8.0)
-	joystick_vector = ((position - center) / extent).limit_length(1.0)
-
 func _process(delta: float) -> void:
 	# Do no polling/redraw work while the terrain tools are closed and no edit
 	# stroke/collision rebuild is pending. This avoids stealing input or CPU from
 	# the rest of the mobile editor.
-	if (panel == null or not panel.visible) and not stroke_active and not collision_dirty and not joystick_pressed:
+	if (panel == null or not panel.visible) and not stroke_active and not collision_dirty and not action_held:
 		return
 	cursor_update_timer += delta
 	stroke_timer += delta
@@ -616,7 +592,7 @@ func _process(delta: float) -> void:
 	if terrain_preview == null or not is_instance_valid(terrain_preview):
 		_create_terrain_preview()
 	# Rebuild the expensive trimesh collider once after an edit stroke, not on every dab.
-	if collision_dirty and not stroke_active and not joystick_pressed:
+	if collision_dirty and not stroke_active and not action_held:
 		if collision_dirty_terrain and is_instance_valid(collision_dirty_terrain):
 			collision_dirty_terrain.rebuild_collision()
 		collision_dirty = false
@@ -641,8 +617,13 @@ func _process(delta: float) -> void:
 	var camera := viewport.get_camera_3d()
 	if camera == null:
 		return
-	var screen_position := viewport.size * 0.5
-	screen_position += joystick_vector * minf(viewport.size.x, viewport.size.y) * 0.42
+	if not pencil_active:
+		if cursor_mesh:
+			cursor_mesh.visible = false
+		return
+	var sensitivity := maxf(0.01, pencil_sensitivity.value / 100.0) if pencil_sensitivity else 0.5
+	pencil_screen_position = pencil_screen_position.lerp(pencil_target_position, clampf(sensitivity * 0.35, 0.01, 0.35))
+	var screen_position := pencil_screen_position
 	var hit := _raycast_terrain(camera, screen_position)
 	cursor_valid = not hit.is_empty()
 	if cursor_valid:
@@ -650,62 +631,79 @@ func _process(delta: float) -> void:
 		_update_cursor_mesh(cursor_hit)
 	else:
 		cursor_mesh.visible = false
-	if terrain_tabs and terrain_tabs.current_tab in [1, 2] and continuous_stroke.button_pressed and joystick_pressed and cursor_valid and stroke_timer >= 0.12:
+	if terrain_tabs and terrain_tabs.current_tab in [1, 2] and continuous_stroke.button_pressed and action_held and pencil_active and cursor_valid and stroke_timer >= 0.12:
 		stroke_timer = 0.0
 		_apply_brush(terrain, cursor_hit)
 
 func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
-	# Never intercept normal Godot viewport input while this dock is hidden.
+	# Track only gestures forwarded by the 3D viewport. Always pass input on to
+	# Godot so native joysticks and editor controls retain their own behaviour.
 	if panel == null or not panel.visible or terrain_tabs == null or terrain_tabs.current_tab not in [1, 2]:
 		return AFTER_GUI_INPUT_PASS
-	var terrain = _get_terrain()
-	if terrain == null:
+	if _get_terrain() == null:
 		return AFTER_GUI_INPUT_PASS
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		stroke_active = event.pressed
+	if event is InputEventScreenTouch:
 		if event.pressed:
-			var hit := _raycast_terrain(camera, event.position)
-			if not hit.is_empty():
-				cursor_hit = hit.position
-				cursor_valid = true
-				_update_cursor_mesh(cursor_hit)
-				_apply_brush(terrain, cursor_hit)
-				return AFTER_GUI_INPUT_STOP
-	elif event is InputEventMouseMotion and stroke_active and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		var now := Time.get_ticks_msec()
-		if now - last_viewport_brush_msec < 120:
-			return AFTER_GUI_INPUT_STOP
-		last_viewport_brush_msec = now
+			pencil_touch_index = event.index
+			pencil_target_position = event.position
+			pencil_active = false
+			_update_pencil_state()
+		elif event.index == pencil_touch_index:
+			pencil_active = false
+			pencil_touch_index = -1
+			stroke_active = false
+			_update_pencil_state()
+	elif event is InputEventScreenDrag and event.index == pencil_touch_index:
+		pencil_target_position = event.position
+		if not pencil_active:
+			pencil_screen_position = event.position
+		pencil_active = true
 		var hit := _raycast_terrain(camera, event.position)
 		if not hit.is_empty():
 			cursor_hit = hit.position
 			cursor_valid = true
 			_update_cursor_mesh(cursor_hit)
-			_apply_brush(terrain, cursor_hit)
-			return AFTER_GUI_INPUT_STOP
-	elif event is InputEventScreenTouch:
-		stroke_active = event.pressed
+		_update_pencil_state()
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
-			var hit := _raycast_terrain(camera, event.position)
-			if not hit.is_empty():
-				cursor_hit = hit.position
-				cursor_valid = true
-				_update_cursor_mesh(cursor_hit)
-				_apply_brush(terrain, cursor_hit)
-				return AFTER_GUI_INPUT_STOP
-	elif event is InputEventScreenDrag and stroke_active:
-		var now := Time.get_ticks_msec()
-		if now - last_viewport_brush_msec < 120:
-			return AFTER_GUI_INPUT_STOP
-		last_viewport_brush_msec = now
-		var hit := _raycast_terrain(camera, event.position)
-		if not hit.is_empty():
-			cursor_hit = hit.position
+			pencil_target_position = event.position
+			pencil_screen_position = event.position
+			pencil_touch_index = -2
+			pencil_active = false
+		elif pencil_touch_index == -2:
+			pencil_active = false
+			pencil_touch_index = -1
+		_update_pencil_state()
+	elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and pencil_touch_index == -2:
+		pencil_target_position = event.position
+		if not pencil_active:
+			pencil_screen_position = event.position
+		pencil_active = true
+		var mouse_hit := _raycast_terrain(camera, event.position)
+		if not mouse_hit.is_empty():
+			cursor_hit = mouse_hit.position
 			cursor_valid = true
 			_update_cursor_mesh(cursor_hit)
-			_apply_brush(terrain, cursor_hit)
-			return AFTER_GUI_INPUT_STOP
+		_update_pencil_state()
 	return AFTER_GUI_INPUT_PASS
+
+func _update_pencil_state() -> void:
+	if pencil_state_label:
+		pencil_state_label.text = "Lápiz activo" if pencil_active else "Lápiz negro / inactivo"
+	if cursor_material:
+		cursor_material.albedo_color = Color(1.0, 0.82, 0.2, 0.9) if pencil_active else Color(0.05, 0.05, 0.05, 0.65)
+	if cursor_mesh and not pencil_active:
+		cursor_mesh.visible = false
+
+func _on_action_down() -> void:
+	action_held = true
+	stroke_timer = 0.0
+	if not continuous_stroke.button_pressed:
+		_apply_at_cursor()
+
+func _on_action_up() -> void:
+	action_held = false
+	stroke_active = false
 
 func _apply_at_cursor() -> void:
 	if terrain_tabs == null or terrain_tabs.current_tab not in [1, 2]:
