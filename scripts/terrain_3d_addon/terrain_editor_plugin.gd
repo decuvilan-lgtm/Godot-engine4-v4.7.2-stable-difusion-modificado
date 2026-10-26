@@ -111,6 +111,7 @@ func _build_panel() -> void:
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.add_theme_constant_override("separation", roundi(8.0 * EditorInterface.get_editor_scale()))
 	panel.hide()
+	panel.visibility_changed.connect(_update_action_overlay_visibility)
 	# Use Godot's native dock workspace instead of a floating window. The dock
 	# inherits editor theme, tab behavior and available-height constraints.
 	add_control_to_dock(EditorPlugin.DOCK_SLOT_LEFT_UL, panel)
