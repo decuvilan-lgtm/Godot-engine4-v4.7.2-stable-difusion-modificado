@@ -56,6 +56,28 @@ extends MeshInstance3D
 		if terrain_material:
 			terrain_material.set_shader_parameter("stretch_full_surface_texture", stretch_full_surface_texture)
 
+@export_subgroup("Texturas por capa")
+@export var grass_texture: Texture2D:
+	set(value):
+		grass_texture = value
+		if value != null or terrain_material != null:
+			set_layer_texture(0, value)
+@export var rock_texture: Texture2D:
+	set(value):
+		rock_texture = value
+		if value != null or terrain_material != null:
+			set_layer_texture(1, value)
+@export var sand_texture: Texture2D:
+	set(value):
+		sand_texture = value
+		if value != null or terrain_material != null:
+			set_layer_texture(2, value)
+@export var snow_texture: Texture2D:
+	set(value):
+		snow_texture = value
+		if value != null or terrain_material != null:
+			set_layer_texture(3, value)
+
 @export_storage var heights: PackedFloat32Array = PackedFloat32Array()
 @export_storage var vertex_colors: PackedColorArray = PackedColorArray()
 @export_storage var layer_weights: PackedColorArray = PackedColorArray()
@@ -75,6 +97,11 @@ func _ready() -> void:
 		if full_surface_texture:
 			terrain_material.set_shader_parameter("full_surface_texture", full_surface_texture)
 		terrain_material.set_shader_parameter("stretch_full_surface_texture", stretch_full_surface_texture)
+		# Keep texture layers directly editable through the native Inspector.
+		if grass_texture: terrain_material.set_shader_parameter("grass_texture", grass_texture)
+		if rock_texture: terrain_material.set_shader_parameter("rock_texture", rock_texture)
+		if sand_texture: terrain_material.set_shader_parameter("sand_texture", sand_texture)
+		if snow_texture: terrain_material.set_shader_parameter("snow_texture", snow_texture)
 
 func _resize_grid_preserving_data(old_width: int, old_depth: int) -> void:
 	var new_width := grid_width
