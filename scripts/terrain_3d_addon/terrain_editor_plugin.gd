@@ -204,7 +204,7 @@ func _build_panel() -> void:
 	for mode in ["Elevar", "Bajar", "Suavizar", "Aplanar"]:
 		mode_picker.add_item(mode)
 	sculpt.add_child(mode_picker)
-	brush_radius = _add_slider(sculpt, "Radio del pincel", 4.0, 0.5, 24.0, 0.5)
+	brush_radius = _add_slider(sculpt, "Zona de acción del lápiz (radio)", 4.0, 0.5, 24.0, 0.5)
 	_bind_editor_float_setting(brush_radius, "terrain_3d/brush_radius", 4.0, 0.5, 24.0)
 	brush_strength = _add_slider(sculpt, "Intensidad", 0.35, 0.01, 1.0, 0.01)
 	flatten_height = _add_spin(sculpt, "Altura objetivo", 0.0, -100.0, 100.0, 0.25)
