@@ -26,8 +26,8 @@ def read(path: Path) -> str:
 
 editor_node_h = read(GODOT / "editor/editor_node.h")
 editor_node_cpp = read(GODOT / "editor/editor_node.cpp")
-runbar_h = read(GODOT / "editor/editor_run_bar.h")
-runbar_cpp = read(GODOT / "editor/editor_run_bar.cpp")
+runbar_h = read(GODOT / "editor/run/editor_run_bar.h")
+runbar_cpp = read(GODOT / "editor/run/editor_run_bar.cpp")
 debugger_h = read(GODOT / "editor/debugger/editor_debugger_node.h")
 debugger_cpp = read(GODOT / "editor/debugger/editor_debugger_node.cpp")
 script_debugger_h = read(GODOT / "editor/debugger/script_editor_debugger.h")
