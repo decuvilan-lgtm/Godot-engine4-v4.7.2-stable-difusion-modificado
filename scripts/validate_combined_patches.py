@@ -61,6 +61,7 @@ for symbol, source, label in [
     ("_msg_set_mobile_immersive_preview", scene_debugger_h, "runtime debugger declares fullscreen handler"),
     ('message_handlers["set_mobile_immersive_preview"]', scene_debugger_cpp, "runtime message is registered"),
     ("_update_native_navigation_control_layout", native_3d_h, "native 3D viewport declares joystick relayout"),
+    ('EditorSettings::get_singleton()->connect("settings_changed", callable_mp(this, &Node3DEditorViewport::_update_native_navigation_control_layout))', native_3d_cpp, "native joysticks update immediately when add-on settings change"),
     ("native_joystick_size", editor_settings_cpp, "native joystick size setting is registered"),
     ("native_joystick_inset_x", editor_settings_cpp, "native joystick horizontal position setting is registered"),
     ("native_joystick_inset_y", editor_settings_cpp, "native joystick vertical position setting is registered"),
