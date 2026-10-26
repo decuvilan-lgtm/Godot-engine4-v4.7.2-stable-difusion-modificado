@@ -24,6 +24,7 @@ for token, label in [
     ('button->set_text("COL.")', "compact COL button is created in the runtime preview"),
     ("set_custom_minimum_size(Size2(60, 44))", "runtime COL button has a mobile touch target"),
     ("_create_runtime_debug_overlay();", "runtime overlay is installed by SceneDebugger"),
+    ("Retry overlay creation here as well as at debugger initialization", "preview tools are initialized again after the running game window exists"),
     ("_runtime_debug_button_pressed", "runtime button opens its menu"),
     ("_runtime_debug_item_pressed", "runtime menu toggles overlays live"),
     ("callable_mp_static(&SceneDebugger::_runtime_debug_item_pressed)", "runtime menu signal is wired"),
