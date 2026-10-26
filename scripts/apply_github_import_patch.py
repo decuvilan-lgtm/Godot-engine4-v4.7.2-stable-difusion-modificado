@@ -1276,6 +1276,14 @@ replace_once(NATIVE_3D_SOURCE,
 
 void Node3DEditorViewport::_update_navigation_controls_visibility() {""")
 replace_once(NATIVE_3D_SOURCE,
+    '\t\tcase NOTIFICATION_READY: {\n\t\t\tProjectSettings::get_singleton()->connect("settings_changed", callable_mp(this, &Node3DEditorViewport::_project_settings_changed));',
+    '\t\tcase NOTIFICATION_READY: {\n\t\t\tProjectSettings::get_singleton()->connect("settings_changed", callable_mp(this, &Node3DEditorViewport::_project_settings_changed));\n'
+    '\t\t\t// The terrain add-on writes these values via EditorSettings::set_setting().\n'
+    '\t\t\t// Listen to the signal so native joysticks update immediately, not only\n'
+    '\t\t\t// after the editor settings dialog sends its deferred notification.\n'
+    '\t\t\tEditorSettings::get_singleton()->connect("settings_changed", callable_mp(this, &Node3DEditorViewport::_update_native_navigation_control_layout));')
+
+replace_once(NATIVE_3D_SOURCE,
     '\t\tcase EditorSettings::NOTIFICATION_EDITOR_SETTINGS_CHANGED: {\n\t\t\t_update_view_3d_controller();',
     '\t\tcase EditorSettings::NOTIFICATION_EDITOR_SETTINGS_CHANGED: {\n\t\t\t_update_view_3d_controller();\n\t\t\t_update_native_navigation_control_layout();')
 replace_once(NATIVE_3D_SOURCE,
