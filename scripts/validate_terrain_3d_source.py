@@ -60,7 +60,7 @@ for token, label in [
     ('terrain_width = _add_spin(home, "Resolución X (vértices)", 9, 9, 257, 8)', "default terrain footprint is eight cells wide"),
     ('terrain_depth = _add_spin(home, "Resolución Z (vértices)", 9, 9, 257, 8)', "default terrain footprint is eight cells deep"),
     ('panel.add_child(action_button)', "single action control remains available across sculpt and paint tabs"),
-    ('pencil_screen_position.lerp(pencil_target_position', "pencil sensitivity smooths cursor movement"),
+    ('pencil_screen_position.move_toward(pencil_target_position', "pencil sensitivity controls cursor speed"),
     ('cursor_material.albedo_color = Color(1.0, 0.82, 0.2, 0.9) if pencil_active else Color(0.05, 0.05, 0.05, 0.65)', "pencil visibly changes color when active/inactive"),
     ("return AFTER_GUI_INPUT_PASS", "terrain input is passed through to native Godot controls"),
     ("_forward_3d_gui_input", "3D viewport mouse/touch input is handled"),
@@ -102,8 +102,8 @@ for token, label in [
 ]:
     require(token in plugin, label)
 toggle_body = plugin[plugin.index("func _toggle_panel()"):plugin.index("func _create_terrain()")]
-require("_create_terrain()" not in toggle_body, "opening Terreno 3D leaves the ordinary 3D scene empty")
-require('create_button.text = "Crear terreno"' in plugin, "terrain insertion requires the explicit Create terrain button")
+require("_create_terrain()" in toggle_body, "opening Terreno 3D creates its initial editable terrain when absent")
+require('create_button.text = "Crear terreno"' in plugin, "manual terrain creation remains available for customized terrain dimensions")
 
 for token, label in [
     ("@export_enum(\"Cuadrada / rectangular\", \"Circular / elíptica\") var footprint_shape", "terrain data persists its footprint shape"),
