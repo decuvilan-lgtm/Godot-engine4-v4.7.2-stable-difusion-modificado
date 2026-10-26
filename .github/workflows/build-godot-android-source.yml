@@ -344,3 +344,5 @@ jobs:
           path: dist/godot-mcp-android-safe.zip
           if-no-files-found: error
           retention-days: 30
+
+# Build trigger after successful preflight: 2026-10-26
