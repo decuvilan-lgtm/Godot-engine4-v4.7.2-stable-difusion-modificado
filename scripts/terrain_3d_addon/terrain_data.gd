@@ -3,13 +3,13 @@ extends MeshInstance3D
 ## Editable grid terrain for the custom Godot Android editor.
 
 @export_group("Geometría")
-@export_storage var grid_width: int = 65:
+@export_range(9, 257, 1) var grid_width: int = 65:
 	set(value):
 		var previous_width := grid_width
 		grid_width = clampi(value, 9, 257)
 		if is_inside_tree() and not _suppress_grid_setters and previous_width != grid_width:
 			_resize_grid_preserving_data(previous_width, grid_depth)
-@export_storage var grid_depth: int = 65:
+@export_range(9, 257, 1) var grid_depth: int = 65:
 	set(value):
 		var previous_depth := grid_depth
 		grid_depth = clampi(value, 9, 257)
