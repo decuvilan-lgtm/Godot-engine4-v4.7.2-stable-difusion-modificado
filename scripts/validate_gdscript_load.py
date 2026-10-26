@@ -9,6 +9,11 @@ import sys
 import tempfile
 from pathlib import Path
 
+# Godot logs can contain Unicode characters unsupported by Windows cp1252 stdout.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
