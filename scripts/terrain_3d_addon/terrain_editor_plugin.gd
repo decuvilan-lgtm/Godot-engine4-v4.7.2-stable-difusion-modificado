@@ -760,10 +760,14 @@ func _is_native_joystick_zone(position: Vector2) -> bool:
 	var viewport := EditorInterface.get_editor_viewport_3d(0)
 	if viewport == null:
 		return false
-	# The native editor navigation joysticks occupy the lower left/right corners.
-	# Keep these regions free of pencil ownership so Godot can receive their drags.
+	# Match the actual native controls' 150 × 150 editor-scaled footprints.
+	# Reserving only their rectangles lets the pencil work immediately above
+	# the left joystick and avoids the old oversized 22% corner dead zones.
 	var size := viewport.size
-	return position.y >= size.y * 0.78 and (position.x <= size.x * 0.22 or position.x >= size.x * 0.78)
+	var joystick_size := 150.0 * EditorInterface.get_editor_scale()
+	var left_zone := Rect2(Vector2(0.0, size.y - joystick_size), Vector2(joystick_size, joystick_size))
+	var right_zone := Rect2(Vector2(size.x - joystick_size, size.y - joystick_size), Vector2(joystick_size, joystick_size))
+	return left_zone.has_point(position) or right_zone.has_point(position)
 
 func _update_pencil_state() -> void:
 	if pencil_state_label:
