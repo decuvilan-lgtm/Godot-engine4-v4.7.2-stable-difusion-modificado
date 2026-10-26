@@ -65,7 +65,7 @@ for token, label in [
     ('terrain_width = _add_spin(home, "Resolución X (vértices)", 9, 9, 257, 8)', "default terrain footprint is eight cells wide"),
     ('terrain_depth = _add_spin(home, "Resolución Z (vértices)", 9, 9, 257, 8)', "default terrain footprint is eight cells deep"),
     ('action_overlay.add_child(action_button)', "single ACTION button overlays the 3D workspace instead of living in the dock"),
-    ('action_button.set_offset(Control.SIDE_BOTTOM, -178.0 * scale)', "ACTION button is positioned above the native left joystick"),
+    ('var bottom := (joystick_size + inset_y + 20.0) * scale', "ACTION button stays above the native left joystick as its size/position changes"),
     ('terrain_tabs.tab_changed.connect', "ACTION visibility follows the selected terrain tool tab"),
     ('pencil_screen_position.move_toward(pencil_target_position', "pencil sensitivity controls cursor speed"),
     ("sensitivity * 12.0 * delta", "sensitivity value maps to a predictable pixels-per-second cursor speed"),
