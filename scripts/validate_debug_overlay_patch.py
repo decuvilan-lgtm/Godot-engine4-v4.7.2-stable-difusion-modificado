@@ -21,7 +21,7 @@ require(True, "patcher has valid Python syntax")
 
 for token, label in [
     ("__GodotPreviewDebugOverlay", "debug overlay is created inside the running game window"),
-    ('button->set_text("COL.")', "compact COL button is created in the runtime preview"),
+    ('button->set_text("☀️")', "runtime preview exposes the sun-icon debug dropdown"),
     ("set_custom_minimum_size(Size2(60, 44))", "runtime COL button has a mobile touch target"),
     ("_create_runtime_debug_overlay();", "runtime overlay is installed by SceneDebugger"),
     ("Retry overlay creation here as well as at debugger initialization", "preview tools are initialized again after the running game window exists"),
@@ -65,8 +65,12 @@ for token, label in [
 ]:
     require(token in source, label)
 
-require("preview_debug_button" not in source and "main_hbox->add_child(preview_debug_button)" not in source,
-        "COL controls are not placed in the Play/Stop editor run bar")
+require('mobile_immersive_toolbar_button->set_text(TTR("Inm"))' in source, "Inm immersive control is placed in the native workspace toolbar")
+require('mobile_preview_debug_button->set_text(TTR("☀️"))' in source and 'mobile_preview_debug_menu->add_check_item(TTR("Mostrar FPS"), 5)' in source,
+        "sun dropdown in the workspace toolbar exposes all preview debug options")
+require('EditorRunBar::_immersive_preview_pressed' not in source, "immersive control is not misplaced in the Play/Stop run bar")
+require('message_handlers["set_debug_fps"] = _msg_set_debug_fps;' in source, "FPS toggle is forwarded to the running preview")
+
 require("Visible Paths" in README.read_text(encoding="utf-8") and "CanvasItem Redraws" in README.read_text(encoding="utf-8"),
         "README documents the preview debugging controls")
 print("Source-only checks passed. This does not prove C++ compilation or in-game runtime behavior.")
