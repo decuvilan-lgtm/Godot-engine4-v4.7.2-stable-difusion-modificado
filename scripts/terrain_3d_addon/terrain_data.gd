@@ -3,13 +3,13 @@ extends MeshInstance3D
 ## Editable grid terrain for the custom Godot Android editor.
 
 @export_group("Geometría")
-@export var grid_width: int = 65:
+@export_storage var grid_width: int = 65:
 	set(value):
 		var previous_width := grid_width
 		grid_width = clampi(value, 9, 257)
 		if is_inside_tree() and not _suppress_grid_setters and previous_width != grid_width:
 			_resize_grid_preserving_data(previous_width, grid_depth)
-@export var grid_depth: int = 65:
+@export_storage var grid_depth: int = 65:
 	set(value):
 		var previous_depth := grid_depth
 		grid_depth = clampi(value, 9, 257)
@@ -37,8 +37,8 @@ extends MeshInstance3D
 	set(value):
 		max_height = clampf(value, 1.0, 1000.0) if is_finite(value) else 100.0
 		if is_inside_tree() and not _suppress_grid_setters and heights.size() == grid_width * grid_depth:
-			for i in range(heights.size()):
-				heights[i] = clampf(heights[i], -max_height, max_height)
+			# Keep existing sculpted values intact so Inspector undo/redo only
+			# changes the height limit; new brush edits obey this limit.
 			_rebuild_mesh()
 			_rebuild_collision()
 
