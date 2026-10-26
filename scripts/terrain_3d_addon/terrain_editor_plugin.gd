@@ -6,6 +6,7 @@ const TERRAIN_META := "github_terrain_3d"
 
 var terrain_button: Button
 var panel: VBoxContainer
+var terrain_window: Window
 var terrain_tabs: TabContainer
 var paint_mode_picker: OptionButton
 var terrain_width: SpinBox
@@ -72,8 +73,9 @@ func _exit_tree() -> void:
 	if terrain_button:
 		remove_control_from_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_MENU, terrain_button)
 		terrain_button.queue_free()
-	if panel:
-		remove_control_from_docks(panel)
+	if terrain_window and is_instance_valid(terrain_window):
+		terrain_window.queue_free()
+	elif panel and is_instance_valid(panel):
 		panel.queue_free()
 	if cursor_mesh and is_instance_valid(cursor_mesh):
 		cursor_mesh.queue_free()
@@ -96,9 +98,18 @@ func _build_panel() -> void:
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.add_theme_constant_override("separation", roundi(8.0 * EditorInterface.get_editor_scale()))
 	panel.hide()
-	# Behave like a native Godot inspector dock: share the right dock area and
-	# never reserve a custom-width column or resize the whole editor UI.
-	add_control_to_dock(EditorPlugin.DOCK_SLOT_RIGHT_UL, panel)
+	# Keep the 3D viewport geometry unchanged on mobile. A dock makes Godot
+	# resize/reflow the central viewport and can push its touch joysticks off-screen.
+	# Use a bounded floating editor window instead; its height leaves the lower
+	# viewport corners available for Godot's built-in navigation joysticks.
+	terrain_window = Window.new()
+	terrain_window.name = "Terrain3DEditorWindow"
+	terrain_window.title = "Editor de terreno 3D"
+	terrain_window.size = Vector2i(460, 800)
+	terrain_window.min_size = Vector2i(340, 520)
+	terrain_window.unresizable = false
+	terrain_window.add_child(panel)
+	add_child(terrain_window)
 	terrain_tabs = TabContainer.new()
 	terrain_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	terrain_tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -265,8 +276,9 @@ func _build_panel() -> void:
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status_label.text = "Abre una escena 3D para comenzar."
 	panel.add_child(status_label)
-	# Keep the dock closed at startup; the toolbar button always reopens it.
-	panel.hide()
+	# Keep the floating tools closed at startup; the 3D toolbar button opens them.
+	panel.show()
+	terrain_window.hide()
 	_create_cursor()
 	_create_terrain_preview()
 
@@ -382,16 +394,17 @@ func _add_slider(parent: Control, label_text: String, value: float, minimum: flo
 func _toggle_panel() -> void:
 	if panel == null or not is_instance_valid(panel):
 		_build_panel()
-	if panel.visible:
-		panel.hide()
+	if terrain_window and terrain_window.visible:
+		terrain_window.hide()
 		return
 
-	# Re-register the dock on every reopen. Godot can detach/close an EditorPlugin
-	# dock independently of the child Control's lifetime; show() alone may leave
-	# the toolbar button pointing at a hidden, detached panel.
-	remove_control_from_docks(panel)
-	add_control_to_dock(EditorPlugin.DOCK_SLOT_RIGHT_UL, panel)
+	# A popup window does not change the central 3D viewport's size or offset.
+	# Its bounded height keeps the lower touch-joystick area clear on phones.
+	if terrain_window == null or not is_instance_valid(terrain_window):
+		_set_status("No se pudo abrir la ventana de herramientas de terreno.")
+		return
 	panel.show()
+	terrain_window.popup_centered_clamped(Vector2i(460, 800))
 	_update_terrain_preview()
 	# Opening the terrain tools never mutates the current scene. Creation is
 	# explicit so the ordinary 3D workspace remains empty until requested.
