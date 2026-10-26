@@ -334,19 +334,6 @@ func _refresh_ui_scale() -> void:
 				spin.custom_minimum_size = Vector2(112, 44) * scale
 
 # Integer-valued native layout settings are shared with Godot's C++ viewport controls.
-func _bind_editor_int_setting(slider: HSlider, setting_name: String, default_value: int, minimum: int, maximum: int) -> void:
-	var settings := EditorInterface.get_editor_settings()
-	if settings == null or slider == null:
-		return
-	if settings.has_setting(setting_name):
-		slider.value = clampi(int(settings.get_setting(setting_name)), minimum, maximum)
-	else:
-		settings.set_setting(setting_name, default_value)
-	slider.value_changed.connect(func(value: float) -> void:
-		settings.set_setting(setting_name, clampi(roundi(value), minimum, maximum))
-	)
-	slider.drag_ended.connect(func(_changed: bool) -> void: settings.save())
-
 func _bind_editor_float_setting(slider: HSlider, setting_name: String, default_value: float, minimum: float, maximum: float) -> void:
 	# Store terrain-tool preferences in Godot's editor settings, not in scene data.
 	var settings := EditorInterface.get_editor_settings()
@@ -775,9 +762,10 @@ func _is_native_joystick_zone(position: Vector2) -> bool:
 	# the left joystick and avoids the old oversized 22% corner dead zones.
 	var size := viewport.size
 	var editor_scale := EditorInterface.get_editor_scale()
-	var joystick_size := (native_joystick_size.value if native_joystick_size else 150.0) * editor_scale
-	var inset_x := (native_joystick_inset_x.value if native_joystick_inset_x else 0.0) * editor_scale
-	var inset_y := (native_joystick_inset_y.value if native_joystick_inset_y else 0.0) * editor_scale
+	var settings := EditorInterface.get_editor_settings()
+	var joystick_size := (float(settings.get_setting("editors/3d/navigation/native_joystick_size")) if settings and settings.has_setting("editors/3d/navigation/native_joystick_size") else 150.0) * editor_scale
+	var inset_x := (float(settings.get_setting("editors/3d/navigation/native_joystick_inset_x")) if settings and settings.has_setting("editors/3d/navigation/native_joystick_inset_x") else 0.0) * editor_scale
+	var inset_y := (float(settings.get_setting("editors/3d/navigation/native_joystick_inset_y")) if settings and settings.has_setting("editors/3d/navigation/native_joystick_inset_y") else 0.0) * editor_scale
 	var left_zone := Rect2(Vector2(inset_x, size.y - joystick_size - inset_y), Vector2(joystick_size, joystick_size))
 	var right_zone := Rect2(Vector2(size.x - joystick_size - inset_x, size.y - joystick_size - inset_y), Vector2(joystick_size, joystick_size))
 	return left_zone.has_point(position) or right_zone.has_point(position)
