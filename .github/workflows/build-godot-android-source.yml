@@ -67,7 +67,7 @@ jobs:
         run: python scripts/validate_terrain_3d_source.py
 
   build-android-editor:
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.run_type == 'full-android-build') || github.event_name == 'push' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_type == 'full-android-build' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
