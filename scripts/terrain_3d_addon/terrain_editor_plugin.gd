@@ -409,12 +409,13 @@ func _toggle_panel() -> void:
 		return
 	panel.show()
 	_update_terrain_preview()
-	# Opening the terrain tools never mutates the current scene. Creation is
-	# explicit so the ordinary 3D workspace remains empty until requested.
+	# The terrain workspace opens on a real editable 8 × 8-cell base when
+	# the scene has no terrain yet. Users can immediately sculpt instead of
+	# having to create the starting surface as a separate setup step.
 	if _get_terrain() != null:
 		_focus_terrain()
 	else:
-		_set_status("Configura la forma y dimensiones; pulsa Crear terreno cuando estés listo.")
+		_create_terrain()
 
 func _create_terrain() -> void:
 	var root := EditorInterface.get_edited_scene_root()
@@ -621,8 +622,10 @@ func _process(delta: float) -> void:
 		if cursor_mesh:
 			cursor_mesh.visible = false
 		return
-	var sensitivity := maxf(0.01, pencil_sensitivity.value / 100.0) if pencil_sensitivity else 0.5
-	pencil_screen_position = pencil_screen_position.lerp(pencil_target_position, clampf(sensitivity * 0.35, 0.01, 0.35))
+	# Sensitivity is a cursor speed (0–100), not brush strength or radius.
+	# At 0 the cursor holds position; at 100 it follows at up to 1200 px/s.
+	var sensitivity := pencil_sensitivity.value if pencil_sensitivity else 50.0
+	pencil_screen_position = pencil_screen_position.move_toward(pencil_target_position, sensitivity * 12.0 * delta)
 	var screen_position := pencil_screen_position
 	var hit := _raycast_terrain(camera, screen_position)
 	cursor_valid = not hit.is_empty()
