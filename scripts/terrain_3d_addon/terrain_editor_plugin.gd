@@ -88,7 +88,8 @@ func _enter_tree() -> void:
 	_refresh_ui_scale()
 	inspector_tools = TerrainInspectorTools.new(self)
 	add_inspector_plugin(inspector_tools)
-	# Terrain brush input must remain available even when the terrain node is not selected.
+	EditorInterface.get_selection().selection_changed.connect(_update_action_overlay_visibility)
+	# Terrain brush input is active only while the terrain is selected in the Inspector.
 	set_input_event_forwarding_always_enabled()
 	set_process(true)
 
@@ -449,7 +450,12 @@ func _position_action_button() -> void:
 func _update_action_overlay_visibility() -> void:
 	if action_overlay == null or not is_instance_valid(action_overlay):
 		return
-	var can_show := panel != null and is_instance_valid(panel) and panel.visible and terrain_tabs != null and terrain_tabs.current_tab in [1, 2] and _get_terrain() != null
+	var terrain_selected := false
+	for selected_node in EditorInterface.get_selection().get_selected_nodes():
+		if is_instance_valid(selected_node) and selected_node.has_meta(TERRAIN_META):
+			terrain_selected = true
+			break
+	var can_show := terrain_selected and panel != null and is_instance_valid(panel) and panel.is_inside_tree() and panel.visible and terrain_tabs != null and terrain_tabs.current_tab in [1, 2]
 	action_overlay.visible = can_show
 	if action_button and action_button.get_parent() == panel:
 		action_button.visible = can_show
