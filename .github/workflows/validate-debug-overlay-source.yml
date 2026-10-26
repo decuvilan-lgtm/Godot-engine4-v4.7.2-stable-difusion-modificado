@@ -40,6 +40,9 @@ jobs:
             editor/project_manager/project_dialog.cpp
             editor/editor_node.h
             editor/editor_node.cpp
+            editor/scene/3d/node_3d_editor_plugin.h
+            editor/scene/3d/node_3d_editor_plugin.cpp
+            editor/settings/editor_settings.cpp
             platform/android/java/editor/src/main/res/layout/godot_editor_layout.xml
             platform/android/java/editor/src/main/res/values/themes.xml
             editor/run/editor_run_bar.h
