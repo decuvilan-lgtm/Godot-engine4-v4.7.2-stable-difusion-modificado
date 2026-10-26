@@ -716,29 +716,7 @@ replace_once(SCENE_DEBUGGER_SOURCE,
     '#include "servers/rendering/rendering_server.h"',
     '#include "core/templates/list.h"\n#include "scene/2d/path_2d.h"\n#include "scene/3d/path_3d.h"\n#include "scene/gui/button.h"\n#include "scene/gui/popup_menu.h"\n#include "scene/gui/label.h"\n#include "scene/main/timer.h"\n#include "core/config/engine.h"\n#include "scene/main/canvas_layer.h"\n#include "servers/rendering/rendering_server.h"\n#include "servers/navigation_2d/navigation_server_2d.h"\n#include "servers/navigation_3d/navigation_server_3d.h"')
 replace_once(SCENE_DEBUGGER_SOURCE,
-    "Error SceneDebugger::_msg_set_debug_fps(const Array &p_args) {
-\tERR_FAIL_COND_V(p_args.is_empty(), ERR_INVALID_DATA);
-\t_create_runtime_debug_overlay();
-\tSceneTree *tree = SceneTree::get_singleton();
-\tERR_FAIL_NULL_V(tree, ERR_UNCONFIGURED);
-\tWindow *root = tree->get_root();
-\tERR_FAIL_NULL_V(root, ERR_UNCONFIGURED);
-\tLabel *fps_label = Object::cast_to<Label>(root->get_node_or_null(NodePath("__GodotPreviewDebugOverlay/FPSLabel")));
-\tTimer *fps_timer = Object::cast_to<Timer>(root->get_node_or_null(NodePath("__GodotPreviewDebugOverlay/FPSTimer")));
-\tERR_FAIL_NULL_V(fps_label, ERR_DOES_NOT_EXIST);
-\tERR_FAIL_NULL_V(fps_timer, ERR_DOES_NOT_EXIST);
-\tif (bool(p_args[0])) {
-\t\tfps_label->show();
-\t\tfps_timer->start();
-\t\t_runtime_fps_timer_timeout();
-\t} else {
-\t\tfps_timer->stop();
-\t\tfps_label->hide();
-\t}
-\treturn OK;
-}
-
-Error SceneDebugger::_msg_debug_mute_audio(const Array &p_args) {",
+    "Error SceneDebugger::_msg_debug_mute_audio(const Array &p_args) {",
     """Error SceneDebugger::_msg_set_debug_collisions(const Array &p_args) {
 \tERR_FAIL_COND_V(p_args.is_empty(), ERR_INVALID_DATA);
 \tSceneTree *tree = SceneTree::get_singleton();
@@ -769,6 +747,29 @@ Error SceneDebugger::_msg_set_debug_avoidance(const Array &p_args) {
 #ifndef NAVIGATION_3D_DISABLED
 \tNavigationServer3D::get_singleton()->set_debug_avoidance_enabled(enabled);
 #endif
+\treturn OK;
+}
+
+
+Error SceneDebugger::_msg_set_debug_fps(const Array &p_args) {
+\tERR_FAIL_COND_V(p_args.is_empty(), ERR_INVALID_DATA);
+\t_create_runtime_debug_overlay();
+\tSceneTree *tree = SceneTree::get_singleton();
+\tERR_FAIL_NULL_V(tree, ERR_UNCONFIGURED);
+\tWindow *root = tree->get_root();
+\tERR_FAIL_NULL_V(root, ERR_UNCONFIGURED);
+\tLabel *fps_label = Object::cast_to<Label>(root->get_node_or_null(NodePath("__GodotPreviewDebugOverlay/FPSLabel")));
+\tTimer *fps_timer = Object::cast_to<Timer>(root->get_node_or_null(NodePath("__GodotPreviewDebugOverlay/FPSTimer")));
+\tERR_FAIL_NULL_V(fps_label, ERR_DOES_NOT_EXIST);
+\tERR_FAIL_NULL_V(fps_timer, ERR_DOES_NOT_EXIST);
+\tif (bool(p_args[0])) {
+\t\tfps_label->show();
+\t\tfps_timer->start();
+\t\t_runtime_fps_timer_timeout();
+\t} else {
+\t\tfps_timer->stop();
+\t\tfps_label->hide();
+\t}
 \treturn OK;
 }
 
