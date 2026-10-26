@@ -680,6 +680,13 @@ void EditorDebuggerNode::set_debug_mute_audio(bool p_mute) {""")
 replace_once(SCRIPT_DEBUGGER_HEADER,
     "void set_debug_mute_audio(bool p_mute);",
     "void set_debug_collisions(bool p_enable);\n\tvoid set_debug_navigation(bool p_enable);\n\tvoid set_debug_avoidance(bool p_enable);\n\tvoid set_debug_mute_audio(bool p_mute);")
+# Android can deliver a delayed stack-frame selection after the preview has stopped.
+# The upstream ERR_FAIL_COND_V reports this expected stale UI event as an ERROR.
+# Keep the same safe return behavior without polluting Output or obscuring real failures.
+replace_once(SCRIPT_DEBUGGER_SOURCE,
+    "bool ScriptEditorDebugger::request_stack_dump(const int &p_frame) {\n\tERR_FAIL_COND_V(!is_session_active() || p_frame < 0, false);",
+    "bool ScriptEditorDebugger::request_stack_dump(const int &p_frame) {\n\tif (!is_session_active() || p_frame < 0) {\n\t\treturn false;\n\t}")
+
 replace_once(SCRIPT_DEBUGGER_SOURCE,
     "void ScriptEditorDebugger::set_debug_mute_audio(bool p_mute) {",
     """void ScriptEditorDebugger::set_debug_collisions(bool p_enable) {
