@@ -201,7 +201,6 @@ func _build_panel() -> void:
 	action_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	action_button.button_down.connect(_on_action_down)
 	action_button.button_up.connect(_on_action_up)
-	action_button.pressed.connect(_apply_at_cursor)
 	sculpt.add_child(action_button)
 	var pencil_help := Label.new()
 	pencil_help.text = "Desliza sobre el visor 3D para mover el lápiz. Tocar controles o soltar el dedo lo desactiva; ACCIÓN aplica la herramienta elegida."
@@ -644,10 +643,12 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 		return AFTER_GUI_INPUT_PASS
 	if event is InputEventScreenTouch:
 		if event.pressed:
-			pencil_touch_index = event.index
-			pencil_target_position = event.position
-			pencil_active = false
-			_update_pencil_state()
+			# Do not steal a second finger from a native joystick or another control.
+			if pencil_touch_index == -1:
+				pencil_touch_index = event.index
+				pencil_target_position = event.position
+				pencil_active = false
+				_update_pencil_state()
 		elif event.index == pencil_touch_index:
 			pencil_active = false
 			pencil_touch_index = -1
