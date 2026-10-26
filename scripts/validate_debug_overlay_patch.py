@@ -25,6 +25,8 @@ for token, label in [
     ("set_custom_minimum_size(Size2(60, 44))", "runtime COL button has a mobile touch target"),
     ("_create_runtime_debug_overlay();", "runtime overlay is installed by SceneDebugger"),
     ("Retry overlay creation here as well as at debugger initialization", "preview tools are initialized again after the running game window exists"),
+    ("The upstream ERR_FAIL_COND_V reports this expected stale UI event as an ERROR.", "stale debugger frame requests after preview stop are handled quietly"),
+    ("if (!is_session_active() || p_frame < 0) {\\n\\t\\treturn false;", "stack-frame requests return safely when the debugger session has ended"),
     ("_runtime_debug_button_pressed", "runtime button opens its menu"),
     ("_runtime_debug_item_pressed", "runtime menu toggles overlays live"),
     ("callable_mp_static(&SceneDebugger::_runtime_debug_item_pressed)", "runtime menu signal is wired"),
