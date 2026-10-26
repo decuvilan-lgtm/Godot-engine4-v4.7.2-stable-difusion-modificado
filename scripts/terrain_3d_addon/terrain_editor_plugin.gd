@@ -51,7 +51,6 @@ var cursor_material: StandardMaterial3D
 var stroke_timer := 0.0
 var import_dialog: FileDialog
 var export_dialog: FileDialog
-var texture_dialog: FileDialog
 var surface_texture_dialog: FileDialog
 var stretch_surface_image: CheckButton
 var status_label: Label
@@ -88,8 +87,6 @@ func _exit_tree() -> void:
 		import_dialog.queue_free()
 	if export_dialog:
 		export_dialog.queue_free()
-	if texture_dialog:
-		texture_dialog.queue_free()
 	if surface_texture_dialog:
 		surface_texture_dialog.queue_free()
 	if terrain_preview and is_instance_valid(terrain_preview):
@@ -223,10 +220,10 @@ func _build_panel() -> void:
 	for layer_name in ["Hierba", "Roca", "Arena", "Nieve"]:
 		layer_picker.add_item(layer_name)
 	paint.add_child(layer_picker)
-	var texture_button := Button.new()
-	texture_button.text = "Cargar textura para la capa elegida"
-	texture_button.pressed.connect(_open_layer_texture)
-	paint.add_child(texture_button)
+	var layer_texture_help := Label.new()
+	layer_texture_help.text = "Asigna las texturas de hierba, roca, arena y nieve desde el grupo Material → Texturas por capa del Inspector nativo."
+	layer_texture_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	paint.add_child(layer_texture_help)
 	var surface_section := Label.new()
 	surface_section.text = "Imagen para toda la superficie"
 	paint.add_child(surface_section)
@@ -303,13 +300,6 @@ func _build_panel() -> void:
 	export_dialog.file_selected.connect(_export_heightmap)
 	add_child(export_dialog)
 
-	texture_dialog = FileDialog.new()
-	texture_dialog.title = "Asignar textura a la capa elegida"
-	texture_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-	texture_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	texture_dialog.add_filter("*.png,*.jpg,*.jpeg,*.webp", "Textura de terreno")
-	texture_dialog.file_selected.connect(_import_layer_texture)
-	add_child(texture_dialog)
 
 	surface_texture_dialog = FileDialog.new()
 	surface_texture_dialog.title = "Imagen para toda la superficie del terreno"
@@ -1000,9 +990,6 @@ func _export_heightmap(path: String) -> void:
 		_set_status("Heightmap exportado: " + output_path)
 	else:
 		_set_status("No se pudo guardar el heightmap (error %d)." % err)
-
-func _open_layer_texture() -> void:
-	texture_dialog.popup_centered(Vector2i(640, 480))
 
 func _open_surface_texture() -> void:
 	if _get_terrain() == null:
