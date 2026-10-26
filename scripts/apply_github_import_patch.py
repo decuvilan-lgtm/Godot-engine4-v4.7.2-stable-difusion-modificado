@@ -899,7 +899,7 @@ replace_once(EDITOR_NODE_HEADER,
     "static Button *get_distraction_free_button() { return singleton->distraction_free; }\n\tvoid toggle_mobile_immersive_preview();\n\tvoid exit_mobile_immersive_preview();")
 replace_once(EDITOR_NODE_SOURCE,
     '#include "scene/main/scene_tree.h"',
-    '#include "scene/main/scene_tree.h"\n#include "scene/main/canvas_layer.h"\n#include "scene/gui/button.h"\n#ifdef ANDROID_ENABLED\n#include "platform/android/os_android.h"\n#endif')
+    '#include "scene/main/scene_tree.h"\n#include "scene/main/canvas_layer.h"\n#include "scene/gui/button.h"\n#ifdef ANDROID_ENABLED\n#include "platform/android/os_android.h"\n#include "platform/android/java_godot_wrapper.h"\n#endif')
 replace_once(EDITOR_NODE_SOURCE,
     "distraction_free->connect(SceneStringName(pressed), callable_mp(this, &EditorNode::_toggle_distraction_free_mode));",
     """distraction_free->connect(SceneStringName(pressed), callable_mp(this, &EditorNode::_toggle_distraction_free_mode));
