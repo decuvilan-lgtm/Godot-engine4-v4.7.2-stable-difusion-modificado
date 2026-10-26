@@ -30,6 +30,7 @@ var continuous_stroke: CheckButton
 var pencil_sensitivity: HSlider
 var pencil_state_label: Label
 var action_button: Button
+var action_overlay: Control
 var pencil_active := false
 var pencil_touch_cancelled := false
 var pencil_touch_index := -1
@@ -93,6 +94,10 @@ func _exit_tree() -> void:
 		surface_texture_dialog.queue_free()
 	if terrain_preview and is_instance_valid(terrain_preview):
 		terrain_preview.queue_free()
+	if action_overlay and is_instance_valid(action_overlay):
+		if action_overlay.get_parent():
+			action_overlay.get_parent().remove_child(action_overlay)
+		action_overlay.queue_free()
 
 func _build_panel() -> void:
 	panel = VBoxContainer.new()
@@ -108,6 +113,7 @@ func _build_panel() -> void:
 	terrain_tabs = TabContainer.new()
 	terrain_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	terrain_tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	terrain_tabs.tab_changed.connect(func(_tab: int) -> void: _update_action_overlay_visibility())
 	panel.add_child(terrain_tabs)
 
 	# Keep the pencil controls available while switching between Sculpt and Paint.
@@ -121,13 +127,29 @@ func _build_panel() -> void:
 	continuous_stroke = CheckButton.new()
 	continuous_stroke.text = "Trazo continuo mientras mantienes ACCIÓN"
 	panel.add_child(continuous_stroke)
+	# Place the single ACTION control over the 3D workspace, directly above
+	# Godot's native left navigation joystick. The transparent parent passes all
+	# other touches through to the original viewport controls.
+	action_overlay = Control.new()
+	action_overlay.name = "TerrainActionOverlay"
+	action_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	action_overlay.mouse_filter = Control.MOUSE_FILTER_PASS
+	action_overlay.z_index = 100
+	action_overlay.hide()
+	var editor_main_screen := EditorInterface.get_editor_main_screen()
+	if editor_main_screen:
+		editor_main_screen.add_child(action_overlay)
 	action_button = Button.new()
 	action_button.text = "ACCIÓN"
-	action_button.custom_minimum_size = Vector2(0, 52) * EditorInterface.get_editor_scale()
-	action_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	action_button.custom_minimum_size = Vector2(120, 52) * EditorInterface.get_editor_scale()
 	action_button.button_down.connect(_on_action_down)
 	action_button.button_up.connect(_on_action_up)
-	panel.add_child(action_button)
+	if action_overlay.get_parent():
+		action_overlay.add_child(action_button)
+	else:
+		# Defensive fallback for unusual editor startup ordering.
+		panel.add_child(action_button)
+	_position_action_button()
 	var pencil_help := Label.new()
 	pencil_help.text = "Desliza sobre el visor 3D para mover el lápiz. Tocar controles o soltar el dedo lo desactiva; ACCIÓN aplica la herramienta elegida."
 	pencil_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -316,7 +338,8 @@ func _refresh_ui_scale() -> void:
 	if panel:
 		panel.add_theme_constant_override("separation", roundi(8.0 * scale))
 	if action_button:
-		action_button.custom_minimum_size = Vector2(0, 52) * scale
+		action_button.custom_minimum_size = Vector2(120, 52) * scale
+		_position_action_button()
 	if panel:
 		for control in panel.find_children("*", "SpinBox", true, false):
 			var spin := control as SpinBox
@@ -401,11 +424,37 @@ func _add_slider(parent: Control, label_text: String, value: float, minimum: flo
 	parent.add_child(column)
 	return slider
 
+	_update_action_overlay_visibility()
+
+func _position_action_button() -> void:
+	if action_button == null or not is_instance_valid(action_button):
+		return
+	if action_overlay == null or not is_instance_valid(action_overlay) or action_button.get_parent() != action_overlay:
+		return
+	var scale := EditorInterface.get_editor_scale()
+	# The native navigation joystick is 150 editor-scaled pixels tall by default.
+	# Keep the button above it with a fixed, deliberate gap rather than responsive
+	# repositioning that changes the touch target while editing.
+	action_button.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	action_button.set_offset(SIDE_LEFT, 12.0 * scale)
+	action_button.set_offset(SIDE_TOP, -230.0 * scale)
+	action_button.set_offset(SIDE_RIGHT, 132.0 * scale)
+	action_button.set_offset(SIDE_BOTTOM, -178.0 * scale)
+
+func _update_action_overlay_visibility() -> void:
+	if action_overlay == null or not is_instance_valid(action_overlay):
+		return
+	var can_show := panel != null and is_instance_valid(panel) and panel.visible and terrain_tabs != null and terrain_tabs.current_tab in [1, 2] and _get_terrain() != null
+	action_overlay.visible = can_show
+	if action_button and action_button.get_parent() == panel:
+		action_button.visible = can_show
+
 func _toggle_panel() -> void:
 	if panel == null or not is_instance_valid(panel):
 		_build_panel()
 	if panel.visible:
 		panel.hide()
+		_update_action_overlay_visibility()
 		return
 	panel.show()
 	_update_terrain_preview()
@@ -416,6 +465,7 @@ func _toggle_panel() -> void:
 		_focus_terrain()
 	else:
 		_create_terrain()
+	_update_action_overlay_visibility()
 
 func _create_terrain() -> void:
 	var root := EditorInterface.get_edited_scene_root()
@@ -454,6 +504,7 @@ func _create_terrain() -> void:
 	EditorInterface.get_selection().add_node(terrain)
 	_set_status("Terreno creado con la forma, dimensiones X/Z, rango Y, base y colisiones configuradas. Edita desde las pestañas del editor de terreno.")
 	_focus_terrain()
+	_update_action_overlay_visibility()
 
 func _get_terrain():
 	var root := EditorInterface.get_edited_scene_root()
