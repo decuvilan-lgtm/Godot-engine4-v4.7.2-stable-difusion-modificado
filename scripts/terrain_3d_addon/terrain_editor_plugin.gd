@@ -6,7 +6,6 @@ const TERRAIN_META := "github_terrain_3d"
 
 var terrain_button: Button
 var panel: VBoxContainer
-var terrain_window: Window
 var terrain_tabs: TabContainer
 var paint_mode_picker: OptionButton
 var terrain_width: SpinBox
@@ -82,8 +81,6 @@ func _exit_tree() -> void:
 	if panel and is_instance_valid(panel):
 		remove_control_from_docks(panel)
 		panel.queue_free()
-	if terrain_window and is_instance_valid(terrain_window):
-		terrain_window.queue_free()
 	if cursor_mesh and is_instance_valid(cursor_mesh):
 		cursor_mesh.queue_free()
 	if import_dialog:
@@ -277,7 +274,7 @@ func _build_panel() -> void:
 	panel.add_child(status_label)
 	# Keep the floating tools closed at startup; the 3D toolbar button opens them.
 	panel.show()
-	terrain_window.hide()
+	panel.hide()
 	_create_cursor()
 	_create_terrain_preview()
 
