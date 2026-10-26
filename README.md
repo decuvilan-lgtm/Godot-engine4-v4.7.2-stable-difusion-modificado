@@ -709,3 +709,7 @@ Esta sección prevalece sobre notas antiguas de este README cuando describan un 
 - Antes de entrar se guarda el estado previo de las barras del sistema. Al volver al editor se restaura ese estado junto con el modo de ventana, la barra superior del editor y el modo de distracción libre. El juego no debe detenerse ni reiniciarse.
 - El validador estático comprueba que las llamadas para activar, guardar y restaurar el modo inmersivo están presentes. Esto no sustituye la compilación C++ ni la comprobación visual en el LG K51; la corrección queda pendiente de esas verificaciones.
 - El texto de la pantalla de carga se mantiene como **AZIZA**; el validador de inicio comprueba ese texto.
+
+## Compilación completa del APK Android
+
+Para iniciar una compilación completa ARM32 (`armeabi-v7a`) + ARM64 (`arm64-v8a`) desde un commit de la rama `feature/github-sync-and-safe-mcp`, usa `[build-apk]` en el mensaje del commit. El flujo también puede ejecutarse manualmente desde GitHub Actions con `run_type=full-android-build`.
