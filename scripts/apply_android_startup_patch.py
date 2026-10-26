@@ -83,7 +83,7 @@ replace_once(LAYOUT,
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_marginTop="18dp"
-				android:text="lo logre bro"
+				android:text="AZIZA"
 				android:textColor="#FFFFFF"
 				android:textSize="20sp"
 				android:textStyle="bold"
