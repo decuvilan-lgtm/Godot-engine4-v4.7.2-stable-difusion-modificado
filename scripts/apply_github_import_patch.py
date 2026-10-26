@@ -952,8 +952,8 @@ replace_once(EDITOR_NODE_SOURCE,
 	// The black strip above the preview is the editor run bar, not the title
 	// bar. Hide it explicitly so fullscreen contains only the running game and
 	// the floating Volver control. Restore it when immersive preview exits.
-	if (run_bar) {
-		run_bar->hide();
+	if (project_run_bar) {
+		project_run_bar->hide();
 	}
 	// Fullscreen makes the editor's game area use the Android display bounds.
 	// The game session is not stopped or relaunched by this UI-only transition.
@@ -980,8 +980,8 @@ void EditorNode::exit_mobile_immersive_preview() {
 	if (title_bar) {
 		title_bar->show();
 	}
-	if (run_bar) {
-		run_bar->show();
+	if (project_run_bar) {
+		project_run_bar->show();
 	}
 	if (mobile_previous_window_mode >= 0) {
 		DisplayServer::get_singleton()->window_set_mode((DisplayServerEnums::WindowMode)mobile_previous_window_mode);
