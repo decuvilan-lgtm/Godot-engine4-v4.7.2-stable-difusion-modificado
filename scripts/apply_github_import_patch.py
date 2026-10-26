@@ -1228,4 +1228,57 @@ replace_once(SCENE_DEBUGGER_SOURCE,
     'message_handlers["set_debug_canvas_item_redraw"] = _msg_set_debug_canvas_item_redraw;',
     'message_handlers["set_debug_canvas_item_redraw"] = _msg_set_debug_canvas_item_redraw;\n\tmessage_handlers["set_mobile_immersive_preview"] = _msg_set_mobile_immersive_preview;')
 
+
+# Customizable native Android 3D viewport navigation joysticks. The addon UI
+# writes these editor settings; the native controls read them and relayout live.
+NATIVE_3D_HEADER = ROOT / "editor/scene/3d/node_3d_editor_plugin.h"
+NATIVE_3D_SOURCE = ROOT / "editor/scene/3d/node_3d_editor_plugin.cpp"
+EDITOR_SETTINGS_SOURCE = ROOT / "editor/settings/editor_settings.cpp"
+for required in (NATIVE_3D_HEADER, NATIVE_3D_SOURCE, EDITOR_SETTINGS_SOURCE):
+    if not required.is_file():
+        sys.exit(f"Native 3D joystick customization source not found: {required}")
+
+replace_once(EDITOR_SETTINGS_SOURCE,
+    '\t_initial_set("editors/3d/navigation/show_viewport_navigation_gizmo", should_show_viewport_navigation_gizmo);',
+    '\t_initial_set("editors/3d/navigation/show_viewport_navigation_gizmo", should_show_viewport_navigation_gizmo);\n'
+    '\tEDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "editors/3d/navigation/native_joystick_size", 150, "80,240,1")\n'
+    '\tEDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "editors/3d/navigation/native_joystick_inset_x", 0, "0,120,1")\n'
+    '\tEDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "editors/3d/navigation/native_joystick_inset_y", 0, "0,300,1")')
+replace_once(NATIVE_3D_HEADER,
+    '\tvoid _update_navigation_controls_visibility();',
+    '\tvoid _update_navigation_controls_visibility();\n\tvoid _update_native_navigation_control_layout();')
+replace_once(NATIVE_3D_SOURCE,
+    "void Node3DEditorViewport::_update_navigation_controls_visibility() {",
+    """void Node3DEditorViewport::_update_native_navigation_control_layout() {
+\tif (position_control == nullptr || look_control == nullptr) {
+\t\treturn;
+\t}
+\tconst int native_size = CLAMP(EDITOR_GET("editors/3d/navigation/native_joystick_size").operator int(), 80, 240);
+\tconst int inset_x = CLAMP(EDITOR_GET("editors/3d/navigation/native_joystick_inset_x").operator int(), 0, 120);
+\tconst int inset_y = CLAMP(EDITOR_GET("editors/3d/navigation/native_joystick_inset_y").operator int(), 0, 300);
+\tconst real_t scaled_size = native_size * EDSCALE;
+\tconst real_t scaled_x = inset_x * EDSCALE;
+\tconst real_t scaled_y = inset_y * EDSCALE;
+
+\tposition_control->set_custom_minimum_size(Size2(native_size, native_size) * EDSCALE);
+\tposition_control->set_anchor_and_offset(SIDE_LEFT, ANCHOR_BEGIN, scaled_x);
+\tposition_control->set_anchor_and_offset(SIDE_TOP, ANCHOR_END, -scaled_size - scaled_y);
+\tposition_control->set_anchor_and_offset(SIDE_RIGHT, ANCHOR_BEGIN, scaled_size + scaled_x);
+\tposition_control->set_anchor_and_offset(SIDE_BOTTOM, ANCHOR_END, -scaled_y);
+
+\tlook_control->set_custom_minimum_size(Size2(native_size, native_size) * EDSCALE);
+\tlook_control->set_anchor_and_offset(SIDE_LEFT, ANCHOR_END, -scaled_size - scaled_x);
+\tlook_control->set_anchor_and_offset(SIDE_TOP, ANCHOR_END, -scaled_size - scaled_y);
+\tlook_control->set_anchor_and_offset(SIDE_RIGHT, ANCHOR_END, -scaled_x);
+\tlook_control->set_anchor_and_offset(SIDE_BOTTOM, ANCHOR_END, -scaled_y);
+}
+
+void Node3DEditorViewport::_update_navigation_controls_visibility() {""")
+replace_once(NATIVE_3D_SOURCE,
+    '\t\tcase EditorSettings::NOTIFICATION_EDITOR_SETTINGS_CHANGED: {\n\t\t\t_update_view_3d_controller();',
+    '\t\tcase EditorSettings::NOTIFICATION_EDITOR_SETTINGS_CHANGED: {\n\t\t\t_update_view_3d_controller();\n\t\t\t_update_native_navigation_control_layout();')
+replace_once(NATIVE_3D_SOURCE,
+    '\tsurface->add_child(look_control);\n\n\trotation_control = memnew(ViewportRotationControl);',
+    '\tsurface->add_child(look_control);\n\t_update_native_navigation_control_layout();\n\n\trotation_control = memnew(ViewportRotationControl);')
+
 print("GitHub import, debug overlays, and Android immersive-preview patches applied successfully.")
