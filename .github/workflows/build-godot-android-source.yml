@@ -36,6 +36,12 @@ jobs:
         uses: actions/checkout@v4
       - name: Checkout official Godot 4.7.2 source
         uses: actions/checkout@v4
+        env:
+          # Godot's C# test fixtures contain paths beyond Win32's legacy limit.
+          # Set this on the checkout action itself, before it writes the working tree.
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: core.longpaths
+          GIT_CONFIG_VALUE_0: "true"
         with:
           repository: godotengine/godot
           ref: 4.7.2-stable
@@ -96,6 +102,12 @@ jobs:
 
       - name: Checkout official Godot 4.7.2 source
         uses: actions/checkout@v4
+        env:
+          # Godot's C# test fixtures contain paths beyond Win32's legacy limit.
+          # Set this on the checkout action itself, before it writes the working tree.
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: core.longpaths
+          GIT_CONFIG_VALUE_0: "true"
         with:
           repository: godotengine/godot
           ref: 4.7.2-stable
@@ -294,6 +306,12 @@ jobs:
         uses: actions/checkout@v4
       - name: Checkout official Godot 4.7.2 source
         uses: actions/checkout@v4
+        env:
+          # Godot's C# test fixtures contain paths beyond Win32's legacy limit.
+          # Set this on the checkout action itself, before it writes the working tree.
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: core.longpaths
+          GIT_CONFIG_VALUE_0: "true"
         with:
           repository: godotengine/godot
           ref: 4.7.2-stable
