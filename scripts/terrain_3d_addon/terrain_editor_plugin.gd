@@ -462,10 +462,10 @@ func _position_action_button() -> void:
 	# Keep ACTION 20 scaled pixels above the native left joystick, even when its
 	# size or corner inset changes. Touch targets do not auto-reflow.
 	action_button.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	action_button.set_offset(Control.SIDE_LEFT, left)
-	action_button.set_offset(Control.SIDE_TOP, -(joystick_size + inset_y + 72.0) * scale)
-	action_button.set_offset(Control.SIDE_RIGHT, left + 120.0 * scale)
-	action_button.set_offset(Control.SIDE_BOTTOM, -bottom)
+	action_button.set_offset(SIDE_LEFT, left)
+	action_button.set_offset(SIDE_TOP, -(joystick_size + inset_y + 72.0) * scale)
+	action_button.set_offset(SIDE_RIGHT, left + 120.0 * scale)
+	action_button.set_offset(SIDE_BOTTOM, -bottom)
 
 func _update_action_overlay_visibility() -> void:
 	if action_overlay == null or not is_instance_valid(action_overlay):
