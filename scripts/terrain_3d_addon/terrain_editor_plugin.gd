@@ -727,7 +727,7 @@ func _is_native_joystick_zone(position: Vector2) -> bool:
 	# The native editor navigation joysticks occupy the lower left/right corners.
 	# Keep these regions free of pencil ownership so Godot can receive their drags.
 	var size := viewport.size
-	return position.y >= size.y * 0.68 and (position.x <= size.x * 0.30 or position.x >= size.x * 0.70)
+	return position.y >= size.y * 0.78 and (position.x <= size.x * 0.22 or position.x >= size.x * 0.78)
 
 func _update_pencil_state() -> void:
 	if pencil_state_label:
@@ -738,6 +738,9 @@ func _update_pencil_state() -> void:
 		cursor_mesh.visible = false
 
 func _on_action_down() -> void:
+	if not pencil_active or not cursor_valid:
+		_set_status("Desliza sobre el visor 3D para activar el lápiz antes de usar ACCIÓN.")
+		return
 	action_held = true
 	stroke_timer = 0.0
 	if not continuous_stroke.button_pressed:
@@ -746,6 +749,11 @@ func _on_action_down() -> void:
 func _on_action_up() -> void:
 	action_held = false
 	stroke_active = false
+	# Rebuild the terrain collider once when the user finishes the stroke.
+	if collision_dirty and collision_dirty_terrain and is_instance_valid(collision_dirty_terrain):
+		collision_dirty_terrain.rebuild_collision()
+		collision_dirty = false
+		collision_dirty_terrain = null
 
 func _apply_at_cursor() -> void:
 	if terrain_tabs == null or terrain_tabs.current_tab not in [1, 2]:
