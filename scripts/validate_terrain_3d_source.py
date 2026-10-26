@@ -51,7 +51,7 @@ for token, label in [
     ("pencil_touch_index", "pencil tracks a single touch identifier"),
     ("pencil_touch_cancelled", "multitouch cancels pencil ownership without consuming another finger"),
     ("_is_native_joystick_zone(event.position)", "native joystick touch zones are excluded from pencil ownership"),
-    ('if event.index == pencil_touch_index and not pencil_touch_cancelled:', "cancelled pencil gestures cannot reactivate from later drags"),
+    ('event is InputEventScreenDrag and event.index == pencil_touch_index and not pencil_touch_cancelled', "cancelled pencil gestures cannot reactivate from later drags"),
     ('if not pencil_active or not cursor_valid:', "action button refuses to edit until pencil is active on terrain"),
     ('_bind_editor_float_setting(pencil_sensitivity, "terrain_3d/pencil_sensitivity"', "pencil sensitivity persists through Godot editor settings"),
     ('add_control_to_dock(EditorPlugin.DOCK_SLOT_LEFT_UL, panel)', "terrain editor is integrated into a native dock"),
