@@ -124,6 +124,7 @@ func _build_panel() -> void:
 	# Keep the pencil controls available while switching between Sculpt and Paint.
 	_add_section(panel, "Lápiz táctil")
 	pencil_sensitivity = _add_slider(panel, "Sensibilidad del lápiz (0–100)", 50.0, 0.0, 100.0, 1.0)
+	_bind_editor_float_setting(pencil_sensitivity, "terrain_3d/pencil_sensitivity", 50.0, 0.0, 100.0)
 	pencil_state_label = Label.new()
 	pencil_state_label.text = "Lápiz negro / inactivo"
 	pencil_state_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -204,6 +205,7 @@ func _build_panel() -> void:
 		mode_picker.add_item(mode)
 	sculpt.add_child(mode_picker)
 	brush_radius = _add_slider(sculpt, "Radio del pincel", 4.0, 0.5, 24.0, 0.5)
+	_bind_editor_float_setting(brush_radius, "terrain_3d/brush_radius", 4.0, 0.5, 24.0)
 	brush_strength = _add_slider(sculpt, "Intensidad", 0.35, 0.01, 1.0, 0.01)
 	flatten_height = _add_spin(sculpt, "Altura objetivo", 0.0, -100.0, 100.0, 0.25)
 	grid_snap = CheckButton.new()
@@ -331,6 +333,20 @@ func _refresh_ui_scale() -> void:
 			var spin := control as SpinBox
 			if spin:
 				spin.custom_minimum_size = Vector2(112, 44) * scale
+
+func _bind_editor_float_setting(slider: HSlider, setting_name: String, default_value: float, minimum: float, maximum: float) -> void:
+	# Store terrain-tool preferences in Godot's editor settings, not in scene data.
+	var settings := EditorInterface.get_editor_settings()
+	if settings == null or slider == null:
+		return
+	if settings.has_setting(setting_name):
+		slider.value = clampf(float(settings.get_setting(setting_name)), minimum, maximum)
+	slider.value_changed.connect(func(value: float) -> void:
+		settings.set_setting(setting_name, clampf(value, minimum, maximum))
+	)
+	slider.drag_ended.connect(func(_changed: bool) -> void:
+		settings.save()
+	)
 
 func _make_tab_page(tabs: TabContainer, title: String) -> VBoxContainer:
 	var scroll := ScrollContainer.new()
