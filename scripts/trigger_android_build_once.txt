@@ -1,5 +1,5 @@
-One-time trigger for the corrected ARM32+ARM64 Android editor build.
+Final reviewed Android editor build request.
 
-Scope: GameView toolbar placement, independent editor/preview immersive states, hidden duplicate in-game debug trigger, Inspector terrain recovery, and visible 8x8 starting ground.
+Included review fixes: restore terrain Inspector visibility on reselection; rebuild and recover missing terrain collision after scene ownership/load; guard preview debug toggles while the game is stopped.
 
-Source-only validation passed with the corrected Inspector type annotation. Compile the final Android ARM32+ARM64 editor.
+Build ARM32 and ARM64. Source validation must pass before considering the APK publishable. This build does not replace LG K51 touch/runtime verification. Fullscreen preview remains a device-level validation item because Android game embedding uses a floating window.
