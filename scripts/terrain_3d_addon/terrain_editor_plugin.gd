@@ -20,7 +20,7 @@ class TerrainInspectorTools extends EditorInspectorPlugin:
 		if tools is Control and is_instance_valid(tools):
 			# Inspector rebuilds can reparent or release custom controls. Detach the
 			# persistent panel from its previous inspector before attaching it again.
-			var old_parent := tools.get_parent()
+			var old_parent: Node = tools.get_parent()
 			if old_parent:
 				old_parent.remove_child(tools)
 			add_custom_control(tools)
