@@ -142,7 +142,7 @@ jobs:
             --exclude='godot-source/platform/android/java/.gradle' \
             --exclude='godot-source/platform/android/java/build' \
             --exclude='godot-source/platform/android/java/editor/build' \
-            -C "$GITHUB_WORKSPACE" godot-source godot-core-manifest.json
+            -C "$GITHUB_WORKSPACE" godot-source scripts .github/workflows README.md godot-core-manifest.json
           test -s "$ARCHIVE"
           sha256sum "$ARCHIVE"
 
@@ -415,7 +415,7 @@ jobs:
             --exclude='godot-source/platform/android/java/.gradle' \
             --exclude='godot-source/platform/android/java/build' \
             --exclude='godot-source/platform/android/java/editor/build' \
-            -C "$GITHUB_WORKSPACE" godot-source godot-core-manifest.json
+            -C "$GITHUB_WORKSPACE" godot-source scripts .github/workflows README.md godot-core-manifest.json
           test -s "$ARCHIVE"
           sha256sum "$ARCHIVE"
 
