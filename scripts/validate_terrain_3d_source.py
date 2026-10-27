@@ -173,5 +173,12 @@ require('paint_mode_picker = OptionButton.new()' in plugin, 'paint modes live in
 require('terrain_tabs.current_tab not in [1, 2]' in plugin, 'brush editing is restricted to Sculpt/Paint tabs')
 require(re.search(r'(?m)^\s*mode_picker\.add_item\("Pintar color"\)', plugin) is None, 'sculpt selector does not contain paint modes')
 
+
+# Regression guards for the two runtime errors found on the Android device.
+require("settings.save()" not in plugin, "terrain editor does not call the nonexistent EditorSettings.save() method")
+surface_begin = data.find("st.begin(Mesh.PRIMITIVE_TRIANGLES)")
+surface_custom = data.find("st.set_custom_format(0, SurfaceTool.CUSTOM_RGBA8_UNORM)")
+require(surface_begin >= 0 and surface_custom > surface_begin, "SurfaceTool begins the surface before configuring its custom vertex channel")
+
 if FAILURES:
     raise SystemExit(f"{len(FAILURES)} terrain source check(s) failed; see all FAIL lines above.")
