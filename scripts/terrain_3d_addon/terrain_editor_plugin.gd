@@ -401,6 +401,9 @@ func _make_tab_page(tabs: TabContainer, title: String) -> VBoxContainer:
 	scroll.name = title
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Godot's native touch drag remains enabled; expose a thumb for direct scrolling.
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS
+	scroll.scroll_deadzone = 12
 	tabs.add_child(scroll)
 	var content := VBoxContainer.new()
 	content.custom_minimum_size = Vector2(250, 0)
@@ -458,9 +461,8 @@ func _add_slider(parent: Control, label_text: String, value: float, minimum: flo
 	slider.value_changed.connect(func(v: float): label.text = "%s: %.2f" % [label_text, v])
 	column.add_child(slider)
 	parent.add_child(column)
-	return slider
-
 	_update_action_overlay_visibility()
+	return slider
 
 func _position_action_button() -> void:
 	if action_button == null or not is_instance_valid(action_button):
