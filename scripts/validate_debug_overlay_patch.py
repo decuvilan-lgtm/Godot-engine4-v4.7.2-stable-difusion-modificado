@@ -55,10 +55,8 @@ for token, label in [
     ("mobile_immersive_exit_button->show()", "immersive mode keeps a floating return button"),
     ("title_bar->hide()", "immersive mode hides the editor top bar"),
     ("window_set_mode(DisplayServerEnums::WINDOW_MODE_FULLSCREEN)", "immersive mode requests fullscreen"),
-    ("get_godot_java()->enable_immersive_mode(true)", "immersive preview hides Android status/navigation system bars"),
-    ("get_godot_java()->is_in_immersive_mode()", "previous Android system-bar mode is captured"),
-    ("get_godot_java()->enable_immersive_mode(mobile_previous_system_immersive)", "previous Android system-bar mode is restored on exit"),
     ("set_mobile_immersive_preview(true)", "immersive mode sends a stretch request to the running game"),
+    ("set_mobile_immersive_preview(false)", "exiting immersive mode restores the running game's original scale"),
     ("set_content_scale_aspect(Window::CONTENT_SCALE_ASPECT_IGNORE)", "running game fills the available screen"),
     ("set_content_scale_mode(mobile_immersive_previous_scale_mode)", "game scaling mode is restored on exit"),
     ("Size2i(680 * EDSCALE, 560 * EDSCALE)", "GitHub import dialog is sized for mobile readability"),
@@ -67,6 +65,8 @@ for token, label in [
 ]:
     require(token in source, label)
 
+require("enable_immersive_mode(true)" not in source and "enable_immersive_mode(mobile_previous_system_immersive)" not in source,
+        "preview immersive does not change Android status/navigation bar visibility")
 require('mobile_immersive_toolbar_button->set_text(TTR("inm"))' in source and 'embedding_hb->add_child(mobile_immersive_toolbar_button)' in source,
         "preview immersive control is inserted into GameView's preview toolbar")
 require('mobile_preview_debug_button->set_text(TTR("🔅"))' in source and 'embedding_hb->add_child(mobile_preview_debug_button)' in source and 'mobile_preview_debug_menu->add_check_item(TTR("Mostrar FPS"), 5)' in source,
