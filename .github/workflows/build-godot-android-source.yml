@@ -154,16 +154,18 @@ jobs:
           fi
 
           gh release upload "$TAG" "$ARCHIVE" --repo "$GITHUB_REPOSITORY" \
-            --clobber --name godot-core-next.tar.gz
+            --clobber
           if gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
               --pattern godot-core-posterior.tar.gz --dir "$ROTATION_DIR"; then
-            gh release upload "$TAG" "$ROTATION_DIR/godot-core-posterior.tar.gz" \
-              --repo "$GITHUB_REPOSITORY" --clobber --name godot-core-anterior.tar.gz
+            cp "$ROTATION_DIR/godot-core-posterior.tar.gz" "$ROTATION_DIR/godot-core-anterior.tar.gz"
+            gh release upload "$TAG" "$ROTATION_DIR/godot-core-anterior.tar.gz" \
+              --repo "$GITHUB_REPOSITORY" --clobber
           else
             echo "First core snapshot: no posterior existed to rotate."
           fi
-          gh release upload "$TAG" "$ARCHIVE" --repo "$GITHUB_REPOSITORY" \
-            --clobber --name godot-core-posterior.tar.gz
+          cp "$ARCHIVE" "$ROTATION_DIR/godot-core-posterior.tar.gz"
+          gh release upload "$TAG" "$ROTATION_DIR/godot-core-posterior.tar.gz" --repo "$GITHUB_REPOSITORY" \
+            --clobber
           gh release delete-asset "$TAG" godot-core-next.tar.gz \
             --repo "$GITHUB_REPOSITORY" --yes
           echo "Core rotation complete: anterior=previous posterior, posterior=latest validated source."
@@ -428,18 +430,20 @@ jobs:
           fi
 
           gh release upload "$TAG" "$ARCHIVE" --repo "$GITHUB_REPOSITORY" \
-            --clobber --name godot-core-next.tar.gz
+            --clobber
 
           if gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
               --pattern godot-core-posterior.tar.gz --dir "$ROTATION_DIR"; then
-            gh release upload "$TAG" "$ROTATION_DIR/godot-core-posterior.tar.gz" \
-              --repo "$GITHUB_REPOSITORY" --clobber --name godot-core-anterior.tar.gz
+            cp "$ROTATION_DIR/godot-core-posterior.tar.gz" "$ROTATION_DIR/godot-core-anterior.tar.gz"
+            gh release upload "$TAG" "$ROTATION_DIR/godot-core-anterior.tar.gz" \
+              --repo "$GITHUB_REPOSITORY" --clobber
           else
             echo "No previous posterior core exists; this is the first saved core."
           fi
 
-          gh release upload "$TAG" "$ARCHIVE" --repo "$GITHUB_REPOSITORY" \
-            --clobber --name godot-core-posterior.tar.gz
+          cp "$ARCHIVE" "$ROTATION_DIR/godot-core-posterior.tar.gz"
+          gh release upload "$TAG" "$ROTATION_DIR/godot-core-posterior.tar.gz" --repo "$GITHUB_REPOSITORY" \
+            --clobber
           gh release delete-asset "$TAG" godot-core-next.tar.gz \
             --repo "$GITHUB_REPOSITORY" --yes
           echo "Core rotation complete: anterior=previous posterior, posterior=new validated core."
