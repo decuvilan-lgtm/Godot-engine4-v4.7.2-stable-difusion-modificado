@@ -106,6 +106,10 @@ func _ready() -> void:
 			terrain_material.set_shader_parameter("sand_texture", sand_texture)
 		if snow_texture:
 			terrain_material.set_shader_parameter("snow_texture", snow_texture)
+	# Older scenes or interrupted edits may have a mesh but no saved collision child.
+	# Recreate it after the node has entered the tree and acquired its scene owner.
+	if mesh != null and (collision_body == null or not is_instance_valid(collision_body)):
+		_rebuild_collision()
 
 func _resize_grid_preserving_data(old_width: int, old_depth: int) -> void:
 	var new_width := grid_width

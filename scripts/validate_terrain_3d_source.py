@@ -132,6 +132,7 @@ for token, label in [
     ("mesh == null", "mesh generation failure is handled safely"),
     ("collision.shape == null", "collision generation failure is handled safely"),
     ("create_trimesh_shape", "terrain collision generation"),
+    ("if mesh != null and (collision_body == null or not is_instance_valid(collision_body))", "saved terrains missing a collision child recover it when opened"),
     ("set_heights", "editable height data"),
     ("set_vertex_colors", "editable vertex color data"),
     ("set_layer_weights", "editable four-channel material weights"),
