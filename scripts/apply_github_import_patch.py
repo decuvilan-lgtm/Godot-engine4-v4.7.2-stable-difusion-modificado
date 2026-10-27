@@ -991,7 +991,7 @@ replace_once(EDITOR_NODE_SOURCE,
     "void EditorNode::_toggle_distraction_free_mode() {",
     """void EditorNode::_mobile_preview_debug_menu_pressed() {
 #ifdef ANDROID_ENABLED
-	if (mobile_preview_debug_menu == nullptr || mobile_preview_debug_button == nullptr) {
+	if (mobile_preview_debug_menu == nullptr || mobile_preview_debug_button == nullptr || project_run_bar == nullptr || !project_run_bar->is_playing()) {
 		return;
 	}
 	mobile_preview_debug_menu->set_position(mobile_preview_debug_button->get_screen_position());
@@ -1002,7 +1002,7 @@ replace_once(EDITOR_NODE_SOURCE,
 
 void EditorNode::_mobile_preview_debug_item_pressed(int p_id) {
 #ifdef ANDROID_ENABLED
-	if (mobile_preview_debug_menu == nullptr || EditorDebuggerNode::get_singleton() == nullptr) {
+	if (mobile_preview_debug_menu == nullptr || EditorDebuggerNode::get_singleton() == nullptr || project_run_bar == nullptr || !project_run_bar->is_playing()) {
 		return;
 	}
 	const int item_index = mobile_preview_debug_menu->get_item_index(p_id);
