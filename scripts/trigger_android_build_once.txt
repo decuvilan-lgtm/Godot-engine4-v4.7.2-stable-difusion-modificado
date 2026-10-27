@@ -1,3 +1,3 @@
 One-time trigger for the corrected ARM32+ARM64 Android editor build.
 
-Scope: native Inspector terrain tools; Inm and sun debug dropdown in the 2D/3D workspace toolbar; FPS remote-debugger toggle.
+Scope: native Inspector terrain tools and selection-scoped touch controls; Inm and sun debug dropdown in the native 2D/3D workspace toolbar; FPS remote-debugger toggle.
