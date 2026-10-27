@@ -394,7 +394,7 @@ func _bind_editor_float_setting(slider: HSlider, setting_name: String, default_v
 		settings.set_setting(setting_name, clampf(value, minimum, maximum))
 	)
 	# EditorSettings persists registered editor preferences through Godot's normal settings lifecycle.
-	# Do not call settings.save(): EditorSettings has no public save() method.
+	# EditorSettings persists registered preferences through Godot's normal settings lifecycle.
 
 func _make_tab_page(tabs: TabContainer, title: String) -> VBoxContainer:
 	var scroll := ScrollContainer.new()
