@@ -928,17 +928,17 @@ replace_once(EDITOR_NODE_HEADER,
     "class Button;\n",
     "class Button;\nclass PopupMenu;\n")
 replace_once(EDITOR_NODE_HEADER,
-    "Button *mobile_immersive_exit_button = nullptr;",
-    "Button *mobile_immersive_exit_button = nullptr;\n\tButton *mobile_preview_debug_button = nullptr;\n\tPopupMenu *mobile_preview_debug_menu = nullptr;")
-replace_once(EDITOR_NODE_HEADER,
-    "void exit_mobile_immersive_preview();",
-    "void exit_mobile_immersive_preview();\n\tvoid _mobile_preview_debug_menu_pressed();\n\tvoid _mobile_preview_debug_item_pressed(int p_id);")
-replace_once(EDITOR_NODE_HEADER,
     "EditorTitleBar *title_bar = nullptr;",
     "EditorTitleBar *title_bar = nullptr;\n\tCanvasLayer *mobile_immersive_layer = nullptr;\n\tButton *mobile_immersive_exit_button = nullptr;\n\tbool mobile_immersive_preview = false;\n\tbool mobile_previous_distraction_free = false;\n\tbool mobile_previous_system_immersive = false;\n\tbool mobile_previous_run_bar_visible = true;\n\tint mobile_previous_window_mode = -1;")
 replace_once(EDITOR_NODE_HEADER,
     "static Button *get_distraction_free_button() { return singleton->distraction_free; }",
     "static Button *get_distraction_free_button() { return singleton->distraction_free; }\n\tvoid toggle_mobile_immersive_preview();\n\tvoid exit_mobile_immersive_preview();")
+replace_once(EDITOR_NODE_HEADER,
+    "Button *mobile_immersive_exit_button = nullptr;",
+    "Button *mobile_immersive_exit_button = nullptr;\n\tButton *mobile_preview_debug_button = nullptr;\n\tPopupMenu *mobile_preview_debug_menu = nullptr;")
+replace_once(EDITOR_NODE_HEADER,
+    "void exit_mobile_immersive_preview();",
+    "void exit_mobile_immersive_preview();\n\tvoid _mobile_preview_debug_menu_pressed();\n\tvoid _mobile_preview_debug_item_pressed(int p_id);")
 replace_once(EDITOR_NODE_SOURCE,
     '#include "scene/main/scene_tree.h"',
     '#include "scene/main/scene_tree.h"\n#include "scene/main/canvas_layer.h"\n#include "scene/gui/button.h"\n#ifdef ANDROID_ENABLED\n#include "platform/android/os_android.h"\n#include "platform/android/java_godot_wrapper.h"\n#endif')
