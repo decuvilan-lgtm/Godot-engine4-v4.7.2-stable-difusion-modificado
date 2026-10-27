@@ -26,6 +26,8 @@ def read(path: Path) -> str:
 
 editor_node_h = read(GODOT / "editor/editor_node.h")
 editor_node_cpp = read(GODOT / "editor/editor_node.cpp")
+game_view_h = read(GODOT / "editor/run/game_view_plugin.h")
+game_view_cpp = read(GODOT / "editor/run/game_view_plugin.cpp")
 runbar_h = read(GODOT / "editor/run/editor_run_bar.h")
 runbar_cpp = read(GODOT / "editor/run/editor_run_bar.cpp")
 debugger_h = read(GODOT / "editor/debugger/editor_debugger_node.h")
@@ -57,8 +59,13 @@ for symbol, source, label in [
 for symbol, source, label in [
     ("toggle_mobile_immersive_preview", editor_node_h, "EditorNode declares the fullscreen toggle"),
     ("exit_mobile_immersive_preview", editor_node_h, "EditorNode declares fullscreen exit"),
-    ("mobile_immersive_toolbar_button->set_text(TTR(\"Inm\"))", editor_node_cpp, "immersive control is placed beside the native 2D/3D workspace buttons"),
-    ("mobile_preview_debug_button->set_text(TTR(\"☀️\"))", editor_node_cpp, "preview debug dropdown is placed in the native workspace toolbar"),
+    ("mobile_immersive_toolbar_button->set_text(TTR(\"inm\"))", game_view_cpp, "preview immersive control is placed in the GameView toolbar"),
+    ("mobile_preview_debug_button->set_text(TTR(\"🔅\"))", game_view_cpp, "preview debug dropdown is placed in the GameView toolbar"),
+    ("distraction_free->set_text(TTR(\"inm\"))", editor_node_cpp, "editor immersive control remains separate and is labelled inm"),
+    ("mobile_preview_toolbar_container->hide()", editor_node_cpp, "preview toolbar hides only during preview immersion"),
+    ("mobile_preview_toolbar_container->set_visible(mobile_previous_preview_toolbar_visible)", editor_node_cpp, "preview toolbar visibility is restored independently"),
+    ("embedding_hb->add_child(mobile_immersive_toolbar_button)", game_view_cpp, "preview immersive control is parented to the preview toolbar"),
+    ("embedding_hb->add_child(mobile_preview_debug_button)", game_view_cpp, "preview debug control is parented to the preview toolbar"),
     ("set_debug_fps", editor_node_cpp, "toolbar FPS toggle is connected to the remote preview debugger"),
     ("set_mobile_immersive_preview", debugger_h, "editor debugger declares fullscreen forwarding"),
     ("set_mobile_immersive_preview", script_debugger_h, "script debugger declares fullscreen forwarding"),

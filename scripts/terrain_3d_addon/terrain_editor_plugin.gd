@@ -15,8 +15,14 @@ class TerrainInspectorTools extends EditorInspectorPlugin:
 		if plugin == null:
 			return
 		var terrain_plugin := plugin as EditorPlugin
+		terrain_plugin.call("_ensure_panel_alive")
 		var tools = terrain_plugin.get("panel")
 		if tools is Control and is_instance_valid(tools):
+			# Inspector rebuilds can reparent or release custom controls. Detach the
+			# persistent panel from its previous inspector before attaching it again.
+			var old_parent := tools.get_parent()
+			if old_parent:
+				old_parent.remove_child(tools)
 			add_custom_control(tools)
 			terrain_plugin.call_deferred("_update_action_overlay_visibility")
 
@@ -123,7 +129,33 @@ func _exit_tree() -> void:
 			action_overlay.get_parent().remove_child(action_overlay)
 		action_overlay.queue_free()
 
+func _ensure_panel_alive() -> void:
+	if panel != null and is_instance_valid(panel):
+		return
+	_build_panel()
+	_refresh_ui_scale()
+
 func _build_panel() -> void:
+	# Release controls from a previous Inspector rebuild before creating fresh UI.
+	for old_dialog in [import_dialog, export_dialog, surface_texture_dialog]:
+		if old_dialog and is_instance_valid(old_dialog):
+			if old_dialog.get_parent():
+				old_dialog.get_parent().remove_child(old_dialog)
+			old_dialog.queue_free()
+	if cursor_mesh and is_instance_valid(cursor_mesh):
+		if cursor_mesh.get_parent():
+			cursor_mesh.get_parent().remove_child(cursor_mesh)
+		cursor_mesh.queue_free()
+		cursor_mesh = null
+	if terrain_preview and is_instance_valid(terrain_preview):
+		if terrain_preview.get_parent():
+			terrain_preview.get_parent().remove_child(terrain_preview)
+		terrain_preview.queue_free()
+		terrain_preview = null
+	if action_button and is_instance_valid(action_button):
+		if action_button.get_parent():
+			action_button.get_parent().remove_child(action_button)
+		action_button.queue_free()
 	panel = VBoxContainer.new()
 	panel.name = "Terrain3DEditorPanel"
 	panel.custom_minimum_size = Vector2(0, 0)
@@ -462,6 +494,7 @@ func _update_action_overlay_visibility() -> void:
 		action_button.visible = can_show
 
 func _toggle_panel() -> void:
+	_ensure_panel_alive()
 	# Selecting Terreno 3D uses Godot's native Inspector; no separate dock/panel.
 	_update_terrain_preview()
 	# The terrain workspace opens on a real editable 8 × 8-cell base when
@@ -500,13 +533,24 @@ func _create_terrain() -> void:
 	terrain.set("footprint_shape", 0)
 	terrain.set("base_thickness", 2.0)
 	terrain.set("max_height", 100.0)
+	# Build the actual mesh before it enters the scene tree so the first frame
+	# never depends on a deferred Inspector refresh to display the ground.
+	terrain.initialize_grid(9, 9, 1.0)
+	terrain.visible = true
+	if terrain.mesh == null:
+		var fallback_floor := PlaneMesh.new()
+		fallback_floor.size = Vector2(8.0, 8.0)
+		terrain.mesh = fallback_floor
+		var fallback_material := StandardMaterial3D.new()
+		fallback_material.albedo_color = Color(0.28, 0.36, 0.24)
+		terrain.material_override = fallback_material
+		terrain.rebuild_collision()
 	cached_terrain = terrain
 	cached_scene_root = root
 	var undo_redo := EditorInterface.get_editor_undo_redo()
 	undo_redo.create_action("Crear terreno 3D")
 	undo_redo.add_do_method(root, "add_child", terrain)
 	undo_redo.add_do_method(terrain, "set_owner", root)
-	undo_redo.add_do_method(terrain, "initialize_grid", 9, 9, 1.0)
 	undo_redo.add_undo_method(root, "remove_child", terrain)
 	undo_redo.add_do_reference(terrain)
 	undo_redo.commit_action()
@@ -933,7 +977,7 @@ func _focus_terrain() -> void:
 		return
 	var camera := viewport.get_camera_3d()
 	var center: Vector3 = terrain.global_position
-	camera.global_position = center + Vector3(18.0, 18.0, 18.0)
+	camera.global_position = center + Vector3(10.0, 10.0, 10.0)
 	camera.look_at(center, Vector3.UP)
 	_set_status("Vista centrada en el terreno.")
 

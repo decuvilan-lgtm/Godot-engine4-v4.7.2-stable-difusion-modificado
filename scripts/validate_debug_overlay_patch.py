@@ -65,9 +65,14 @@ for token, label in [
 ]:
     require(token in source, label)
 
-require('mobile_immersive_toolbar_button->set_text(TTR("Inm"))' in source, "Inm immersive control is placed in the native workspace toolbar")
-require('mobile_preview_debug_button->set_text(TTR("☀️"))' in source and 'mobile_preview_debug_menu->add_check_item(TTR("Mostrar FPS"), 5)' in source,
-        "sun dropdown in the workspace toolbar exposes all preview debug options")
+require('mobile_immersive_toolbar_button->set_text(TTR("inm"))' in source and 'embedding_hb->add_child(mobile_immersive_toolbar_button)' in source,
+        "preview immersive control is inserted into GameView's preview toolbar")
+require('mobile_preview_debug_button->set_text(TTR("🔅"))' in source and 'embedding_hb->add_child(mobile_preview_debug_button)' in source and 'mobile_preview_debug_menu->add_check_item(TTR("Mostrar FPS"), 5)' in source,
+        "debug dropdown is inserted into the preview toolbar and exposes all debug options")
+require('main_editor_button_hb->add_child(mobile_immersive_toolbar_button)' not in source and 'main_editor_button_hb->add_child(mobile_preview_debug_button)' not in source,
+        "preview controls are not attached to the editor workspace toolbar")
+require('distraction_free->set_text(TTR("inm"))' in source,
+        "native editor immersive control retains its icon and is labelled inm")
 require('EditorRunBar::_immersive_preview_pressed' not in source, "immersive control is not misplaced in the Play/Stop run bar")
 require('message_handlers["set_debug_fps"] = _msg_set_debug_fps;' in source, "FPS toggle is forwarded to the running preview")
 

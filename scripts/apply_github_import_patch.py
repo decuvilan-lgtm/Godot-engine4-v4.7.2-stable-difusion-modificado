@@ -929,10 +929,10 @@ replace_once(EDITOR_NODE_HEADER,
     "class Button;\nclass PopupMenu;\n")
 replace_once(EDITOR_NODE_HEADER,
     "EditorTitleBar *title_bar = nullptr;",
-    "EditorTitleBar *title_bar = nullptr;\n\tCanvasLayer *mobile_immersive_layer = nullptr;\n\tButton *mobile_immersive_exit_button = nullptr;\n\tbool mobile_immersive_preview = false;\n\tbool mobile_previous_title_bar_visible = true;\n\tbool mobile_previous_system_immersive = false;\n\tbool mobile_previous_run_bar_visible = true;\n\tint mobile_previous_window_mode = -1;")
+    "EditorTitleBar *title_bar = nullptr;\n\tCanvasLayer *mobile_immersive_layer = nullptr;\n\tButton *mobile_immersive_exit_button = nullptr;\n\tButton *mobile_immersive_toolbar_button = nullptr;\n\tControl *mobile_preview_toolbar_container = nullptr;\n\tbool mobile_immersive_preview = false;\n\tbool mobile_previous_title_bar_visible = true;\n\tbool mobile_previous_system_immersive = false;\n\tbool mobile_previous_run_bar_visible = true;\n\tbool mobile_previous_preview_toolbar_visible = true;\n\tint mobile_previous_window_mode = -1;")
 replace_once(EDITOR_NODE_HEADER,
     "static Button *get_distraction_free_button() { return singleton->distraction_free; }",
-    "static Button *get_distraction_free_button() { return singleton->distraction_free; }\n\tvoid toggle_mobile_immersive_preview();\n\tvoid exit_mobile_immersive_preview();")
+    "static Button *get_distraction_free_button() { return singleton->distraction_free; }\n\tvoid toggle_mobile_immersive_preview();\n\tvoid exit_mobile_immersive_preview();\n\tvoid set_mobile_preview_toolbar_controls(Control *p_toolbar, Button *p_immersive, Button *p_debug);\n\tvoid open_mobile_preview_debug_menu();")
 replace_once(EDITOR_NODE_HEADER,
     "Button *mobile_immersive_exit_button = nullptr;",
     "Button *mobile_immersive_exit_button = nullptr;\n\tButton *mobile_preview_debug_button = nullptr;\n\tPopupMenu *mobile_preview_debug_menu = nullptr;")
@@ -949,26 +949,14 @@ replace_once(EDITOR_NODE_SOURCE,
     "editor_main_screen->set_button_container(main_editor_button_hb);",
     """editor_main_screen->set_button_container(main_editor_button_hb);
 #ifdef ANDROID_ENABLED
-	Button *mobile_immersive_toolbar_button = memnew(Button);
-	mobile_immersive_toolbar_button->set_text(TTR("Inm"));
-	mobile_immersive_toolbar_button->set_custom_minimum_size(Size2(48, 44) * EDSCALE);
-	mobile_immersive_toolbar_button->set_accessibility_name(TTR("Vista previa inmersiva"));
-	mobile_immersive_toolbar_button->set_tooltip_text(TTR("Ampliar el juego en ejecución a pantalla completa."));
-	mobile_immersive_toolbar_button->connect(SceneStringName(pressed), callable_mp(this, &EditorNode::toggle_mobile_immersive_preview));
-	main_editor_button_hb->add_child(mobile_immersive_toolbar_button);
-	mobile_preview_debug_button = memnew(Button);
-	mobile_preview_debug_button->set_text(TTR("☀️"));
-	mobile_preview_debug_button->set_custom_minimum_size(Size2(48, 44) * EDSCALE);
-	mobile_preview_debug_button->set_accessibility_name(TTR("Opciones de depuración de la vista previa"));
-	mobile_preview_debug_button->set_tooltip_text(TTR("Colisiones, rutas, navegación, evasión y redibujado 2D."));
-	mobile_preview_debug_button->connect(SceneStringName(pressed), callable_mp(this, &EditorNode::_mobile_preview_debug_menu_pressed));
-	main_editor_button_hb->add_child(mobile_preview_debug_button);
+	// The popup is owned by EditorNode; the trigger button is created in GameView.
 	mobile_preview_debug_menu = memnew(PopupMenu);
 	mobile_preview_debug_menu->add_check_item(TTR("Colisiones 2D/3D, formas y raycasts"), 0);
 	mobile_preview_debug_menu->add_check_item(TTR("Rutas Path2D/Path3D"), 1);
 	mobile_preview_debug_menu->add_check_item(TTR("Mallas de navegación"), 2);
 	mobile_preview_debug_menu->add_check_item(TTR("Áreas y velocidades de evasión"), 3);
-	mobile_preview_debug_menu->add_check_item(TTR("Redibujado 2D"), 4);\n\tmobile_preview_debug_menu->add_check_item(TTR("Mostrar FPS"), 5);
+	mobile_preview_debug_menu->add_check_item(TTR("Redibujado 2D"), 4);
+	mobile_preview_debug_menu->add_check_item(TTR("Mostrar FPS"), 5);
 	mobile_preview_debug_menu->connect(SceneStringName(id_pressed), callable_mp(this, &EditorNode::_mobile_preview_debug_item_pressed));
 	add_child(mobile_preview_debug_menu);
 #endif""")
@@ -976,6 +964,9 @@ replace_once(EDITOR_NODE_SOURCE,
 replace_once(EDITOR_NODE_SOURCE,
     "distraction_free->connect(SceneStringName(pressed), callable_mp(this, &EditorNode::_toggle_distraction_free_mode));",
     """distraction_free->connect(SceneStringName(pressed), callable_mp(this, &EditorNode::_toggle_distraction_free_mode));
+#ifdef ANDROID_ENABLED
+	distraction_free->set_text(TTR("inm"));
+#endif
 
 #ifdef ANDROID_ENABLED
 	// A floating return control stays available after the editor title bar is hidden.
@@ -1033,6 +1024,20 @@ void EditorNode::_mobile_preview_debug_item_pressed(int p_id) {
 #endif
 }
 
+void EditorNode::set_mobile_preview_toolbar_controls(Control *p_toolbar, Button *p_immersive, Button *p_debug) {
+#ifdef ANDROID_ENABLED
+	mobile_preview_toolbar_container = p_toolbar;
+	mobile_immersive_toolbar_button = p_immersive;
+	mobile_preview_debug_button = p_debug;
+#endif
+}
+
+void EditorNode::open_mobile_preview_debug_menu() {
+#ifdef ANDROID_ENABLED
+	_mobile_preview_debug_menu_pressed();
+#endif
+}
+
 void EditorNode::toggle_mobile_immersive_preview() {
 #ifdef ANDROID_ENABLED
 	if (!mobile_immersive_preview && (project_run_bar == nullptr || !project_run_bar->is_playing())) {
@@ -1051,6 +1056,10 @@ void EditorNode::toggle_mobile_immersive_preview() {
 	}
 	
 	mobile_previous_run_bar_visible = project_run_bar != nullptr && project_run_bar->is_visible();
+	mobile_previous_preview_toolbar_visible = mobile_preview_toolbar_container != nullptr && mobile_preview_toolbar_container->is_visible();
+	if (mobile_preview_toolbar_container) {
+		mobile_preview_toolbar_container->hide();
+	}
 	if (title_bar) {
 		title_bar->hide();
 	}
@@ -1088,6 +1097,9 @@ void EditorNode::exit_mobile_immersive_preview() {
 	if (project_run_bar) {
 		project_run_bar->set_visible(mobile_previous_run_bar_visible);
 	}
+	if (mobile_preview_toolbar_container) {
+		mobile_preview_toolbar_container->set_visible(mobile_previous_preview_toolbar_visible);
+	}
 	if (mobile_previous_window_mode >= 0) {
 		DisplayServer::get_singleton()->window_set_mode((DisplayServerEnums::WindowMode)mobile_previous_window_mode);
 	}
@@ -1101,8 +1113,33 @@ void EditorNode::exit_mobile_immersive_preview() {
 }
 
 void EditorNode::_toggle_distraction_free_mode() {""")
-# While immersive preview is active, ask the running game through the existing
-# remote-debugger channel to ignore its design aspect ratio, then restore it on exit.
+# Install the controls inside GameView's actual preview toolbar. The full toolbar
+# is hidden during immersive preview; the floating Volver control remains.
+GAME_VIEW_HEADER = ROOT / "editor/run/game_view_plugin.h"
+GAME_VIEW_SOURCE = ROOT / "editor/run/game_view_plugin.cpp"
+if not GAME_VIEW_HEADER.is_file() or not GAME_VIEW_SOURCE.is_file():
+    sys.exit("Godot GameView source not found; cannot place preview controls in the preview toolbar.")
+
+replace_once(GAME_VIEW_SOURCE,
+    "game_size_placeholder->set_h_size_flags(game_size_label->get_h_size_flags());",
+    """game_size_placeholder->set_h_size_flags(game_size_label->get_h_size_flags());
+#ifdef ANDROID_ENABLED
+	Button *mobile_immersive_toolbar_button = memnew(Button);
+	mobile_immersive_toolbar_button->set_text(TTR("inm"));
+	mobile_immersive_toolbar_button->set_custom_minimum_size(Size2(48, 44) * EDSCALE);
+	mobile_immersive_toolbar_button->set_accessibility_name(TTR("Vista previa inmersiva"));
+	mobile_immersive_toolbar_button->set_tooltip_text(TTR("Ampliar solo el juego en ejecución a pantalla completa."));
+	mobile_immersive_toolbar_button->connect(SceneStringName(pressed), callable_mp(EditorNode::get_singleton(), &EditorNode::toggle_mobile_immersive_preview));
+	embedding_hb->add_child(mobile_immersive_toolbar_button);
+	Button *mobile_preview_debug_button = memnew(Button);
+	mobile_preview_debug_button->set_text(TTR("🔅"));
+	mobile_preview_debug_button->set_custom_minimum_size(Size2(48, 44) * EDSCALE);
+	mobile_preview_debug_button->set_accessibility_name(TTR("Opciones de depuración de la vista previa"));
+	mobile_preview_debug_button->set_tooltip_text(TTR("Colisiones y variantes de depuración del juego en ejecución."));
+	mobile_preview_debug_button->connect(SceneStringName(pressed), callable_mp(EditorNode::get_singleton(), &EditorNode::open_mobile_preview_debug_menu));
+	embedding_hb->add_child(mobile_preview_debug_button);
+	EditorNode::get_singleton()->set_mobile_preview_toolbar_controls(main_menu_fc, mobile_immersive_toolbar_button, mobile_preview_debug_button);
+#endif""");
 replace_once(EDITOR_NODE_SOURCE,
     "mobile_previous_window_mode = -1;",
     "mobile_previous_window_mode = -1;\n\tEditorDebuggerNode::get_singleton()->set_mobile_immersive_preview(false);")
