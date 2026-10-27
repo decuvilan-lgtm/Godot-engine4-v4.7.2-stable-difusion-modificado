@@ -64,10 +64,14 @@ for symbol, source, label in [
     ('message_handlers["set_mobile_immersive_preview"]', scene_debugger_cpp, "runtime message is registered"),
     ("_update_native_navigation_control_layout", native_3d_h, "native 3D viewport declares joystick relayout"),
     ('EditorSettings::get_singleton()->connect("settings_changed", callable_mp(this, &Node3DEditorViewport::_update_native_navigation_control_layout))', native_3d_cpp, "native joysticks update immediately when add-on settings change"),
-    ("native_joystick_size", editor_settings_cpp, "native joystick size setting is registered"),
-    ("native_joystick_inset_x", editor_settings_cpp, "native joystick horizontal position setting is registered"),
-    ("native_joystick_inset_y", editor_settings_cpp, "native joystick vertical position setting is registered"),
-    ("position_control->set_custom_minimum_size(Size2(native_size, native_size)", native_3d_cpp, "native left joystick uses configured size"),
+    ("native_joystick_left_size", editor_settings_cpp, "left joystick size setting is registered"),
+    ("native_joystick_right_size", editor_settings_cpp, "right joystick size setting is registered independently"),
+    ("native_joystick_left_inset_x", editor_settings_cpp, "left joystick horizontal position setting is registered"),
+    ("native_joystick_right_inset_x", editor_settings_cpp, "right joystick horizontal position setting is registered independently"),
+    ("native_joystick_left_inset_y", editor_settings_cpp, "left joystick vertical position setting is registered"),
+    ("native_joystick_right_inset_y", editor_settings_cpp, "right joystick vertical position setting is registered independently"),
+    ("position_control->set_custom_minimum_size(Size2(left_size, left_size)", native_3d_cpp, "native left joystick uses its configured size"),
+    ("look_control->set_custom_minimum_size(Size2(right_size, right_size)", native_3d_cpp, "native right joystick uses its configured size"),
     ("_update_native_navigation_control_layout();", native_3d_cpp, "native joysticks relayout at creation and on settings changes"),
     ("play_button = memnew(Button);", runbar_cpp, "native Run control remains present"),
     ("is_playing()", runbar_cpp, "fullscreen toggle is blocked until a game is running"),
@@ -97,9 +101,9 @@ require("PackedScene" in sync and "get_state()" in sync, "scene hierarchy traver
 require("_is_native_joystick_zone(event.position)" in terrain, "terrain pencil does not capture native joystick zones")
 require("event.index == pencil_touch_index and not pencil_touch_cancelled" in terrain, "multitouch cancellation cannot resume the same pencil gesture")
 require("left_zone.has_point(position) or right_zone.has_point(position)" in terrain, "native joystick areas use their exact touch bounds")
-require("action_button.set_offset(SIDE_BOTTOM, -bottom)" in terrain and "var bottom := (joystick_size + inset_y + 20.0) * scale" in terrain, "ACTION tracks the configurable native left joystick layout")
-require("_create_terrain()" in terrain[terrain.index("func _toggle_panel()"):terrain.index("func _create_terrain()")], "terrain editor opens on an editable base")
-require("terrain_tabs.current_tab not in [1, 2]" in terrain, "terrain viewport editing is limited to Sculpt/Paint tabs")
+require("native_joystick_left_size" in terrain and "native_joystick_right_size" in terrain, "terrain pencil reserves independently sized left and right native joystick zones")
+require("native_joystick_left_inset_x" in terrain and "native_joystick_right_inset_x" in terrain and "native_joystick_left_inset_y" in terrain and "native_joystick_right_inset_y" in terrain, "terrain pencil zones follow each joystick's independent offsets")
+require("action_button.set_offset(SIDE_BOTTOM, -bottom)" in terrain and "native_joystick_left_size" in terrain and "native_joystick_left_inset_y" in terrain, "ACTION tracks the independently configurable native left joystick layout")
 
 if FAILURES:
     raise SystemExit(f"{len(FAILURES)} combined patch/regression check(s) failed.")
