@@ -18,6 +18,7 @@ class TerrainInspectorTools extends EditorInspectorPlugin:
 		var tools = terrain_plugin.get("panel")
 		if tools is Control and is_instance_valid(tools):
 			add_custom_control(tools)
+			terrain_plugin.call_deferred("_update_action_overlay_visibility")
 
 
 const TERRAIN_SCRIPT := "res://addons/terrain_3d/terrain_data.gd"
