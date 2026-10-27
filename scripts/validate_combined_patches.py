@@ -38,6 +38,8 @@ native_3d_h = read(GODOT / "editor/scene/3d/node_3d_editor_plugin.h")
 native_3d_cpp = read(GODOT / "editor/scene/3d/node_3d_editor_plugin.cpp")
 editor_settings_cpp = read(GODOT / "editor/settings/editor_settings.cpp")
 
+require("set_distraction_free_mode(true)" not in editor_node_cpp, "preview immersion does not toggle the editor's native distraction-free mode")
+
 # Ensure patchers did not collide and leave duplicate definitions/declarations.
 for symbol, source, label in [
     (r"void EditorNode::toggle_mobile_immersive_preview\(\)", editor_node_cpp, "immersive toggle has exactly one definition"),
@@ -82,7 +84,7 @@ for symbol, source, label in [
     ("project_run_bar->set_visible(mobile_previous_run_bar_visible)", editor_node_cpp, "preview run bar visibility is restored exactly on exit"),
     ("mobile_previous_title_bar_visible = title_bar != nullptr", editor_node_cpp, "previous editor title-bar visibility is saved independently"),
     ("title_bar->set_visible(mobile_previous_title_bar_visible)", editor_node_cpp, "editor title bar returns to its exact previous visibility"),
-    ("set_distraction_free_mode(true)" not in editor_node_cpp, "preview immersion does not toggle the editor's native distraction-free mode"),
+
     ("enable_immersive_mode(mobile_previous_system_immersive)", editor_node_cpp, "Android system-bar state is restored"),
     ("_create_runtime_debug_overlay()", scene_debugger_cpp, "runtime overlay can be initialized after the game window exists"),
     ('popup->add_check_item("Colisiones 2D/3D, formas y raycasts", 0)', scene_debugger_cpp, "collision overlay remains integrated"),
