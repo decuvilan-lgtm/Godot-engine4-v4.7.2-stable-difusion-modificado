@@ -929,7 +929,7 @@ replace_once(EDITOR_NODE_HEADER,
     "class Button;\nclass PopupMenu;\n")
 replace_once(EDITOR_NODE_HEADER,
     "EditorTitleBar *title_bar = nullptr;",
-    "EditorTitleBar *title_bar = nullptr;\n\tCanvasLayer *mobile_immersive_layer = nullptr;\n\tButton *mobile_immersive_exit_button = nullptr;\n\tButton *mobile_immersive_toolbar_button = nullptr;\n\tControl *mobile_preview_toolbar_container = nullptr;\n\tbool mobile_immersive_preview = false;\n\tbool mobile_previous_title_bar_visible = true;\n\tbool mobile_previous_system_immersive = false;\n\tbool mobile_previous_run_bar_visible = true;\n\tbool mobile_previous_preview_toolbar_visible = true;\n\tint mobile_previous_window_mode = -1;")
+    "EditorTitleBar *title_bar = nullptr;\n\tCanvasLayer *mobile_immersive_layer = nullptr;\n\tButton *mobile_immersive_exit_button = nullptr;\n\tButton *mobile_immersive_toolbar_button = nullptr;\n\tControl *mobile_preview_toolbar_container = nullptr;\n\tbool mobile_immersive_preview = false;\n\tbool mobile_previous_title_bar_visible = true;\n\tbool mobile_previous_run_bar_visible = true;\n\tbool mobile_previous_preview_toolbar_visible = true;\n\tint mobile_previous_window_mode = -1;")
 replace_once(EDITOR_NODE_HEADER,
     "static Button *get_distraction_free_button() { return singleton->distraction_free; }",
     "static Button *get_distraction_free_button() { return singleton->distraction_free; }\n\tvoid toggle_mobile_immersive_preview();\n\tvoid exit_mobile_immersive_preview();\n\tvoid set_mobile_preview_toolbar_controls(Control *p_toolbar, Button *p_immersive, Button *p_debug);\n\tvoid open_mobile_preview_debug_menu();")
@@ -1050,11 +1050,6 @@ void EditorNode::toggle_mobile_immersive_preview() {
 	mobile_immersive_preview = true;
 	mobile_previous_window_mode = (int)DisplayServer::get_singleton()->window_get_mode();
 	mobile_previous_title_bar_visible = title_bar != nullptr && title_bar->is_visible();
-	mobile_previous_system_immersive = false;
-	if (OS_Android::get_singleton() != nullptr && OS_Android::get_singleton()->get_godot_java() != nullptr) {
-		mobile_previous_system_immersive = OS_Android::get_singleton()->get_godot_java()->is_in_immersive_mode();
-	}
-	
 	mobile_previous_run_bar_visible = project_run_bar != nullptr && project_run_bar->is_visible();
 	mobile_previous_preview_toolbar_visible = mobile_preview_toolbar_container != nullptr && mobile_preview_toolbar_container->is_visible();
 	if (mobile_preview_toolbar_container) {
@@ -1072,9 +1067,6 @@ void EditorNode::toggle_mobile_immersive_preview() {
 	// Fullscreen makes the editor's game area use the Android display bounds.
 	// The game session is not stopped or relaunched by this UI-only transition.
 	DisplayServer::get_singleton()->window_set_mode(DisplayServerEnums::WINDOW_MODE_FULLSCREEN);
-	if (OS_Android::get_singleton() != nullptr && OS_Android::get_singleton()->get_godot_java() != nullptr) {
-		OS_Android::get_singleton()->get_godot_java()->enable_immersive_mode(true);
-	}
 	EditorDebuggerNode::get_singleton()->set_mobile_immersive_preview(true);
 	if (mobile_immersive_exit_button) {
 		mobile_immersive_exit_button->show();
@@ -1103,12 +1095,8 @@ void EditorNode::exit_mobile_immersive_preview() {
 	if (mobile_previous_window_mode >= 0) {
 		DisplayServer::get_singleton()->window_set_mode((DisplayServerEnums::WindowMode)mobile_previous_window_mode);
 	}
-	if (OS_Android::get_singleton() != nullptr && OS_Android::get_singleton()->get_godot_java() != nullptr) {
-		OS_Android::get_singleton()->get_godot_java()->enable_immersive_mode(mobile_previous_system_immersive);
-	}
-	
-	mobile_previous_system_immersive = false;
 	mobile_previous_window_mode = -1;
+	EditorDebuggerNode::get_singleton()->set_mobile_immersive_preview(false);
 #endif
 }
 
