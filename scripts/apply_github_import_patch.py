@@ -1200,6 +1200,8 @@ replace_once(SCENE_DEBUGGER_SOURCE,
 \tbutton->set_offset(SIDE_RIGHT, -8);
 \tbutton->set_offset(SIDE_BOTTOM, 52);
 \tlayer->add_child(button);
+\t// All preview controls live in GameView's toolbar now; do not draw a duplicate button over the running game.
+\tbutton->hide();
 \tPopupMenu *popup = memnew(PopupMenu);
 \tpopup->set_name("CollisionMenu");
 \tlayer->add_child(popup);

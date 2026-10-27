@@ -22,7 +22,8 @@ require(True, "patcher has valid Python syntax")
 for token, label in [
     ("__GodotPreviewDebugOverlay", "debug overlay is created inside the running game window"),
     ('button->set_text("☀️")', "runtime preview exposes the sun-icon debug dropdown"),
-    ("set_custom_minimum_size(Size2(60, 44))", "runtime COL button has a mobile touch target"),
+    ("set_custom_minimum_size(Size2(60, 44))", "legacy in-game trigger remains available but hidden so controls are not duplicated"),
+    ("button->hide()", "debug controls are not drawn over the running game; they live in the GameView toolbar"),
     ("_create_runtime_debug_overlay();", "runtime overlay is installed by SceneDebugger"),
     ("Retry overlay creation here as well as at debugger initialization", "preview tools are initialized again after the running game window exists"),
     ("The upstream ERR_FAIL_COND_V reports this expected stale UI event as an ERROR.", "stale debugger frame requests after preview stop are handled quietly"),
@@ -38,7 +39,7 @@ for token, label in [
     ('popup->add_check_item("Redibujado 2D", 4)', "menu contains CanvasItem redraw debugging"),
     ('Mostrar FPS (esquina superior derecha)', "optional FPS counter appears in the existing runtime menu"),
     ('fps_label->set_anchors_and_offsets_preset(Control::PRESET_TOP_RIGHT)', "FPS counter is anchored to the top-right corner"),
-    ('fps_label->set_offset(SIDE_TOP, 56)', "FPS counter sits below the COL button"),
+    ('fps_label->set_offset(SIDE_TOP, 56)', "FPS counter has a fixed unobtrusive position in the running game"),
     ('fps_label->set_mouse_filter(Control::MOUSE_FILTER_IGNORE)', "FPS counter does not intercept game input"),
     ('Engine::get_singleton()->get_frames_per_second()', "FPS counter reads live engine FPS"),
     ('fps_timer->set_wait_time(0.25)', "FPS counter refreshes at four updates per second"),
