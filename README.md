@@ -1,6 +1,20 @@
 # Godot 4.7.2 Android Editor — GitHub import (ARM32 + ARM64)
 
 
+## Persistent modified Godot source — two rotating core slots (2026-10-27)
+
+The project now keeps two persistent source snapshots in the GitHub Release tagged `godot-modified-core-slots`. This is separate from the temporary APK workflow artifacts.
+
+- **`godot-core-posterior.tar.gz`** — the newest modified Godot source snapshot after the required validation step.
+- **`godot-core-anterior.tar.gz`** — the source snapshot that was posterior before the latest successful rotation.
+- On the next accepted source update, the old anterior asset is replaced, the previous posterior is copied into anterior, and the new snapshot becomes posterior. The first successful run creates posterior; anterior appears after the next rotation.
+- Each archive contains the patched `godot-source/` tree and `godot-core-manifest.json`, which records the official Godot source commit, custom repository commit, UTC timestamp, and SHA-256 hashes of the project patchers/addons. Build outputs, `.git`, and generated `bin/` files are excluded.
+- Ordinary pushes rotate the slots only after Windows preflight checks pass. Commits marked `[build-apk]` and manual full Android builds rotate only after APK validation succeeds.
+- The APK remains a separate installable output. An APK or a successful compile is not treated as proof that every feature works on the LG K51.
+- Release location: `https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/releases/tag/godot-modified-core-slots`.
+
+
+
 ## GitHub → local project synchronization — incremental implementation (2026-10-24)
 
 - The in-project Sincronizar GitHub action is one-way and supports public repositories only. It resolves the requested branch/tag to a commit, reads the Git tree, and downloads only files that are new or whose upstream content changed. File requests are pinned to the resolved commit so a moving branch cannot mix contents from two revisions.
