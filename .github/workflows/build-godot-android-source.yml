@@ -100,7 +100,7 @@ jobs:
         run: |
           set -euo pipefail
           TAG="godot-modified-core-slots"
-          ROTATION_DIR="$GITHUB_WORKSPACE/.godot-core-rotation"
+          ROTATION_DIR=".godot-core-rotation"
           mkdir -p "$ROTATION_DIR"
 
           python - <<'PY'
