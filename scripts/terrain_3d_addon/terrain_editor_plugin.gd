@@ -435,9 +435,9 @@ func _position_action_button() -> void:
 		return
 	var scale := EditorInterface.get_editor_scale()
 	var settings := EditorInterface.get_editor_settings()
-	var joystick_size := float(settings.get_setting("editors/3d/navigation/native_joystick_size")) if settings and settings.has_setting("editors/3d/navigation/native_joystick_size") else 150.0
-	var inset_x := float(settings.get_setting("editors/3d/navigation/native_joystick_inset_x")) if settings and settings.has_setting("editors/3d/navigation/native_joystick_inset_x") else 0.0
-	var inset_y := float(settings.get_setting("editors/3d/navigation/native_joystick_inset_y")) if settings and settings.has_setting("editors/3d/navigation/native_joystick_inset_y") else 0.0
+	var joystick_size := float(settings.get_setting("editors/3d/navigation/native_joystick_left_size")) if settings and settings.has_setting("editors/3d/navigation/native_joystick_left_size") else 150.0
+	var inset_x := float(settings.get_setting("editors/3d/navigation/native_joystick_left_inset_x")) if settings and settings.has_setting("editors/3d/navigation/native_joystick_left_inset_x") else 0.0
+	var inset_y := float(settings.get_setting("editors/3d/navigation/native_joystick_left_inset_y")) if settings and settings.has_setting("editors/3d/navigation/native_joystick_left_inset_y") else 0.0
 	var left := (12.0 + inset_x) * scale
 	var bottom := (joystick_size + inset_y + 20.0) * scale
 	# Keep ACTION 20 scaled pixels above the native left joystick, even when its
@@ -776,11 +776,14 @@ func _is_native_joystick_zone(position: Vector2) -> bool:
 	var size := viewport.size
 	var editor_scale := EditorInterface.get_editor_scale()
 	var settings := EditorInterface.get_editor_settings()
-	var joystick_size := (float(settings.get_setting("editors/3d/navigation/native_joystick_size")) if settings and settings.has_setting("editors/3d/navigation/native_joystick_size") else 150.0) * editor_scale
-	var inset_x := (float(settings.get_setting("editors/3d/navigation/native_joystick_inset_x")) if settings and settings.has_setting("editors/3d/navigation/native_joystick_inset_x") else 0.0) * editor_scale
-	var inset_y := (float(settings.get_setting("editors/3d/navigation/native_joystick_inset_y")) if settings and settings.has_setting("editors/3d/navigation/native_joystick_inset_y") else 0.0) * editor_scale
-	var left_zone := Rect2(Vector2(inset_x, size.y - joystick_size - inset_y), Vector2(joystick_size, joystick_size))
-	var right_zone := Rect2(Vector2(size.x - joystick_size - inset_x, size.y - joystick_size - inset_y), Vector2(joystick_size, joystick_size))
+	var left_size := (float(settings.get_setting("editors/3d/navigation/native_joystick_left_size")) if settings and settings.has_setting("editors/3d/navigation/native_joystick_left_size") else 150.0) * editor_scale
+	var right_size := (float(settings.get_setting("editors/3d/navigation/native_joystick_right_size")) if settings and settings.has_setting("editors/3d/navigation/native_joystick_right_size") else 150.0) * editor_scale
+	var left_x := (float(settings.get_setting("editors/3d/navigation/native_joystick_left_inset_x")) if settings and settings.has_setting("editors/3d/navigation/native_joystick_left_inset_x") else 0.0) * editor_scale
+	var right_x := (float(settings.get_setting("editors/3d/navigation/native_joystick_right_inset_x")) if settings and settings.has_setting("editors/3d/navigation/native_joystick_right_inset_x") else 0.0) * editor_scale
+	var left_y := (float(settings.get_setting("editors/3d/navigation/native_joystick_left_inset_y")) if settings and settings.has_setting("editors/3d/navigation/native_joystick_left_inset_y") else 0.0) * editor_scale
+	var right_y := (float(settings.get_setting("editors/3d/navigation/native_joystick_right_inset_y")) if settings and settings.has_setting("editors/3d/navigation/native_joystick_right_inset_y") else 0.0) * editor_scale
+	var left_zone := Rect2(Vector2(left_x, size.y - left_size - left_y), Vector2(left_size, left_size))
+	var right_zone := Rect2(Vector2(size.x - right_size - right_x, size.y - right_size - right_y), Vector2(right_size, right_size))
 	return left_zone.has_point(position) or right_zone.has_point(position)
 
 func _update_pencil_state() -> void:
