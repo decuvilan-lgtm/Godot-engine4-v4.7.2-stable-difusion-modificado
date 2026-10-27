@@ -18,6 +18,9 @@ class TerrainInspectorTools extends EditorInspectorPlugin:
 		terrain_plugin.call("_ensure_panel_alive")
 		var tools = terrain_plugin.get("panel")
 		if tools is Control and is_instance_valid(tools):
+			# Inspector custom controls are hidden by default in this persistent panel.
+			# Make it visible whenever the terrain node is selected again.
+			tools.show()
 			# Inspector rebuilds can reparent or release custom controls. Detach the
 			# persistent panel from its previous inspector before attaching it again.
 			var old_parent: Node = tools.get_parent()
@@ -551,6 +554,9 @@ func _create_terrain() -> void:
 	undo_redo.create_action("Crear terreno 3D")
 	undo_redo.add_do_method(root, "add_child", terrain)
 	undo_redo.add_do_method(terrain, "set_owner", root)
+	# initialize_grid() builds collision before the terrain has an owner. Rebuild
+	# after ownership is assigned so the collision body and shape are serialized.
+	undo_redo.add_do_method(terrain, "rebuild_collision")
 	undo_redo.add_undo_method(root, "remove_child", terrain)
 	undo_redo.add_do_reference(terrain)
 	undo_redo.commit_action()

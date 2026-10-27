@@ -44,6 +44,8 @@ for token, label in [
     ("class TerrainInspectorTools extends EditorInspectorPlugin:", "terrain sculpt/paint tools are hosted by the native Inspector"),
     ("add_inspector_plugin(inspector_tools)", "terrain tool controls register through Godot's Inspector plugin API"),
     ("add_custom_control(tools)", "terrain tool tabs are injected into the selected terrain's Inspector"),
+    ("tools.show()", "terrain Inspector controls become visible again whenever the terrain is reselected"),
+    ('undo_redo.add_do_method(terrain, "rebuild_collision")', "terrain collision is rebuilt after scene ownership is assigned so it persists on save/reopen"),
     ("panel.get_parent().remove_child(panel)", "Inspector controls detach cleanly when the plugin exits"),
     ("_update_terrain_preview()", "terrain button opens/selects the terrain without toggling a separate dock"),
     ("EditorInterface.get_selection().add_node(terrain)\n\t\t_focus_terrain()", "opening the terrain workspace selects the terrain node for the native Inspector"),
