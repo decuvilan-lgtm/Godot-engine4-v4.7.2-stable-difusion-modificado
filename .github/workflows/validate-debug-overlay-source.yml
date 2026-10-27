@@ -47,6 +47,8 @@ jobs:
             platform/android/java/editor/src/main/res/values/themes.xml
             editor/run/editor_run_bar.h
             editor/run/editor_run_bar.cpp
+            editor/run/game_view_plugin.h
+            editor/run/game_view_plugin.cpp
             scene/debugger/scene_debugger.h
             scene/debugger/scene_debugger.cpp
             editor/debugger/editor_debugger_node.h

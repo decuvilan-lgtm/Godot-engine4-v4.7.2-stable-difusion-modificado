@@ -1,5 +1,5 @@
 One-time trigger for the corrected ARM32+ARM64 Android editor build.
 
-Scope: preview toolbar placement and independent editor/preview immersive modes; native Inspector terrain recovery; visible 8x8 terrain base.
+Scope: preview toolbar placement in GameView, independent editor/preview immersive modes, terrain Inspector recovery, and visible 8x8 ground mesh.
 
-Source preflight at d680f033baf135b9ee4e75ffe55b823b18ab6825 passed the combined patch checks. This build is required to verify Android C++ compilation; device touch/runtime behavior still requires installation on the target phone.
+The prior source load check found and corrected a GDScript type inference error. Re-run source checks and compile both Android ABIs from the corrected source.
