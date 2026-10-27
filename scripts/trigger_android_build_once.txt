@@ -1,6 +1,5 @@
 One-time trigger for the corrected ARM32+ARM64 Android editor build.
 
-Scope: native Inspector terrain tools and selection-scoped touch controls; Inm and sun debug dropdown in the native 2D/3D workspace toolbar; FPS remote-debugger toggle.
+Scope: preview toolbar placement and independent editor/preview immersive modes; native Inspector terrain recovery; visible 8x8 terrain base.
 
-Final ARM32+ARM64 Android editor build after independent joystick layout and preview/editor immersive-mode regression fixes.
-Preflight passed at commit f8fa61c1a3f88a8bef2bb90a0749fe1ed368535f; source-checks and addon parse/load passed.
+Source preflight at d680f033baf135b9ee4e75ffe55b823b18ab6825 passed the combined patch checks. This build is required to verify Android C++ compilation; device touch/runtime behavior still requires installation on the target phone.
