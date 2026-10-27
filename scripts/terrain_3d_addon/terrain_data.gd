@@ -3,13 +3,13 @@ extends MeshInstance3D
 ## Editable grid terrain for the custom Godot Android editor.
 
 @export_group("Geometría")
-@export_range(9, 257, 1) var grid_width: int = 65:
+@export_range(9, 257, 1) var grid_width: int = 9:
 	set(value):
 		var previous_width := grid_width
 		grid_width = clampi(value, 9, 257)
 		if is_inside_tree() and not _suppress_grid_setters and previous_width != grid_width:
 			_resize_grid_preserving_data(previous_width, grid_depth)
-@export_range(9, 257, 1) var grid_depth: int = 65:
+@export_range(9, 257, 1) var grid_depth: int = 9:
 	set(value):
 		var previous_depth := grid_depth
 		grid_depth = clampi(value, 9, 257)
@@ -428,12 +428,14 @@ func _add_wall(st: SurfaceTool, top_a: Vector3, top_b: Vector3, bottom_y: float,
 	var color_b: Color = vertex_colors[index_b]
 	var weight_a: Color = layer_weights[index_a]
 	var weight_b: Color = layer_weights[index_b]
+	# Wind each wall toward the outside so back-face culling and generated normals
+	# show a solid block instead of inward-facing, crystal-like sides.
 	_add_custom_vertex(st, top_a, color_a, weight_a, uv_a)
-	_add_custom_vertex(st, bottom_a, color_a, weight_a, uv_a)
-	_add_custom_vertex(st, top_b, color_b, weight_b, uv_b)
 	_add_custom_vertex(st, top_b, color_b, weight_b, uv_b)
 	_add_custom_vertex(st, bottom_a, color_a, weight_a, uv_a)
+	_add_custom_vertex(st, top_b, color_b, weight_b, uv_b)
 	_add_custom_vertex(st, bottom_b, color_b, weight_b, uv_b)
+	_add_custom_vertex(st, bottom_a, color_a, weight_a, uv_a)
 
 func rebuild_collision() -> void:
 	_rebuild_collision()
