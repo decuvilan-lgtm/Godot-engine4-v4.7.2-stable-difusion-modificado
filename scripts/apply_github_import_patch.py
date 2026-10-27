@@ -1035,6 +1035,9 @@ void EditorNode::_mobile_preview_debug_item_pressed(int p_id) {
 
 void EditorNode::toggle_mobile_immersive_preview() {
 #ifdef ANDROID_ENABLED
+	if (!mobile_immersive_preview && (project_run_bar == nullptr || !project_run_bar->is_playing())) {
+		return;
+	}
 	if (mobile_immersive_preview) {
 		exit_mobile_immersive_preview();
 		return;
