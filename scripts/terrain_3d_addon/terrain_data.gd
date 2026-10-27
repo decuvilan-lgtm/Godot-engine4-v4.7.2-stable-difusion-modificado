@@ -280,8 +280,9 @@ func _rebuild_mesh() -> void:
 		for i in range(layer_weights.size()):
 			layer_weights[i] = Color(1.0, 0.0, 0.0, 0.0)
 	var st := SurfaceTool.new()
-	st.set_custom_format(0, SurfaceTool.CUSTOM_RGBA8_UNORM)
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	# Configure custom channels after begin(), because begin() clears SurfaceTool state.
+	st.set_custom_format(0, SurfaceTool.CUSTOM_RGBA8_UNORM)
 	var lowest_height := 0.0
 	for height in heights:
 		lowest_height = minf(lowest_height, height)
