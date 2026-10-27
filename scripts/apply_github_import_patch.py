@@ -929,7 +929,7 @@ replace_once(EDITOR_NODE_HEADER,
     "class Button;\nclass PopupMenu;\n")
 replace_once(EDITOR_NODE_HEADER,
     "EditorTitleBar *title_bar = nullptr;",
-    "EditorTitleBar *title_bar = nullptr;\n\tCanvasLayer *mobile_immersive_layer = nullptr;\n\tButton *mobile_immersive_exit_button = nullptr;\n\tbool mobile_immersive_preview = false;\n\tbool mobile_previous_distraction_free = false;\n\tbool mobile_previous_system_immersive = false;\n\tbool mobile_previous_run_bar_visible = true;\n\tint mobile_previous_window_mode = -1;")
+    "EditorTitleBar *title_bar = nullptr;\n\tCanvasLayer *mobile_immersive_layer = nullptr;\n\tButton *mobile_immersive_exit_button = nullptr;\n\tbool mobile_immersive_preview = false;\n\tbool mobile_previous_title_bar_visible = true;\n\tbool mobile_previous_system_immersive = false;\n\tbool mobile_previous_run_bar_visible = true;\n\tint mobile_previous_window_mode = -1;")
 replace_once(EDITOR_NODE_HEADER,
     "static Button *get_distraction_free_button() { return singleton->distraction_free; }",
     "static Button *get_distraction_free_button() { return singleton->distraction_free; }\n\tvoid toggle_mobile_immersive_preview();\n\tvoid exit_mobile_immersive_preview();")
@@ -1044,12 +1044,12 @@ void EditorNode::toggle_mobile_immersive_preview() {
 	}
 	mobile_immersive_preview = true;
 	mobile_previous_window_mode = (int)DisplayServer::get_singleton()->window_get_mode();
-	mobile_previous_distraction_free = is_distraction_free_mode_enabled();
+	mobile_previous_title_bar_visible = title_bar != nullptr && title_bar->is_visible();
 	mobile_previous_system_immersive = false;
 	if (OS_Android::get_singleton() != nullptr && OS_Android::get_singleton()->get_godot_java() != nullptr) {
 		mobile_previous_system_immersive = OS_Android::get_singleton()->get_godot_java()->is_in_immersive_mode();
 	}
-	set_distraction_free_mode(true);
+	
 	mobile_previous_run_bar_visible = project_run_bar != nullptr && project_run_bar->is_visible();
 	if (title_bar) {
 		title_bar->hide();
@@ -1083,7 +1083,7 @@ void EditorNode::exit_mobile_immersive_preview() {
 		mobile_immersive_exit_button->hide();
 	}
 	if (title_bar) {
-		title_bar->show();
+		title_bar->set_visible(mobile_previous_title_bar_visible);
 	}
 	if (project_run_bar) {
 		project_run_bar->set_visible(mobile_previous_run_bar_visible);
@@ -1094,7 +1094,7 @@ void EditorNode::exit_mobile_immersive_preview() {
 	if (OS_Android::get_singleton() != nullptr && OS_Android::get_singleton()->get_godot_java() != nullptr) {
 		OS_Android::get_singleton()->get_godot_java()->enable_immersive_mode(mobile_previous_system_immersive);
 	}
-	set_distraction_free_mode(mobile_previous_distraction_free);
+	
 	mobile_previous_system_immersive = false;
 	mobile_previous_window_mode = -1;
 #endif
@@ -1104,8 +1104,8 @@ void EditorNode::_toggle_distraction_free_mode() {""")
 # While immersive preview is active, ask the running game through the existing
 # remote-debugger channel to ignore its design aspect ratio, then restore it on exit.
 replace_once(EDITOR_NODE_SOURCE,
-    "set_distraction_free_mode(mobile_previous_distraction_free);",
-    "set_distraction_free_mode(mobile_previous_distraction_free);\n\tEditorDebuggerNode::get_singleton()->set_mobile_immersive_preview(false);")
+    "mobile_previous_window_mode = -1;",
+    "mobile_previous_window_mode = -1;\n\tEditorDebuggerNode::get_singleton()->set_mobile_immersive_preview(false);")
 
 replace_once(EDITOR_DEBUGGER_HEADER,
     "void set_debug_avoidance(bool p_enabled);",
