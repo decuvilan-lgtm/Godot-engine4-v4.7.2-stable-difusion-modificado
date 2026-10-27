@@ -1,3 +1,3 @@
-One-time trigger for the requested ARM32+ARM64 Android editor build. Leave unchanged to avoid repeated builds.
+One-time trigger for the corrected ARM32+ARM64 Android editor build.
 
-Retry trigger after correcting the C++ preview overlay member definitions.
+Scope: native Inspector terrain tools; Inm and sun debug dropdown in the 2D/3D workspace toolbar; FPS remote-debugger toggle.
