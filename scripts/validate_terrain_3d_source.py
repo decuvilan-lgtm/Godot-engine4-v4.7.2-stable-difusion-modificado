@@ -76,7 +76,7 @@ for token, label in [
     ("panel.is_inside_tree() and panel.visible", "terrain touch tools are active only while Inspector controls are present"),
     ("selection_changed.connect(_update_action_overlay_visibility)", "ACTION overlay tracks selection changes instead of lingering after deselection"),
     ("set_input_event_forwarding_always_enabled()", "terrain viewport input remains available without selection-dependent forwarding"),
-    ("if (panel == null or not panel.is_inside_tree()) and not stroke_active and not collision_dirty and not action_held:", "terrain editor avoids idle polling when Inspector tools are not attached"),
+    ("if (panel == null or not panel.is_inside_tree() or not panel.visible) and not stroke_active and not collision_dirty and not action_held:", "terrain editor avoids idle polling when Inspector tools are not attached"),
     ("_raycast_terrain", "cursor uses a 3D raycast"),
     ("Elevar", "raise brush"),
     ("Bajar", "lower brush"),
