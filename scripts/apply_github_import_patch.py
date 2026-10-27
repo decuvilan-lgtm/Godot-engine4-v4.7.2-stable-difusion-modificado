@@ -1096,7 +1096,6 @@ void EditorNode::exit_mobile_immersive_preview() {
 		DisplayServer::get_singleton()->window_set_mode((DisplayServerEnums::WindowMode)mobile_previous_window_mode);
 	}
 	mobile_previous_window_mode = -1;
-	EditorDebuggerNode::get_singleton()->set_mobile_immersive_preview(false);
 #endif
 }
 
