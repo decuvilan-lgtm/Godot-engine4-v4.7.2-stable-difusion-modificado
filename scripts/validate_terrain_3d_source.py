@@ -27,6 +27,11 @@ data = DATA.read_text(encoding="utf-8")
 patcher = PATCHER.read_text(encoding="utf-8")
 ast.parse(patcher, filename=str(PATCHER))
 require(True, "terrain embedding patcher has valid Python syntax")
+require("return slider\n\n\t_update_action_overlay_visibility()" not in plugin,
+        "terrain overlay refresh is not stranded after an unconditional return")
+wall_order = ("_add_custom_vertex(st, top_a, color_a, weight_a, uv_a)\n\t_add_custom_vertex(st, top_b, color_b, weight_b, uv_b)\n\t_add_custom_vertex(st, bottom_a, color_a, weight_a, uv_a)")
+require(wall_order in data, "terrain perimeter wall triangles face outward")
+
 for token, label in [
     ("CONTAINER_SPATIAL_EDITOR_MENU", "separate 3D editor toolbar entry"),
     ("_create_terrain_preview", "terrain preview support remains available"),
@@ -95,6 +100,8 @@ for token, label in [
     ('paint_mode_picker.add_item("Pintar color")', "color painting is available in the Paint tab"),
     ('paint_mode_picker.add_item("Pintar capa de material")', "material-layer painting is available in the Paint tab"),
     ("func _make_tab_page", "terrain editor options are separated into scrollable tabs"),
+    ("scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS", "native vertical scrollbar stays visible for direct dragging"),
+    ("scroll.scroll_deadzone = 12", "native touch scrolling responds with a mobile-friendly deadzone"),
     ('_make_tab_page(terrain_tabs, "Inicio")', "dedicated interface has an overview tab"),
     ('_make_tab_page(terrain_tabs, "Esculpir")', "dedicated interface has a sculpting tab"),
     ('_make_tab_page(terrain_tabs, "Pintar")', "dedicated interface has a painting tab"),
@@ -125,6 +132,9 @@ for token, label in [
     ("@export_range(0.1, 100.0, 0.1) var base_thickness: float = 2.0:", "terrain base thickness is exposed as a native Inspector property and rebuilds geometry"),
     ("@export_range(1.0, 1000.0, 1.0) var max_height: float = 100.0:", "terrain height range is exposed as a native Inspector property without destroying sculpted values"),
     ("SurfaceTool", "procedural terrain mesh"),
+    ("@export_range(9, 257, 1) var grid_width: int = 9:", "new terrain defaults to nine vertices across, making an eight-unit footprint"),
+    ("@export_range(9, 257, 1) var grid_depth: int = 9:", "new terrain defaults to nine vertices deep, making an eight-unit footprint"),
+    ("@export_range(0.1, 100.0, 0.1) var base_thickness: float = 2.0:", "terrain base defaults to two units thick"),
     ("_add_bottom_vertex", "terrain mesh includes an underside"),
     ("_add_wall(st", "terrain mesh creates perimeter walls for a solid volume"),
     ("st.index()", "indexed terrain mesh avoids tripled vertex storage on mobile"),
