@@ -639,7 +639,7 @@ func _process(delta: float) -> void:
 	# Do no polling/redraw work while the terrain tools are closed and no edit
 	# stroke/collision rebuild is pending. This avoids stealing input or CPU from
 	# the rest of the mobile editor.
-	if (panel == null or not panel.visible) and not stroke_active and not collision_dirty and not action_held:
+	if (panel == null or not panel.is_inside_tree() or not panel.visible) and not stroke_active and not collision_dirty and not action_held:
 		return
 	cursor_update_timer += delta
 	stroke_timer += delta
@@ -664,7 +664,7 @@ func _process(delta: float) -> void:
 			if terrain_preview.get_parent():
 				terrain_preview.get_parent().remove_child(terrain_preview)
 			root.add_child(terrain_preview)
-		terrain_preview.visible = panel != null and panel.visible and root != null and _get_terrain() == null
+		terrain_preview.visible = panel != null and panel.is_inside_tree() and panel.visible and root != null and _get_terrain() == null
 		if terrain_preview.visible:
 			terrain_preview.global_position = Vector3(0.0, 0.05, 0.0)
 	var terrain = _get_terrain()
@@ -701,7 +701,7 @@ func _process(delta: float) -> void:
 func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 	# Track only gestures forwarded by the 3D viewport. Always pass input on to
 	# Godot so native joysticks and editor controls retain their own behaviour.
-	if panel == null or not panel.visible or terrain_tabs == null or terrain_tabs.current_tab not in [1, 2]:
+	if panel == null or not panel.is_inside_tree() or not panel.visible or terrain_tabs == null or terrain_tabs.current_tab not in [1, 2]:
 		return AFTER_GUI_INPUT_PASS
 	if _get_terrain() == null:
 		return AFTER_GUI_INPUT_PASS
