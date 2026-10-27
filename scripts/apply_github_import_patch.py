@@ -1027,13 +1027,13 @@ void EditorNode::_mobile_preview_debug_item_pressed(int p_id) {
 		case 2: debugger->set_debug_navigation(enabled); break;
 		case 3: debugger->set_debug_avoidance(enabled); break;
 		case 4: debugger->set_debug_canvas_item_redraw(enabled); break;
+		case 5: debugger->set_debug_fps(enabled); break;
 		default: break;
 	}
 #endif
 }
 
-void EditorNode::_toggle_distraction_free_mode() {""")
-    """void EditorNode::toggle_mobile_immersive_preview() {
+void EditorNode::toggle_mobile_immersive_preview() {
 #ifdef ANDROID_ENABLED
 	if (mobile_immersive_preview) {
 		exit_mobile_immersive_preview();
