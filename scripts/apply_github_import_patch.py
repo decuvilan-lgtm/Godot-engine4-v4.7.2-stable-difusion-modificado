@@ -1313,10 +1313,14 @@ for required in (NATIVE_3D_HEADER, NATIVE_3D_SOURCE, EDITOR_SETTINGS_SOURCE):
 
 replace_once(EDITOR_SETTINGS_SOURCE,
     '\t_initial_set("editors/3d/navigation/show_viewport_navigation_gizmo", should_show_viewport_navigation_gizmo);',
-    '\t_initial_set("editors/3d/navigation/show_viewport_navigation_gizmo", should_show_viewport_navigation_gizmo);\n'
-    '\tEDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "editors/3d/navigation/native_joystick_size", 150, "80,240,1")\n'
-    '\tEDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "editors/3d/navigation/native_joystick_inset_x", 0, "0,120,1")\n'
-    '\tEDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "editors/3d/navigation/native_joystick_inset_y", 0, "0,300,1")')
+    '\t_initial_set("editors/3d/navigation/show_viewport_navigation_gizmo", should_show_viewport_navigation_gizmo);\\n'
+    '\tEDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "editors/3d/navigation/native_joystick_left_size", 150, "80,240,1")\\n'
+    '\tEDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "editors/3d/navigation/native_joystick_right_size", 150, "80,240,1")\\n'
+    '\tEDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "editors/3d/navigation/native_joystick_left_inset_x", 0, "0,240,1")\\n'
+    '\tEDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "editors/3d/navigation/native_joystick_right_inset_x", 0, "0,240,1")\\n'
+    '\tEDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "editors/3d/navigation/native_joystick_left_inset_y", 0, "0,300,1")\\n'
+    '\tEDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "editors/3d/navigation/native_joystick_right_inset_y", 0, "0,300,1")')
+
 replace_once(NATIVE_3D_HEADER,
     '\tvoid _update_navigation_controls_visibility();',
     '\tvoid _update_navigation_controls_visibility();\n\tvoid _update_native_navigation_control_layout();')
@@ -1326,24 +1330,28 @@ replace_once(NATIVE_3D_SOURCE,
 \tif (position_control == nullptr || look_control == nullptr) {
 \t\treturn;
 \t}
-\tconst int native_size = CLAMP(EDITOR_GET("editors/3d/navigation/native_joystick_size").operator int(), 80, 240);
-\tconst int inset_x = CLAMP(EDITOR_GET("editors/3d/navigation/native_joystick_inset_x").operator int(), 0, 120);
-\tconst int inset_y = CLAMP(EDITOR_GET("editors/3d/navigation/native_joystick_inset_y").operator int(), 0, 300);
-\tconst real_t scaled_size = native_size * EDSCALE;
-\tconst real_t scaled_x = inset_x * EDSCALE;
-\tconst real_t scaled_y = inset_y * EDSCALE;
-
-\tposition_control->set_custom_minimum_size(Size2(native_size, native_size) * EDSCALE);
-\tposition_control->set_anchor_and_offset(SIDE_LEFT, ANCHOR_BEGIN, scaled_x);
-\tposition_control->set_anchor_and_offset(SIDE_TOP, ANCHOR_END, -scaled_size - scaled_y);
-\tposition_control->set_anchor_and_offset(SIDE_RIGHT, ANCHOR_BEGIN, scaled_size + scaled_x);
-\tposition_control->set_anchor_and_offset(SIDE_BOTTOM, ANCHOR_END, -scaled_y);
-
-\tlook_control->set_custom_minimum_size(Size2(native_size, native_size) * EDSCALE);
-\tlook_control->set_anchor_and_offset(SIDE_LEFT, ANCHOR_END, -scaled_size - scaled_x);
-\tlook_control->set_anchor_and_offset(SIDE_TOP, ANCHOR_END, -scaled_size - scaled_y);
-\tlook_control->set_anchor_and_offset(SIDE_RIGHT, ANCHOR_END, -scaled_x);
-\tlook_control->set_anchor_and_offset(SIDE_BOTTOM, ANCHOR_END, -scaled_y);
+\tconst int left_size = CLAMP(EDITOR_GET("editors/3d/navigation/native_joystick_left_size").operator int(), 80, 240);
+	const int right_size = CLAMP(EDITOR_GET("editors/3d/navigation/native_joystick_right_size").operator int(), 80, 240);
+	const int left_x = CLAMP(EDITOR_GET("editors/3d/navigation/native_joystick_left_inset_x").operator int(), 0, 240);
+	const int right_x = CLAMP(EDITOR_GET("editors/3d/navigation/native_joystick_right_inset_x").operator int(), 0, 240);
+	const int left_y = CLAMP(EDITOR_GET("editors/3d/navigation/native_joystick_left_inset_y").operator int(), 0, 300);
+	const int right_y = CLAMP(EDITOR_GET("editors/3d/navigation/native_joystick_right_inset_y").operator int(), 0, 300);
+	const real_t scaled_left_size = left_size * EDSCALE;
+	const real_t scaled_right_size = right_size * EDSCALE;
+	const real_t scaled_left_x = left_x * EDSCALE;
+	const real_t scaled_right_x = right_x * EDSCALE;
+	const real_t scaled_left_y = left_y * EDSCALE;
+	const real_t scaled_right_y = right_y * EDSCALE;
+	position_control->set_custom_minimum_size(Size2(left_size, left_size) * EDSCALE);
+	position_control->set_anchor_and_offset(SIDE_LEFT, ANCHOR_BEGIN, scaled_left_x);
+	position_control->set_anchor_and_offset(SIDE_TOP, ANCHOR_END, -scaled_left_size - scaled_left_y);
+	position_control->set_anchor_and_offset(SIDE_RIGHT, ANCHOR_BEGIN, scaled_left_size + scaled_left_x);
+	position_control->set_anchor_and_offset(SIDE_BOTTOM, ANCHOR_END, -scaled_left_y);
+	look_control->set_custom_minimum_size(Size2(right_size, right_size) * EDSCALE);
+	look_control->set_anchor_and_offset(SIDE_LEFT, ANCHOR_END, -scaled_right_size - scaled_right_x);
+	look_control->set_anchor_and_offset(SIDE_TOP, ANCHOR_END, -scaled_right_size - scaled_right_y);
+	look_control->set_anchor_and_offset(SIDE_RIGHT, ANCHOR_END, -scaled_right_x);
+	look_control->set_anchor_and_offset(SIDE_BOTTOM, ANCHOR_END, -scaled_right_y);
 }
 
 void Node3DEditorViewport::_update_navigation_controls_visibility() {""")
