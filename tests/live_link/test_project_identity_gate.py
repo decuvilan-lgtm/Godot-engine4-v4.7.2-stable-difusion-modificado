@@ -57,6 +57,13 @@ class ProjectIdentityGateTests(unittest.TestCase):
         self.assertIn("if _connected or _connecting:", reveal)
         self.assertIn("Desconecta primero", reveal)
 
+    def test_receiver_enforces_android_policy_envelope(self):
+        apply = SOURCE.split("func _apply_project_operation(data: Dictionary) -> void:", 1)[1].split(
+            "\\nfunc ", 1
+        )[0]
+        self.assertIn('data.get("target_platform", "")) != "android_editor"', apply)
+        self.assertIn('data.get("policy_version", -1)) != 1', apply)
+
     def test_receiver_rejects_unsafe_paths_and_protected_directories(self):
         safe = SOURCE.split("func _safe_relative_path(value: Variant) -> bool:", 1)[1].split(
             "\nfunc ", 1
