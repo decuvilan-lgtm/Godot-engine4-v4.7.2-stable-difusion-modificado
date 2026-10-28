@@ -108,3 +108,5 @@ No marcar una etapa como completada sin evidencia reproducible. No fusionar el P
 23. Estos resultados validan el generador, las rutas de instalación, la sintaxis/carga GDScript y el relay simulado en CI. **No validan** la compilación del motor C++, una conexión WSS desplegada, control de la interfaz nativa real ni el comportamiento en Android/LG K51. No se creó APK.
 
 24. Revisión adicional del flujo de conexión: el nombre de sala predeterminado `godot-room-1` incluía guiones, pero el addon lo validaba con `is_valid_identifier()`, que podía rechazarlo antes de conectar. Alineada la validación del addon con el patrón permitido por el relay (`[A-Za-z0-9_.:-]{1,80}`). La CI se ejecutará de nuevo para validar esta corrección junto con los checks existentes.
+
+25. Confirmada CI `40755946850`: **success** tras la corrección de validación de sala. La versión actual pasó los checks del generador/integración, las seis pruebas de relay y la carga de los tres addons en Godot 4.7.2.
