@@ -186,6 +186,9 @@ require(re.search(r'(?m)^\s*mode_picker\.add_item\("Pintar color"\)', plugin) is
 
 # Regression guards for the two runtime errors found on the Android device.
 require("settings.save()" not in plugin, "terrain editor does not call the nonexistent EditorSettings.save() method")
+require("not editor_selection.selection_changed.is_connected(_update_action_overlay_visibility)" in plugin, "terrain selection signal is guarded against duplicate connections")
+require("editor_selection.selection_changed.disconnect(_update_action_overlay_visibility)" in plugin, "terrain selection signal is disconnected when the addon exits the tree")
+require("editor_settings.settings_changed.disconnect(_refresh_ui_scale)" in plugin, "editor settings signal is disconnected when the addon exits the tree")
 surface_begin = data.find("st.begin(Mesh.PRIMITIVE_TRIANGLES)")
 surface_custom = data.find("st.set_custom_format(0, SurfaceTool.CUSTOM_RGBA8_UNORM)")
 require(surface_begin >= 0 and surface_custom > surface_begin, "SurfaceTool begins the surface before configuring its custom vertex channel")
