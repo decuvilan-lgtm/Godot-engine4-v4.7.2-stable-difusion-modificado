@@ -18,6 +18,7 @@ var _url: LineEdit
 var _token: LineEdit
 var _role: OptionButton
 var _connected := false
+var _connecting := false
 var _join: Dictionary = {}
 var _last_frame := 0
 var _remote_size := Vector2i(720, 1280)
@@ -128,16 +129,24 @@ func _connect_clicked() -> void:
     if _ws.get_ready_state() != WebSocketPeer.STATE_CLOSED:
         _ws.close()
     _ws = WebSocketPeer.new()
+    _connected = false
+    _connecting = true
+    _join = {"type":"join", "room":room, "role":str(ProjectSettings.get_setting(SETTING_ROLE)), "token":token}
     var err := _ws.connect_to_url(url)
     if err != OK:
+        _connecting = false
+        _join.clear()
         _status.text = "Error de conexión: " + error_string(err)
         return
-    _join = {"type":"join", "room":room, "role":str(ProjectSettings.get_setting(SETTING_ROLE)), "token":token}
-    _connected = false
     _status.text = "Conectando…"
 
 func _process(_delta: float) -> void:
     if _ws.get_ready_state() == WebSocketPeer.STATE_CLOSED:
+        if _connecting or _connected:
+            _connecting = false
+            _connected = false
+            _join.clear()
+            _status.text = "Conexión cerrada o rechazada por el relay. Revisa URL, token y sala; pulsa Conectar para reintentar."
         return
     _ws.poll()
     if _ws.get_ready_state() == WebSocketPeer.STATE_OPEN and not _join.is_empty():
@@ -156,6 +165,7 @@ func _process(_delta: float) -> void:
 func _message(data: Dictionary) -> void:
     match str(data.get("type", "")):
         "joined":
+            _connecting = false
             _connected = true
             _status.text = "Conectado a sala " + str(data.get("room", ""))
         "peer_joined":
