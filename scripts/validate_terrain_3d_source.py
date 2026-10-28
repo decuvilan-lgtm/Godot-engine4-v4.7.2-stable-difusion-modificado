@@ -186,6 +186,8 @@ require(re.search(r'(?m)^\s*mode_picker\.add_item\("Pintar color"\)', plugin) is
 
 # Regression guards for the two runtime errors found on the Android device.
 require("settings.save()" not in plugin, "terrain editor does not call the nonexistent EditorSettings.save() method")
+require("not panel.is_queued_for_deletion()" in plugin, "terrain Inspector never reuses a panel already queued for deletion")
+require("panel = null\n\t_build_panel()" in plugin, "terrain Inspector rebuilds stale panel references before reattaching controls")
 require("not editor_selection.selection_changed.is_connected(_update_action_overlay_visibility)" in plugin, "terrain selection signal is guarded against duplicate connections")
 require("editor_selection.selection_changed.disconnect(_update_action_overlay_visibility)" in plugin, "terrain selection signal is disconnected when the addon exits the tree")
 require("editor_settings.settings_changed.disconnect(_refresh_ui_scale)" in plugin, "editor settings signal is disconnected when the addon exits the tree")
