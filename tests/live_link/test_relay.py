@@ -10,7 +10,7 @@ import os
 import pathlib
 import unittest
 
-from aiohttp import WSMsgType
+from aiohttp import WSMsgType, web
 from aiohttp.test_utils import TestClient, TestServer
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -26,7 +26,10 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         relay.ROOMS.clear()
         relay.ROLES.clear()
         relay.LAST.clear()
-        self.client = TestClient(TestServer(relay.app))
+        test_app = web.Application(client_max_size=relay.MAX_MESSAGE)
+        test_app.router.add_get("/health", relay.health)
+        test_app.router.add_get("/ws", relay.websocket)
+        self.client = TestClient(TestServer(test_app))
         await self.client.start_server()
 
     async def asyncTearDown(self):
