@@ -107,7 +107,7 @@ class ProjectIdentityGateTests(unittest.TestCase):
         )[0]
         self.assertIn("_apply_validated_operation(data, operation, relative_path, absolute_path)", approve)
         reject = SOURCE.split("func _reject_pending_project_operation() -> void:", 1)[1].split(
-            "\\nfunc ", 1
+            "\nfunc ", 1
         )[0]
         self.assertIn('"status":"rejected"', reject)
 
