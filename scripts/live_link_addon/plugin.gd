@@ -229,7 +229,8 @@ func _project_absolute_path(relative_path: String) -> String:
     for part in relative_path.split("/", false):
         current = current.path_join(part)
         if FileAccess.file_exists(current) or DirAccess.dir_exists_absolute(current):
-            if DirAccess.is_link_absolute(current):
+            var parent_dir := DirAccess.open(current.get_base_dir())
+            if parent_dir != null and parent_dir.is_link(current.get_file()):
                 return ""
     return absolute
 
