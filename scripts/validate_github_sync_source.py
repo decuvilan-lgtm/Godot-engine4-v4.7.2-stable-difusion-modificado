@@ -45,7 +45,7 @@ for token, label in [
     ("func _cleanup_staging()", "removes temporary staged changed files"),
     ("preview_dialog.canceled.connect(_on_preview_dismissed)", "cleans staged files when the user cancels preview"),
     ("preview_dialog.close_requested.connect(_on_preview_dismissed)", "cleans staged files when the preview window is closed"),
-    ("_cleanup_staging()\n\tif request and is_instance_valid(request):", "cleans staging when the plugin unloads"),
+    ("func _exit_tree() -> void:", "cleans temporary staging and network requests when the plugin unloads"),
     ("Sincronización completada. El proyecto coincide con GitHub.", "reports successful sync against the authoritative GitHub state"),
     ("_save_manifest()", "persists baseline for later deletions"),
     ('str(parsed.get("repository", "")) == active_repo', "only same-repository baseline permits deletion"),
