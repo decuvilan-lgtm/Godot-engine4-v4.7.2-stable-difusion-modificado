@@ -29,6 +29,9 @@ def safe_relative_path(path):
 def valid_project_operation(data):
     """Validate the transport envelope; the target must still validate before writing."""
     project_id, op_id, operation, path = (data.get(k) for k in ("project_id", "operation_id", "operation", "path"))
+    # Fail closed: every agent operation must explicitly target the modified Android editor.
+    if data.get("target_platform") != "android_editor" or data.get("policy_version") != 1:
+        return False
     if not isinstance(project_id, str) or not PROJECT_ID_RE.fullmatch(project_id): return False
     if not isinstance(op_id, str) or not OPERATION_ID_RE.fullmatch(op_id): return False
     if operation not in ("create", "update", "rename", "delete"): return False
