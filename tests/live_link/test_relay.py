@@ -182,6 +182,8 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
     def test_project_operation_validation_rejects_unsafe_paths(self):
         base = {
             "type": "project_operation",
+            "target_platform": "android_editor",
+            "policy_version": 1,
             "project_id": "12345678-1234-1234-1234-123456789abc",
             "operation_id": "op-1",
             "operation": "create",
@@ -191,6 +193,9 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
             "base_sha256": ""
         }
         self.assertTrue(relay.valid_project_operation(base))
+        self.assertFalse(relay.valid_project_operation(dict(base, target_platform="desktop_editor")))
+        self.assertFalse(relay.valid_project_operation({k: v for k, v in base.items() if k != "target_platform"}))
+        self.assertFalse(relay.valid_project_operation(dict(base, policy_version=2)))
         for path in ("../project.godot", "/tmp/escape", "C:/outside", "Scenes\\\\escape.gd", ".git/config", ".godot/imported/x"):
             candidate = dict(base, path=path)
             self.assertFalse(relay.valid_project_operation(candidate), path)
@@ -206,6 +211,8 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await target.receive_json(timeout=2))["type"], "peer_joined")
         operation = {
             "type": "project_operation",
+            "target_platform": "android_editor",
+            "policy_version": 1,
             "project_id": "12345678-1234-1234-1234-123456789abc",
             "operation_id": "op-2",
             "operation": "create",
