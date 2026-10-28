@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""Authenticated relay for optional Godot Live Link. Deploy behind TLS/WSS."""
+import json, os, re, secrets, time
+from aiohttp import WSMsgType, web
+
+TOKEN = os.environ.get("LIVE_LINK_TOKEN", "")
+ROOMS: dict[str, set[web.WebSocketResponse]] = {}
+ROLES: dict[web.WebSocketResponse, str] = {}
+LAST: dict[web.WebSocketResponse, dict[str, float]] = {}
+MAX_MESSAGE = 8 * 1024 * 1024
+LIMITS = {"screen_frame": 3.0, "remote_input": 120.0}
+
+async def health(_request):
+    return web.json_response({"service":"godot-live-link-relay", "status":"ok"})
+
+async def websocket(request):
+    ws = web.WebSocketResponse(max_msg_size=MAX_MESSAGE, heartbeat=25, compress=False)
+    await ws.prepare(request)
+    room = role = None
+    try:
+        first = await ws.receive(timeout=15)
+        if first.type != WSMsgType.TEXT:
+            await ws.close(message=b"join required"); return ws
+        try: hello = json.loads(first.data)
+        except Exception:
+            await ws.close(message=b"invalid json"); return ws
+        if not isinstance(hello, dict) or hello.get("type") != "join" or hello.get("role") not in ("controller", "target"):
+            await ws.close(message=b"invalid join"); return ws
+        requested = hello.get("room")
+        if not isinstance(requested, str) or not re.fullmatch(r"[A-Za-z0-9_.:-]{1,80}", requested):
+            await ws.close(message=b"invalid room"); return ws
+        if not TOKEN or not secrets.compare_digest(str(hello.get("token", "")), TOKEN):
+            await ws.close(message=b"unauthorized"); return ws
+        room, role = requested, hello["role"]
+        peers = ROOMS.setdefault(room, set())
+        if any(ROLES.get(p) == role and not p.closed for p in peers):
+            await ws.close(message=b"role already connected"); return ws
+        peers.add(ws); ROLES[ws] = role; LAST[ws] = {}
+        await ws.send_json({"type":"joined", "room":room, "role":role, "peers":len(peers)})
+        for peer in tuple(peers):
+            if peer is not ws and not peer.closed: await peer.send_json({"type":"peer_joined", "role":role})
+        async for msg in ws:
+            if msg.type != WSMsgType.TEXT: continue
+            if len(msg.data.encode("utf-8")) > MAX_MESSAGE: await ws.close(message=b"message too large"); break
+            try: data = json.loads(msg.data)
+            except Exception: continue
+            if not isinstance(data, dict): continue
+            kind = data.get("type")
+            if kind not in LIMITS: continue
+            if kind == "screen_frame":
+                if role != "target": continue
+                if not isinstance(data.get("data"), str) or len(data["data"]) > 6 * 1024 * 1024: continue
+                w, h = data.get("width"), data.get("height")
+                if type(w) is not int or type(h) is not int or not (1 <= w <= 1280 and 1 <= h <= 1920): continue
+            else:
+                if role != "controller": continue
+                ev = data.get("event")
+                if not isinstance(ev, dict) or ev.get("kind") not in ("mouse_motion", "mouse_button", "key"): continue
+                if ev.get("kind") in ("mouse_motion", "mouse_button"):
+                    try: x, y = float(ev.get("x", -1)), float(ev.get("y", -1))
+                    except (TypeError, ValueError): continue
+                    if not (0 <= x <= 1 and 0 <= y <= 1): continue
+            now = time.monotonic(); previous = LAST[ws].get(kind, 0.0)
+            if previous and now - previous < 1.0 / LIMITS[kind]: continue
+            LAST[ws][kind] = now; data["from_role"] = role
+            encoded = json.dumps(data, separators=(",", ":"))
+            for peer in tuple(peers):
+                if peer is ws or peer.closed: continue
+                if kind == "screen_frame" and ROLES.get(peer) == "controller": await peer.send_str(encoded)
+                elif kind == "remote_input" and ROLES.get(peer) == "target": await peer.send_str(encoded)
+    except (TimeoutError, ConnectionResetError): pass
+    finally:
+        ROLES.pop(ws, None); LAST.pop(ws, None)
+        if room and ws in ROOMS.get(room, set()):
+            peers = ROOMS[room]; peers.discard(ws)
+            for peer in tuple(peers):
+                if not peer.closed:
+                    try: await peer.send_json({"type":"peer_left", "role":role})
+                    except Exception: pass
+            if not peers: ROOMS.pop(room, None)
+    return ws
+
+app = web.Application(client_max_size=MAX_MESSAGE)
+app.router.add_get("/health", health)
+app.router.add_get("/ws", websocket)
+if __name__ == "__main__": web.run_app(app, host=os.environ.get("HOST", "0.0.0.0"), port=int(os.environ.get("PORT", "8765")))
