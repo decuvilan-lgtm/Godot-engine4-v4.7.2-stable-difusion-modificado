@@ -75,6 +75,11 @@ Se modificó `scripts/apply_github_sync_patch.py` para que el generador incruste
 10. La ruta para proyectos existentes conserva los archivos de addon que ya existen; solo escribe los archivos de Live Link ausentes. La activación automática sigue el patrón previo de GitHub Sync/Terreno 3D.
 11. **Pendiente de validar:** no se ha ejecutado este generador con `godot-source`, no se ha compilado el C++ modificado y no se han ejecutado las pruebas del relay de esta rama. No hay APK ni prueba Android.
 
+### 2026-10-28 — Comprobación de regresión separada
+
+12. Ejecutadas en `/tmp/godot-live-link-prototype` las pruebas `python3 tests/test_relay.py` y `GODOT_BIN=/tmp/godotlive/bin/Godot_v4.7.2-stable_linux.x86_64 python3 tests/test_godot_stream.py`: ambas terminaron con PASS; la segunda recibió un frame JPEG de 720×576 por el relay autenticado.
+13. **Estas pruebas pertenecen al prototipo Linux separado, no a la rama GitHub `feature/live-editor-link`**, por lo que no validan el código recién integrado al generador ni sustituyen pruebas Android. Las cinco pruebas añadidas a `tests/live_link/test_relay.py` en la rama siguen pendientes de ejecución.
+
 ## Próximos pasos técnicos
 
 1. Integrar Live Link en el generador de addons del motor con anclas comprobadas, sin cambiar el comportamiento de GitHub Sync ni Terreno 3D.
