@@ -30,3 +30,33 @@ jobs:
         run: python -m py_compile relay/server.py tests/live_link/test_relay.py
       - name: Run relay and project-operation tests
         run: python -m unittest discover -s tests/live_link -v
+      - name: Parse Live Link addon with Godot 4.7.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP="$RUNNER_TEMP/godot.zip"
+          DIR="$RUNNER_TEMP/godot"
+          PROJECT="$RUNNER_TEMP/live-link-project"
+          curl --fail --location --retry 3 --output "$ZIP" "https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip"
+          mkdir -p "$DIR" "$PROJECT/addons"
+          unzip -q "$ZIP" -d "$DIR"
+          BIN="$(find "$DIR" -maxdepth 1 -type f -name 'Godot_*_linux.x86_64' -print -quit)"
+          test -n "$BIN"
+          chmod +x "$BIN"
+          cp -R scripts/live_link_addon "$PROJECT/addons/live_link"
+          cat > "$PROJECT/project.godot" <<'EOF'
+          config_version=5
+          [application]
+          config/name="Live Link Receiver Validation"
+          [editor_plugins]
+          enabled=PackedStringArray("res://addons/live_link/plugin.cfg")
+          EOF
+          set +e
+          timeout 75 "$BIN" --headless --editor --path "$PROJECT" --quit --verbose 2>&1 | tee "$RUNNER_TEMP/live-link-godot.log"
+          STATUS=${PIPESTATUS[0]}
+          set -e
+          if [ "$STATUS" -ne 0 ]; then exit "$STATUS"; fi
+          if grep -E 'SCRIPT ERROR:|Parse Error:|Failed to load script' "$RUNNER_TEMP/live-link-godot.log"; then
+            echo "Godot reported a Live Link parser/load error."
+            exit 1
+          fi
