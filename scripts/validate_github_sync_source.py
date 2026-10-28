@@ -46,7 +46,7 @@ for token, label in [
     ("preview_dialog.canceled.connect(_on_preview_dismissed)", "cleans staged files when the user cancels preview"),
     ("preview_dialog.close_requested.connect(_on_preview_dismissed)", "cleans staged files when the preview window is closed"),
     ("_cleanup_staging()\n\tif request and is_instance_valid(request):", "cleans staging when the plugin unloads"),
-    ("Se aplicaron los cambios de GitHub directamente", "applies GitHub files directly as the source of truth"),
+    ("Los cambios de GitHub se aplicaron.", "applies GitHub files directly as the source of truth"),
     ("Los respaldos previos se conservan en:", "preserves the backup location if applying a later operation fails"),
     ("se guardan fuera del proyecto", "explains that replaced/deleted local files are backed up outside the project"),
     ("_save_manifest()", "persists baseline for later deletions"),
