@@ -19,7 +19,7 @@ def valid_project_operation(data):
     if not isinstance(project_id, str) or not PROJECT_ID_RE.fullmatch(project_id): return False
     if not isinstance(op_id, str) or not OPERATION_ID_RE.fullmatch(op_id): return False
     if operation not in ("create", "update", "rename", "delete"): return False
-    if not isinstance(path, str) or not path or len(path) > 1024 or "\\\\" in path or path.startswith("/") or re.match(r"^[A-Za-z]:", path): return False
+    if not isinstance(path, str) or not path or len(path) > 1024 or chr(92) in path or path.startswith("/") or re.match(r"^[A-Za-z]:", path): return False
     parts = path.split("/")
     if any(part in ("", ".", "..") for part in parts): return False
     if any(part.lower() in (".git", ".godot") for part in parts): return False
@@ -32,7 +32,7 @@ def valid_project_operation(data):
         if not isinstance(base, str) or (base and not re.fullmatch(r"[a-fA-F0-9]{64}", base)): return False
     if operation == "rename":
         dest = data.get("destination_path")
-        if not isinstance(dest, str) or not dest or len(dest) > 1024 or dest.startswith("/") or "\\\\" in dest: return False
+        if not isinstance(dest, str) or not dest or len(dest) > 1024 or chr(92) in dest or dest.startswith("/"): return False
         if any(part in ("", ".", "..") for part in dest.split("/")): return False
     return True
 
