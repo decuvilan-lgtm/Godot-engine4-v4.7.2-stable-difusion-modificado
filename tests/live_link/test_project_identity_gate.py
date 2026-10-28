@@ -57,6 +57,26 @@ class ProjectIdentityGateTests(unittest.TestCase):
         self.assertIn("if _connected or _connecting:", reveal)
         self.assertIn("Desconecta primero", reveal)
 
+    def test_relay_url_validation_checks_private_ipv4_octets_and_ports(self):
+        helper = SOURCE.split("func _is_allowed_relay_url(url: String) -> bool:", 1)[1].split(
+            "\\nfunc ", 1
+        )[0]
+        self.assertIn("_is_private_ipv4(lan_match.get_string(1))", helper)
+        self.assertIn("_valid_port(lan_match, 3)", helper)
+        self.assertIn("return port >= 1 and port <= 65535", SOURCE)
+        self.assertIn("octet > 255", SOURCE)
+        self.assertIn("octets[1] >= 16 and octets[1] <= 31", SOURCE)
+        self.assertIn('if not _is_allowed_relay_url(url):', SOURCE)
+
+    def test_plain_ws_is_limited_to_loopback_or_private_lan(self):
+        helper = SOURCE.split("func _is_allowed_relay_url(url: String) -> bool:", 1)[1].split(
+            "\\nfunc ", 1
+        )[0]
+        self.assertIn('local_regex.compile("^ws://', helper)
+        self.assertIn('lan_regex.compile("^ws://', helper)
+        self.assertIn('secure_regex.compile("^wss://', helper)
+        self.assertNotIn('url.begins_with("wss://") or is_local_ws or is_lan_ws', SOURCE)
+
     def test_receiver_enforces_android_policy_envelope(self):
         apply = SOURCE.split("func _apply_project_operation(data: Dictionary) -> void:", 1)[1].split(
             "\nfunc ", 1
