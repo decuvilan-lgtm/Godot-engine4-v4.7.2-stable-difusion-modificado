@@ -182,6 +182,46 @@ func _enable_connection() -> void:
     _status.text = "Conexión habilitada, pero todavía desconectada. Pulsa «Activar conexión» cuando estés listo."
 
 
+
+func _valid_port(match: RegExMatch, port_group: int) -> bool:
+    var port_text := match.get_string(port_group)
+    if port_text.is_empty():
+        return true
+    var port := int(port_text)
+    return port >= 1 and port <= 65535
+
+
+func _is_private_ipv4(host: String) -> bool:
+    var parts := host.split(".")
+    if parts.size() != 4:
+        return false
+    var octets: Array[int] = []
+    for part in parts:
+        if part.is_empty() or not part.is_valid_int() or (part.length() > 1 and part.begins_with("0")):
+            return false
+        var octet := int(part)
+        if octet < 0 or octet > 255:
+            return false
+        octets.append(octet)
+    return octets[0] == 10 or (octets[0] == 192 and octets[1] == 168) or (octets[0] == 172 and octets[1] >= 16 and octets[1] <= 31)
+
+
+func _is_allowed_relay_url(url: String) -> bool:
+    var local_regex := RegEx.new()
+    local_regex.compile("^ws://(127\\\\.0\\\\.0\\\\.1|localhost)(:([0-9]{1,5}))?(/[^\\\\s]*)?$")
+    var local_match = local_regex.search(url)
+    if local_match != null:
+        return _valid_port(local_match, 3)
+    var lan_regex := RegEx.new()
+    lan_regex.compile("^ws://((?:10\\\\.[0-9]{1,3}\\\\.[0-9]{1,3}\\\\.[0-9]{1,3})|(?:192\\\\.168\\\\.[0-9]{1,3}\\\\.[0-9]{1,3})|(?:172\\\\.(?:1[6-9]|2[0-9]|3[0-1])\\\\.[0-9]{1,3}\\\\.[0-9]{1,3}))(:([0-9]{1,5}))?(/[^\\\\s]*)?$")
+    var lan_match = lan_regex.search(url)
+    if lan_match != null:
+        return _is_private_ipv4(lan_match.get_string(1)) and _valid_port(lan_match, 3)
+    var secure_regex := RegEx.new()
+    secure_regex.compile("^wss://[A-Za-z0-9.-]+(:([0-9]{1,5}))?(/[^\\\\s]*)?$")
+    var secure_match = secure_regex.search(url)
+    return secure_match != null and _valid_port(secure_match, 2)
+
 func _connect_clicked() -> void:
     if not _connection_enabled:
         _status.text = "Primero revela el código y habilita la conexión."
@@ -189,16 +229,8 @@ func _connect_clicked() -> void:
     var url := _url.text.strip_edges()
     var room := _room.text.strip_edges()
     var token := _token.text
-    var local_ws_regex := RegEx.new()
-    local_ws_regex.compile("^ws://(127\\.0\\.0\\.1|localhost)(:[0-9]{1,5})?(/[^\\s]*)?$")
-    var is_local_ws := local_ws_regex.search(url) != null
-    # Optional direct LAN mode: use a relay hosted on your own trusted network.
-    # Plain WS is not permitted for public/remote addresses.
-    var lan_ws_regex := RegEx.new()
-    lan_ws_regex.compile("^ws://(10\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}|192\\.168\\.[0-9]{1,3}\\.[0-9]{1,3}|172\\.(1[6-9]|2[0-9]|3[0-1])\\.[0-9]{1,3}\\.[0-9]{1,3})(:[0-9]{1,5})?(/[^\\s]*)?$")
-    var is_lan_ws := lan_ws_regex.search(url) != null
-    if not (url.begins_with("wss://") or is_local_ws or is_lan_ws):
-        _status.text = "Usa WSS fuera de tu red; WS solo para localhost o IP privada de LAN."
+    if not _is_allowed_relay_url(url):
+        _status.text = "URL no válida: usa WSS remoto o WS solo para localhost/IP privada de LAN con puerto válido."
         return
     var room_regex := RegEx.new()
     room_regex.compile("^[A-Za-z0-9_.:-]{1,80}$")
