@@ -60,7 +60,7 @@ for token, label in [
     ("func _refresh_ui_scale() -> void:", "terrain controls refresh their touch sizing when editor scale changes"),
     ("panel.visibility_changed.connect(_update_action_overlay_visibility)", "ACTION overlay hides when the native dock is closed"),
     ("editor_settings.settings_changed.connect(_refresh_ui_scale)", "terrain listens for editor scale setting changes"),
-    ('pencil_sensitivity = _add_slider(panel, "Sensibilidad del lápiz (0–100)"', "pencil sensitivity slider ranges from 0 to 100"),
+    ('pencil_sensitivity = _add_slider(inspector_content, "Sensibilidad del lápiz (0–100)"', "pencil sensitivity slider ranges from 0 to 100 in the scrollable Inspector content"),
     ('action_button.text = "ACCIÓN"', "single reusable action button is available"),
     ('settings.get_setting("editors/3d/navigation/native_joystick_left_size")', "action positioning reads the native left joystick size setting"),
     ('settings.get_setting("editors/3d/navigation/native_joystick_left_inset_x")', "action positioning reads the native left joystick horizontal inset"),
