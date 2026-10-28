@@ -573,7 +573,7 @@ func _apply_changes() -> void:
 		if operation_error != OK:
 			_cleanup_staging()
 			var action_name := "eliminar" if operation.kind == "delete" else ("añadir" if operation.kind == "add" else "reemplazar")
-			_show_error("NO SE PUDO APLICAR EL CAMBIO\nAcción: %s\nArchivo: %s\nRuta local: %s\nCódigo Godot: %d (%s)\n\nPosibles causas: falta de espacio, acceso denegado o archivo bloqueado.\nQué hacer: revisa el espacio libre y vuelve a sincronizar. No se crearon copias de respaldo." % [action_name, relative, local_path, operation_error, error_string(operation_error)])
+			_show_error("NO SE PUDO APLICAR EL CAMBIO\nAcción: %s\nArchivo: %s\nRuta local: %s\nCódigo Godot: %d (%s)\n\nPosibles causas: falta de espacio, acceso denegado o archivo bloqueado.\nQué hacer: revisa el espacio libre y vuelve a sincronizar. Los respaldos previos se conservan en: %s" % [action_name, relative, local_path, operation_error, error_string(operation_error), backup_session_root if not backup_session_root.is_empty() else "no necesarios"])
 			return
 	if not _save_manifest():
 		_cleanup_staging()
