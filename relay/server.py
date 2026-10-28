@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Authenticated relay for optional Godot Live Link. Deploy behind TLS/WSS."""
-import json, os, re, secrets, time
+import base64, binascii, hashlib, json, os, re, secrets, time
 from aiohttp import WSMsgType, web
 
 TOKEN = os.environ.get("LIVE_LINK_TOKEN", "")
@@ -13,27 +13,41 @@ MAX_PROJECT_CONTENT = 5 * 1024 * 1024
 PROJECT_ID_RE = re.compile(r"^[a-fA-F0-9-]{16,64}$")
 OPERATION_ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,100}$")
 
+def safe_relative_path(path):
+    if not isinstance(path, str) or not path or len(path) > 1024:
+        return False
+    if chr(92) in path or path.startswith("/") or re.match(r"^[A-Za-z]:", path):
+        return False
+    parts = path.split("/")
+    if any(part in ("", ".", "..") for part in parts):
+        return False
+    if any(part.lower() in (".git", ".godot") for part in parts):
+        return False
+    return True
+
+
 def valid_project_operation(data):
-    """Validate envelope only; the target must still validate paths and hashes before writing."""
+    """Validate the transport envelope; the target must still validate before writing."""
     project_id, op_id, operation, path = (data.get(k) for k in ("project_id", "operation_id", "operation", "path"))
     if not isinstance(project_id, str) or not PROJECT_ID_RE.fullmatch(project_id): return False
     if not isinstance(op_id, str) or not OPERATION_ID_RE.fullmatch(op_id): return False
     if operation not in ("create", "update", "rename", "delete"): return False
-    if not isinstance(path, str) or not path or len(path) > 1024 or chr(92) in path or path.startswith("/") or re.match(r"^[A-Za-z]:", path): return False
-    parts = path.split("/")
-    if any(part in ("", ".", "..") for part in parts): return False
-    if any(part.lower() in (".git", ".godot") for part in parts): return False
+    if not safe_relative_path(path): return False
+    base = data.get("base_sha256", "")
+    if not isinstance(base, str) or (base and not re.fullmatch(r"[a-fA-F0-9]{64}", base)): return False
+    if operation in ("update", "rename", "delete") and not base: return False
     if operation in ("create", "update"):
         content = data.get("content_base64")
         digest = data.get("sha256")
-        base = data.get("base_sha256", "")
         if not isinstance(content, str) or len(content) > (MAX_PROJECT_CONTENT * 4 // 3 + 8): return False
         if not isinstance(digest, str) or not re.fullmatch(r"[a-fA-F0-9]{64}", digest): return False
-        if not isinstance(base, str) or (base and not re.fullmatch(r"[a-fA-F0-9]{64}", base)): return False
-    if operation == "rename":
-        dest = data.get("destination_path")
-        if not isinstance(dest, str) or not dest or len(dest) > 1024 or chr(92) in dest or dest.startswith("/"): return False
-        if any(part in ("", ".", "..") for part in dest.split("/")): return False
+        try:
+            raw = base64.b64decode(content, validate=True)
+        except (binascii.Error, ValueError):
+            return False
+        if len(raw) > MAX_PROJECT_CONTENT or hashlib.sha256(raw).hexdigest() != digest.lower(): return False
+    if operation == "rename" and not safe_relative_path(data.get("destination_path")):
+        return False
     return True
 
 async def health(_request):
