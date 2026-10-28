@@ -208,17 +208,17 @@ func _is_private_ipv4(host: String) -> bool:
 
 func _is_allowed_relay_url(url: String) -> bool:
     var local_regex := RegEx.new()
-    local_regex.compile("^ws://(127\\\\.0\\\\.0\\\\.1|localhost)(:([0-9]{1,5}))?(/[^\\\\s]*)?$")
+    local_regex.compile("^ws://(127\\.0\\.0\\.1|localhost)(:([0-9]{1,5}))?(/[^\\s]*)?$")
     var local_match = local_regex.search(url)
     if local_match != null:
         return _valid_port(local_match, 3)
     var lan_regex := RegEx.new()
-    lan_regex.compile("^ws://((?:10\\\\.[0-9]{1,3}\\\\.[0-9]{1,3}\\\\.[0-9]{1,3})|(?:192\\\\.168\\\\.[0-9]{1,3}\\\\.[0-9]{1,3})|(?:172\\\\.(?:1[6-9]|2[0-9]|3[0-1])\\\\.[0-9]{1,3}\\\\.[0-9]{1,3}))(:([0-9]{1,5}))?(/[^\\\\s]*)?$")
+    lan_regex.compile("^ws://((?:10\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})|(?:192\\.168\\.[0-9]{1,3}\\.[0-9]{1,3})|(?:172\\.(?:1[6-9]|2[0-9]|3[0-1])\\.[0-9]{1,3}\\.[0-9]{1,3}))(:([0-9]{1,5}))?(/[^\\s]*)?$")
     var lan_match = lan_regex.search(url)
     if lan_match != null:
         return _is_private_ipv4(lan_match.get_string(1)) and _valid_port(lan_match, 3)
     var secure_regex := RegEx.new()
-    secure_regex.compile("^wss://[A-Za-z0-9.-]+(:([0-9]{1,5}))?(/[^\\\\s]*)?$")
+    secure_regex.compile("^wss://[A-Za-z0-9.-]+(:([0-9]{1,5}))?(/[^\\s]*)?$")
     var secure_match = secure_regex.search(url)
     return secure_match != null and _valid_port(secure_match, 2)
 
