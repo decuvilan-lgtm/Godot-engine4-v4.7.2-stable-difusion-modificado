@@ -138,14 +138,27 @@ func _field(caption: String, control: Control) -> Control:
     return box
 
 func _reveal_project_code() -> void:
-    # El identificador persistente se revela solo cuando el usuario lo solicita.
-    # No es un secreto ni concede autorización por sí mismo.
-    _project_code_label.text = "Código de este proyecto: " + str(ProjectSettings.get_setting(SETTING_PROJECT_ID, ""))
-    _project_code_label.visible = true
+    # Cada revelado crea un identificador nuevo. Así dos copias de un proyecto
+    # no conservan accidentalmente el mismo destino. El ID no es un secreto.
+    if _connected or _connecting:
+        _status.text = "Desconecta primero para generar un nuevo código."
+        return
+    var crypto := Crypto.new()
+    var project_id := crypto.generate_random_bytes(16).hex_encode()
+    ProjectSettings.set_setting(SETTING_PROJECT_ID, project_id)
+    if not ProjectSettings.save():
+        _status.text = "No se pudo guardar el identificador del proyecto."
+        return
+    _connection_enabled = false
+    _connect_button.disabled = true
     _enable_button.disabled = false
+    _project_code_label.text = "Código de este proyecto: " + project_id
+    _project_code_label.visible = true
     for child in _panel.find_children("CopyProjectCodeButton", "Button", true, false):
         child.disabled = false
-    _status.text = "Código revelado. Cópialo y compártelo para identificar el destino correcto."
+    _status.text = "Código nuevo revelado. Cópialo y compártelo para identificar este destino."
+
+
 
 
 func _copy_project_code() -> void:
