@@ -179,5 +179,86 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         await target.close()
 
 
+    def test_project_operation_validation_rejects_unsafe_paths(self):
+        base = {
+            "type": "project_operation",
+            "project_id": "12345678-1234-1234-1234-123456789abc",
+            "operation_id": "op-1",
+            "operation": "create",
+            "path": "Scenes/room.tscn",
+            "content_base64": "c2NlbmU=",
+            "sha256": "a" * 64,
+            "base_sha256": ""
+        }
+        self.assertTrue(relay.valid_project_operation(base))
+        for path in ("../project.godot", "/tmp/escape", "C:/outside", "Scenes\\\\escape.gd", ".git/config", ".godot/imported/x"):
+            candidate = dict(base, path=path)
+            self.assertFalse(relay.valid_project_operation(candidate), path)
+        self.assertFalse(relay.valid_project_operation(dict(base, project_id="bad")))
+        self.assertFalse(relay.valid_project_operation(dict(base, sha256="not-a-hash")))
+        self.assertFalse(relay.valid_project_operation(dict(base, content_base64="x" * (relay.MAX_PROJECT_CONTENT * 2))))
+
+    async def test_agent_project_operation_reaches_only_target_and_result_returns(self):
+        target = await self.join("target", room="project_ops_room")
+        self.assertEqual((await target.receive_json(timeout=2))["type"], "joined")
+        agent = await self.join("agent", room="project_ops_room")
+        self.assertEqual((await agent.receive_json(timeout=2))["type"], "joined")
+        self.assertEqual((await target.receive_json(timeout=2))["type"], "peer_joined")
+        operation = {
+            "type": "project_operation",
+            "project_id": "12345678-1234-1234-1234-123456789abc",
+            "operation_id": "op-2",
+            "operation": "create",
+            "path": "Scenes/room.tscn",
+            "content_base64": "c2NlbmU=",
+            "sha256": "a" * 64,
+            "base_sha256": ""
+        }
+        await agent.send_json(operation)
+        received = await target.receive_json(timeout=2)
+        self.assertEqual(received["type"], "project_operation")
+        self.assertEqual(received["from_role"], "agent")
+        self.assertEqual(received["operation_id"], "op-2")
+        with self.assertRaises(asyncio.TimeoutError):
+            await agent.receive(timeout=0.15)
+        result = {
+            "type": "project_result",
+            "project_id": operation["project_id"],
+            "operation_id": "op-2",
+            "status": "applied",
+            "message": "validated by test receiver"
+        }
+        await target.send_json(result)
+        received_result = await agent.receive_json(timeout=2)
+        self.assertEqual(received_result["type"], "project_result")
+        self.assertEqual(received_result["status"], "applied")
+        self.assertEqual(received_result["from_role"], "target")
+        await agent.close()
+        await target.close()
+
+    async def test_agent_cannot_publish_project_result_and_target_cannot_issue_operations(self):
+        target = await self.join("target", room="project_direction_room")
+        await target.receive_json(timeout=2)
+        agent = await self.join("agent", room="project_direction_room")
+        await agent.receive_json(timeout=2)
+        await target.receive_json(timeout=2)
+        await target.send_json({
+            "type": "project_operation",
+            "project_id": "12345678-1234-1234-1234-123456789abc",
+            "operation_id": "bad-op", "operation": "delete", "path": "Scenes/room.tscn"
+        })
+        await agent.send_json({
+            "type": "project_result",
+            "project_id": "12345678-1234-1234-1234-123456789abc",
+            "operation_id": "bad-op", "status": "applied"
+        })
+        with self.assertRaises(asyncio.TimeoutError):
+            await target.receive(timeout=0.15)
+        with self.assertRaises(asyncio.TimeoutError):
+            await agent.receive(timeout=0.15)
+        await agent.close()
+        await target.close()
+
+
 if __name__ == "__main__":
     unittest.main()
