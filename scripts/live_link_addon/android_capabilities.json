@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "purpose": "Capability contract for ChatGPT and any future Live Link agent working on the modified Godot Android editor.",
+  "target": {
+    "engine": "Godot 4.7.2 modified Android editor",
+    "device_profile": "LG K51",
+    "android_version": 11,
+    "logical_resolution": "720x1600",
+    "architectures": ["armeabi-v7a", "arm64-v8a"],
+    "primary_workflow": "Android device only"
+  },
+  "rules": {
+    "platform_priority": "android_only",
+    "preserve_existing_native_editor": true,
+    "never_replace_godot_with_a_separate_editor": true,
+    "never_assume_desktop_editor_controls_exist_on_android": true,
+    "never_use_pc_only_workflows_as_required_steps": true,
+    "never_add_desktop_only_dependencies_to_android_runtime": true,
+    "do_not_remove_existing_godot_options": true,
+    "do_not_generate_apk_until_changes_are_consolidated_and_audited": true
+  },
+  "allowed_by_default": [
+    "GDScript and project resources supported by the target Godot version",
+    "Scenes, nodes, scripts, materials, shaders and resources that work on Android",
+    "Touch-first UI and controls",
+    "Android-compatible filesystem and networking APIs",
+    "EditorPlugin APIs only after checking they exist and work in the Android editor build",
+    "Changes to native engine code only when guarded and built for Android ARM32 and ARM64"
+  ],
+  "must_verify_before_use": [
+    "Any EditorInterface or EditorPlugin API used by an addon",
+    "Any native extension, GDExtension, module or third-party library",
+    "Any filesystem, process, shell, windowing, clipboard or input API",
+    "Any renderer, shader, texture, memory or threading feature with Android-specific limits",
+    "Any feature whose availability differs between desktop editor, Android editor and exported Android game"
+  ],
+  "reject_or_replace": [
+    "Desktop-only editor panels, menus, dock assumptions or window-management flows",
+    "Required keyboard/mouse interactions with no touch alternative",
+    "Windows/Linux/macOS paths, shell commands or desktop executable dependencies in the Android workflow",
+    "Desktop-only plugins or native binaries without Android ARM32 and ARM64 builds",
+    "Assumptions that the Android editor has the same UI layout or API availability as the desktop editor"
+  ],
+  "agent_behavior": [
+    "Read this manifest before proposing or applying project operations.",
+    "Prefer the existing modified Godot Android editor and its native features.",
+    "When capability is uncertain, inspect the repository/API and mark it unverified instead of assuming desktop parity.",
+    "Keep changes scoped to the selected project ID; never infer the target from a project name alone.",
+    "After each operation, wait for the target editor's explicit result; do not claim success from message delivery alone."
+  ]
+}
