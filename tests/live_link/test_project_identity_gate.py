@@ -76,7 +76,7 @@ class ProjectIdentityGateTests(unittest.TestCase):
 
     def test_path_gate_checks_symlink_entries_even_when_targets_do_not_exist(self):
         project_path = SOURCE.split("func _project_absolute_path(relative_path: String) -> String:", 1)[1].split(
-            "\\nfunc ", 1
+            "\nfunc ", 1
         )[0]
         self.assertIn("parent_dir.is_link(current.get_file())", project_path)
         self.assertNotIn(
