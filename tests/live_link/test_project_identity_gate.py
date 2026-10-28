@@ -57,6 +57,32 @@ class ProjectIdentityGateTests(unittest.TestCase):
         self.assertIn("if _connected or _connecting:", reveal)
         self.assertIn("Desconecta primero", reveal)
 
+    def test_receiver_rejects_unsafe_paths_and_protected_directories(self):
+        safe = SOURCE.split("func _safe_relative_path(value: Variant) -> bool:", 1)[1].split(
+            "\\nfunc ", 1
+        )[0]
+        self.assertIn('path.begins_with("/")', safe)
+        self.assertIn('path.contains("\\\\")', safe)
+        self.assertIn('part == ".."', safe)
+        self.assertIn('part.to_lower() == ".git"', safe)
+        self.assertIn('part.to_lower() == ".godot"', safe)
+
+    def test_updates_deletes_and_renames_require_base_hash(self):
+        apply = SOURCE.split("func _apply_validated_operation(", 1)[1].split(
+            "\\nfunc ", 1
+        )[0]
+        self.assertIn('operation in ["update", "rename", "delete"]', apply)
+        self.assertIn('base_hash.is_empty()', apply)
+        self.assertIn('FileAccess.get_sha256(absolute_path).to_lower() != base_hash.to_lower()', apply)
+
+    def test_delete_creates_backup_before_removing_source(self):
+        apply = SOURCE.split("func _apply_validated_operation(", 1)[1].split(
+            "\\nfunc ", 1
+        )[0]
+        backup = apply.index('_backup_project_file(absolute_path, relative_path')
+        remove = apply.index('DirAccess.remove_absolute(absolute_path)')
+        self.assertLess(backup, remove)
+
 
 if __name__ == "__main__":
     unittest.main()
