@@ -251,6 +251,11 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         await target.send_json(result)
         with self.assertRaises(asyncio.TimeoutError):
             await agent.receive(timeout=0.15)
+        # Replaying the completed operation ID must not reach the target either.
+        await asyncio.sleep(1.05)  # Let the per-message rate limit stop masking the replay guard.
+        await agent.send_json(operation)
+        with self.assertRaises(asyncio.TimeoutError):
+            await target.receive(timeout=0.2)
         await agent.close()
         await target.close()
 
