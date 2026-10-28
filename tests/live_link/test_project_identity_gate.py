@@ -59,7 +59,7 @@ class ProjectIdentityGateTests(unittest.TestCase):
 
     def test_relay_url_validation_checks_private_ipv4_octets_and_ports(self):
         helper = SOURCE.split("func _is_allowed_relay_url(url: String) -> bool:", 1)[1].split(
-            "\\nfunc ", 1
+            "\nfunc ", 1
         )[0]
         self.assertIn("_is_private_ipv4(lan_match.get_string(1))", helper)
         self.assertIn("_valid_port(lan_match, 3)", helper)
@@ -70,7 +70,7 @@ class ProjectIdentityGateTests(unittest.TestCase):
 
     def test_plain_ws_is_limited_to_loopback_or_private_lan(self):
         helper = SOURCE.split("func _is_allowed_relay_url(url: String) -> bool:", 1)[1].split(
-            "\\nfunc ", 1
+            "\nfunc ", 1
         )[0]
         self.assertIn('local_regex.compile("^ws://', helper)
         self.assertIn('lan_regex.compile("^ws://', helper)
