@@ -24,6 +24,7 @@ var _project_code_label: Label
 var _enable_button: Button
 var _connect_button: Button
 var _connection_enabled := false
+var _code_copied := false
 var _connected := false
 var _connecting := false
 var _join: Dictionary = {}
@@ -150,8 +151,9 @@ func _reveal_project_code() -> void:
         _status.text = "No se pudo guardar el identificador del proyecto."
         return
     _connection_enabled = false
+    _code_copied = false
     _connect_button.disabled = true
-    _enable_button.disabled = false
+    _enable_button.disabled = true
     _project_code_label.text = "Código de este proyecto: " + project_id
     _project_code_label.visible = true
     for child in _panel.find_children("CopyProjectCodeButton", "Button", true, false):
@@ -165,10 +167,15 @@ func _copy_project_code() -> void:
     var project_id := str(ProjectSettings.get_setting(SETTING_PROJECT_ID, ""))
     if not project_id.is_empty():
         DisplayServer.clipboard_set(project_id)
-        _status.text = "Código copiado. Aún no hay conexión activa."
+        _code_copied = true
+        _enable_button.disabled = false
+        _status.text = "Código copiado. Ahora puedes habilitar la conexión; todavía no está activa."
 
 
 func _enable_connection() -> void:
+    if not _code_copied:
+        _status.text = "Primero copia el código y compártelo en el chat."
+        return
     _connection_enabled = true
     _connect_button.disabled = false
     _enable_button.disabled = true
