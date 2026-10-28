@@ -7,6 +7,9 @@ TOKEN = os.environ.get("LIVE_LINK_TOKEN", "")
 ROOMS: dict[str, set[web.WebSocketResponse]] = {}
 ROLES: dict[web.WebSocketResponse, str] = {}
 LAST: dict[web.WebSocketResponse, dict[str, float]] = {}
+PENDING: dict[str, dict[str, dict[str, object]]] = {}
+MAX_PENDING_PER_ROOM = 1000
+PENDING_TTL_SECONDS = 300.0
 MAX_MESSAGE = 8 * 1024 * 1024
 LIMITS = {"screen_frame": 3.0, "remote_input": 120.0, "project_operation": 20.0, "project_result": 60.0}
 MAX_PROJECT_CONTENT = 5 * 1024 * 1024
@@ -107,9 +110,23 @@ async def websocket(request):
                 if role != "agent" or not valid_project_operation(data): continue
             elif kind == "project_result":
                 if role != "target" or not isinstance(data.get("project_id"), str) or not PROJECT_ID_RE.fullmatch(data["project_id"]) or not isinstance(data.get("operation_id"), str) or not OPERATION_ID_RE.fullmatch(data["operation_id"]) or data.get("status") not in ("applied", "rejected", "conflict", "failed"): continue
+                expected = PENDING.get(room, {}).get(data["operation_id"])
+                if expected is None or expected["project_id"] != data["project_id"]: continue
             now = time.monotonic(); previous = LAST[ws].get(kind, 0.0)
             if previous and now - previous < 1.0 / LIMITS[kind]: continue
-            LAST[ws][kind] = now; data["from_role"] = role
+            LAST[ws][kind] = now
+            if kind == "project_operation":
+                pending = PENDING.setdefault(room, {})
+                for old_id, entry in tuple(pending.items()):
+                    if now - float(entry["created_at"]) > PENDING_TTL_SECONDS:
+                        pending.pop(old_id, None)
+                op_id = data["operation_id"]
+                if op_id in pending or len(pending) >= MAX_PENDING_PER_ROOM:
+                    continue
+                pending[op_id] = {"project_id": data["project_id"], "created_at": now}
+            elif kind == "project_result":
+                PENDING.get(room, {}).pop(data["operation_id"], None)
+            data["from_role"] = role
             encoded = json.dumps(data, separators=(",", ":"))
             for peer in tuple(peers):
                 if peer is ws or peer.closed: continue
@@ -126,7 +143,9 @@ async def websocket(request):
                 if not peer.closed:
                     try: await peer.send_json({"type":"peer_left", "role":role})
                     except Exception: pass
-            if not peers: ROOMS.pop(room, None)
+            if not peers:
+                ROOMS.pop(room, None)
+                PENDING.pop(room, None)
     return ws
 
 app = web.Application(client_max_size=MAX_MESSAGE)
