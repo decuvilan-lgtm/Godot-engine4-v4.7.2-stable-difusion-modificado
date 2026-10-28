@@ -114,8 +114,10 @@ async def websocket(request):
                 expected = PENDING.get(room, {}).get(data["operation_id"])
                 if expected is None or expected["project_id"] != data["project_id"]: continue
             now = time.monotonic(); previous = LAST[ws].get(kind, 0.0)
-            if previous and now - previous < 1.0 / LIMITS[kind]: continue
-            LAST[ws][kind] = now
+            # Matching pending results are one-shot; do not lose a real file-change result to rate limiting.
+            if kind != "project_result":
+                if previous and now - previous < 1.0 / LIMITS[kind]: continue
+                LAST[ws][kind] = now
             if kind == "project_operation":
                 pending = PENDING.setdefault(room, {})
                 seen = SEEN_OPERATIONS.setdefault(room, {})
