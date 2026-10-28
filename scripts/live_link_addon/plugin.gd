@@ -349,7 +349,9 @@ func _apply_project_operation(data: Dictionary) -> void:
     var relative_path := str(data.get("path", ""))
     var status := "rejected"
     var detail := "Operación inválida."
-    if str(data.get("project_id", "")) != project_id:
+    if str(data.get("target_platform", "")) != "android_editor" or int(data.get("policy_version", -1)) != 1:
+        detail = "La operación no declara la política de compatibilidad Android requerida."
+    elif str(data.get("project_id", "")) != project_id:
         detail = "El ID de proyecto no coincide con este proyecto Godot."
     elif op_id.is_empty() or op_id.length() > 100 or not _safe_relative_path(relative_path):
         detail = "ID de operación o ruta no válida."
