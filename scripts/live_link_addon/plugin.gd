@@ -192,8 +192,13 @@ func _connect_clicked() -> void:
     var local_ws_regex := RegEx.new()
     local_ws_regex.compile("^ws://(127\\.0\\.0\\.1|localhost)(:[0-9]{1,5})?(/[^\\s]*)?$")
     var is_local_ws := local_ws_regex.search(url) != null
-    if not (url.begins_with("wss://") or is_local_ws):
-        _status.text = "Usa WSS; WS solo se permite para localhost exacto."
+    # Optional direct LAN mode: use a relay hosted on your own trusted network.
+    # Plain WS is not permitted for public/remote addresses.
+    var lan_ws_regex := RegEx.new()
+    lan_ws_regex.compile("^ws://(10\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}|192\\.168\\.[0-9]{1,3}\\.[0-9]{1,3}|172\\.(1[6-9]|2[0-9]|3[0-1])\\.[0-9]{1,3}\\.[0-9]{1,3})(:[0-9]{1,5})?(/[^\\s]*)?$")
+    var is_lan_ws := lan_ws_regex.search(url) != null
+    if not (url.begins_with("wss://") or is_local_ws or is_lan_ws):
+        _status.text = "Usa WSS fuera de tu red; WS solo para localhost o IP privada de LAN."
         return
     var room_regex := RegEx.new()
     room_regex.compile("^[A-Za-z0-9_.:-]{1,80}$")
