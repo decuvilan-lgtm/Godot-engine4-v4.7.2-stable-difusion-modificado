@@ -8,6 +8,7 @@ ROOMS: dict[str, set[web.WebSocketResponse]] = {}
 ROLES: dict[web.WebSocketResponse, str] = {}
 LAST: dict[web.WebSocketResponse, dict[str, float]] = {}
 PENDING: dict[str, dict[str, dict[str, object]]] = {}
+SEEN_OPERATIONS: dict[str, dict[str, float]] = {}
 MAX_PENDING_PER_ROOM = 1000
 PENDING_TTL_SECONDS = 300.0
 MAX_MESSAGE = 8 * 1024 * 1024
@@ -117,13 +118,19 @@ async def websocket(request):
             LAST[ws][kind] = now
             if kind == "project_operation":
                 pending = PENDING.setdefault(room, {})
+                seen = SEEN_OPERATIONS.setdefault(room, {})
+                for old_id, created_at in tuple(seen.items()):
+                    if now - created_at > PENDING_TTL_SECONDS:
+                        seen.pop(old_id, None)
                 for old_id, entry in tuple(pending.items()):
                     if now - float(entry["created_at"]) > PENDING_TTL_SECONDS:
                         pending.pop(old_id, None)
                 op_id = data["operation_id"]
-                if op_id in pending or len(pending) >= MAX_PENDING_PER_ROOM:
+                # Operation IDs are single-use for the TTL window, even after a result.
+                if op_id in seen or len(pending) >= MAX_PENDING_PER_ROOM:
                     continue
                 pending[op_id] = {"project_id": data["project_id"], "created_at": now}
+                seen[op_id] = now
             elif kind == "project_result":
                 PENDING.get(room, {}).pop(data["operation_id"], None)
             data["from_role"] = role
@@ -146,6 +153,7 @@ async def websocket(request):
             if not peers:
                 ROOMS.pop(room, None)
                 PENDING.pop(room, None)
+                SEEN_OPERATIONS.pop(room, None)
     return ws
 
 app = web.Application(client_max_size=MAX_MESSAGE)
