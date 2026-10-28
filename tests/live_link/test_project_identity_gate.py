@@ -59,7 +59,7 @@ class ProjectIdentityGateTests(unittest.TestCase):
 
     def test_receiver_enforces_android_policy_envelope(self):
         apply = SOURCE.split("func _apply_project_operation(data: Dictionary) -> void:", 1)[1].split(
-            "\\nfunc ", 1
+            "\nfunc ", 1
         )[0]
         self.assertIn('data.get("target_platform", "")) != "android_editor"', apply)
         self.assertIn('data.get("policy_version", -1)) != 1', apply)
