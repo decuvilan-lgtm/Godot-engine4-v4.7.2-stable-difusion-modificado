@@ -100,6 +100,14 @@ for symbol, source, label in [
 ]:
     require(symbol in source, label)
 
+live_link_header = read(GODOT / "editor/github_sync_addon_data.h")
+project_dialog = read(GODOT / "editor/project_manager/project_dialog.cpp")
+project_manager = read(GODOT / "editor/project_manager/project_manager.cpp")
+require("LIVE_LINK_PLUGIN_GD" in live_link_header and "LIVE_LINK_PLUGIN_CFG" in live_link_header, "generated engine header embeds the Live Link addon sources")
+require('path.path_join("addons/live_link")' in project_dialog, "ZIP import installs the Live Link addon")
+require('path.path_join("addons/live_link")' in project_manager, "opening existing projects provisions the Live Link addon")
+require('res://addons/live_link/plugin.cfg' in project_dialog and 'res://addons/live_link/plugin.cfg' in project_manager, "Live Link is enabled for ZIP-imported and existing projects")
+
 sync = read(ROOT / "scripts/github_sync_addon/plugin.gd")
 terrain = read(ROOT / "scripts/terrain_3d_addon/terrain_editor_plugin.gd")
 require("Sincronizar GitHub" in sync, "GitHub sync button remains available in the open editor")
