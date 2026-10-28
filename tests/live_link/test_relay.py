@@ -83,6 +83,25 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         await controller.close()
         await target.close()
 
+    async def test_routes_valid_remote_input_to_target(self):
+        target = await self.join("target", room="valid_input_room")
+        self.assertEqual((await target.receive_json(timeout=2))["type"], "joined")
+        controller = await self.join("controller", room="valid_input_room")
+        self.assertEqual((await controller.receive_json(timeout=2))["type"], "joined")
+        self.assertEqual((await target.receive_json(timeout=2))["type"], "peer_joined")
+        await controller.send_json({
+            "type": "remote_input",
+            "event": {"kind": "mouse_button", "x": 0.5, "y": 0.25, "button_index": 1, "pressed": True}
+        })
+        received = await target.receive_json(timeout=2)
+        self.assertEqual(received["type"], "remote_input")
+        self.assertEqual(received["from_role"], "controller")
+        self.assertEqual(received["event"]["x"], 0.5)
+        with self.assertRaises(asyncio.TimeoutError):
+            await controller.receive(timeout=0.15)
+        await controller.close()
+        await target.close()
+
     async def test_rejects_out_of_range_remote_input(self):
         target = await self.join("target", room="input_room")
         await target.receive_json(timeout=2)
