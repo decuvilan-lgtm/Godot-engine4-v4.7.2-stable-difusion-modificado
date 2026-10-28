@@ -150,3 +150,59 @@ No marcar una etapa como completada sin evidencia reproducible. No fusionar el P
 46. Endurecido el flujo de consentimiento: «Habilitar conexión» permanece deshabilitado tras revelar el código y solo se habilita cuando se pulsa «Copiar código». La acción de revelar no copia ni conecta automáticamente. El identificador no se puede regenerar mientras haya una conexión activa o en curso.
 47. Añadidos checks estáticos para verificar que copiar el código es requisito para habilitar y que revelar/copiar/conectar son acciones separadas. La CI `40767603817` terminó en success para el complemento y la suite ejecutada; la prueba estática adicional agregada después debe confirmarse en una ejecución posterior.
 48. Límite de cobertura: estos checks inspeccionan el contrato del código fuente. No simulan el portapapeles real, no ejecutan operaciones de archivos sobre un proyecto temporal y no sustituyen las pruebas en Android.
+
+
+### 2026-10-28 — Continuidad de Live Link: cliente de agente, límites de red y aprobación
+
+49. El cliente reutilizable de agente está en `relay/agent_client.py`; la guía está en `docs/LIVE_LINK_AGENT_CLIENT.md`. Verifica el sobre de política Android, el ID de proyecto, serializa operaciones y espera un resultado que coincida con el ID de operación y el ID de proyecto. Un timeout/desconexión deja el resultado desconocido: inspeccionar el proyecto antes de reintentar.
+50. Se endureció la política de URL del complemento: `wss://` para hosts remotos; `ws://` solo para loopback o IP privada LAN válida, con comprobación de puerto/host. El cliente Python requiere `allow_insecure_lan=True` explícito para WS en IP privada. El relay escucha en `127.0.0.1` por defecto; usar `HOST=0.0.0.0` solo para una LAN confiable y limitar el puerto por firewall. WS en LAN no cifra el tráfico.
+51. Las operaciones remotas de archivos ahora requieren confirmación explícita en el editor antes de aplicarse. Al aprobar, el receptor vuelve a validar identidad del proyecto y ruta antes de escribir. Revisar en el código las señales/ciclo de vida del diálogo y probar aprobación, rechazo, cambio de proyecto mientras el diálogo está abierto y cancelación; los checks de fuente no demuestran el comportamiento táctil real.
+52. El relay fue corregido en el commit `0c2bdd62b43fb4c1895ad1883a84dca5b9483c9c` para que los resultados válidos `project_result` de una operación pendiente no se descarten por el limitador de frecuencia. Es importante conservar una prueba de regresión que envíe resultados consecutivos válidos y compruebe que ambos llegan al agente.
+53. Las ejecuciones CI `40787657364` (“Validate Live Link project-operation relay”) y `40787657358` (“Source-only debug overlay checks”) terminaron en success para el commit `fe9733ced2d03ac2cacab8a28be30a7beb939b3d`. Validaron las pruebas de relay, sintaxis Python, aplicación limpia de parches, checks de GitHub Sync/Terreno 3D/overlay y carga de los tres addons con Godot 4.7.2. **Estas ejecuciones son anteriores a algunos cambios posteriores (incluido el ajuste de `project_result` del punto 52); no presentarlas como CI del HEAD actual.** Ejecutar/pollear Actions sobre el HEAD actual antes de afirmar que todo está validado.
+54. El relay/cliente siguen siendo un transporte/agente, no una conexión nativa automática de ChatGPT. La app de ChatGPT no puede acceder por sí sola a `127.0.0.1` del teléfono ni a los archivos privados de Godot. Para funcionar sin API/PC/proveedor externo, el teléfono tendría que ejecutar también el modelo/agente capaz de producir operaciones; eso aún no está demostrado. No describir el sistema como peer-to-peer.
+55. No se generó APK ni se fusionó el PR.
+
+## Handoff para continuar en otro chat (estado al 2026-10-28)
+
+**Repositorio:** `decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado`  
+**Rama de trabajo:** `feature/live-editor-link`  
+**PR:** [#2 — Add optional Live Link remote editor](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/pull/2) (mantener en borrador).  
+**Bitácora:** este archivo, `docs/LIVE_LINK_PROGRESS.md`.  
+**Guía de cliente/agente:** `docs/LIVE_LINK_AGENT_CLIENT.md`.  
+**Documento de puente de proyecto:** `docs/CHATGPT_PROJECT_BRIDGE.md`.  
+**Protocolo preliminar de sincronización:** `docs/LIVE_LINK_SYNC_PROTOCOL.md`.
+
+### Objetivo que no debe perderse
+Trabajar sobre el Godot Engine 4.7.2 Android real, no una app sustituta. Dispositivo objetivo: LG K51, Android 11, 720×1600; ARM32 y ARM64. Live Link debe coexistir con GitHub Sync, Terreno 3D y el editor normal. No compilar ni entregar APK hasta consolidar cambios, revisar regresiones y recibir aprobación de las pruebas.
+
+### Qué existe hoy
+- Addon experimental en `scripts/live_link_addon/plugin.gd` y `plugin.cfg`; prototipo de captura de imagen y eventos, estado de conexión y operaciones remotas de archivos.
+- Generador `scripts/apply_github_sync_patch.py` provisiona/incrusta Live Link junto con los addons existentes; validar el resultado generado y la compilación C++ real, no confiar solo en checks de fuente.
+- Relay WebSocket autenticado en `relay/server.py`, cliente de agente en `relay/agent_client.py`, política Android en `scripts/live_link_addon/android_capabilities.json`.
+- Operaciones `create/update/rename/delete` con ID de proyecto y operación, hash/base hash, rutas relativas, exclusiones de `.git/` y `.godot/`, backups y consentimiento explícito en el editor.
+- Reglas de URL: WSS remoto; WS solo loopback/LAN privada bajo restricciones. Relay loopback por defecto.
+- Tests bajo `tests/live_link/`; documentación de límites sin API/proveedor y de la topología Android en `docs/LIVE_LINK_AGENT_CLIENT.md`.
+
+### No está demostrado todavía
+- Integración/captura/control de toda la interfaz nativa de Godot Android.
+- Conexión real de dos editores y manejo fiable de toque, teclado, Inspector, menús y diálogos.
+- Pruebas funcionales de aprobación/rechazo en el dispositivo, escritura/renombrado/borrado en un proyecto temporal Android, conflictos, backups y reconexión.
+- Compilación C++ del motor y APK para ARM32 + ARM64.
+- Ejecución en LG K51 y no regresión real de GitHub Sync/Terreno 3D.
+- Integración automática con ChatGPT en la nube sin API: no está disponible por el simple hecho de tener el addon. Un agente/modelo que produzca operaciones sigue siendo necesario.
+
+### Primeras tareas al abrir el siguiente chat
+1. Leer esta bitácora y verificar el HEAD real de `feature/live-editor-link`; no asumir que `fe9733c` es el HEAD actual.
+2. Revisar los commits posteriores a `fe9733c`, especialmente `0c2bdd62b43fb4c1895ad1883a84dca5b9483c9c`, y comprobar que los cambios de seguridad/aprobación están en la rama actual.
+3. Ejecutar o disparar CI sobre el HEAD actual y esperar resultados; inspeccionar los logs si falla. No reportar el éxito de runs antiguos como validación del último commit.
+4. Auditar las pruebas de consentimiento: aprobación, rechazo, cancelación, cambio de proyecto/ruta, symlinks, archivos existentes, conflicto de hash, rollback/backup y resultados consecutivos. Preferir pruebas funcionales automatizadas a regex/source-contract cuando sea viable.
+5. Verificar el flujo del relay para resultados válidos consecutivos; ninguno debe perderse por rate limiting.
+6. Revisar el generador y los artefactos generados; confirmar que no altera GitHub Sync/Terreno 3D. No construir APK todavía.
+7. Registrar en esta bitácora cada commit, run ID, resultado y limitación comprobada.
+
+### Reglas de trabajo para el siguiente chat
+- No reiniciar el proyecto ni pedir al usuario que repita los requisitos documentados.
+- No afirmar que una función está lista solo porque el código está subido o el parser pasa.
+- Buscar fallos desde varios ángulos, esperar resultados de CI y diferenciar claramente pruebas estáticas, pruebas Linux, compilación C++ y pruebas Android reales.
+- No generar APK ni fusionar el PR mientras existan criterios de aceptación pendientes.
+- El usuario pidió que se le informe cuando la modificación esté completamente funcional, no con éxitos parciales como si fueran entrega final.
