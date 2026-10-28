@@ -31,7 +31,7 @@ for token, label in [
     ("bool(parsed.get(\"truncated\", false))", "rejects truncated GitHub trees instead of silently syncing partial data"),
     ("_build_incremental_download_queue()", "queues missing files and any local content that differs from GitHub"),
     ("_git_blob_sha1", "verifies Git blob IDs against downloaded file contents"),
-    ("legacy_baseline", "migrates old SHA-256 manifests without trusting them as Git blob IDs"),
+    ('digest.length() != 40 and digest.length() != 64', "accepts only supported Git SHA-1 or legacy SHA-256 manifest hashes"),
     ("_build_change_plan()", "plans tracked deletions before preview"),
     ("_show_preview()", "presents the change preview"),
     ("_apply_changes()", "applies only after explicit confirmation"),
@@ -47,8 +47,8 @@ for token, label in [
     ("preview_dialog.close_requested.connect(_on_preview_dismissed)", "cleans staged files when the preview window is closed"),
     ("_cleanup_staging()\n\tif request and is_instance_valid(request):", "cleans staging when the plugin unloads"),
     ("Se aplicaron los cambios de GitHub directamente", "applies GitHub files directly as the source of truth"),
-    ("No se crearon copias de respaldo.", "reports retryable sync failure without creating backups"),
-    ("No crea copias ni sube archivos.", "documents the no-backup mobile-storage policy"),
+    ("Los respaldos previos se conservan en:", "preserves the backup location if applying a later operation fails"),
+    ("se guardan fuera del proyecto", "explains that replaced/deleted local files are backed up outside the project"),
     ("_save_manifest()", "persists baseline for later deletions"),
     ('str(parsed.get("repository", "")) == active_repo', "only same-repository baseline permits deletion"),
     ("if not local_exists or local_sha != remote_sha:", "always compares local bytes directly to GitHub even when the previous upstream baseline is unchanged"),
@@ -77,12 +77,13 @@ for token, label in [
 
     require(token in gd, label)
 require("zipball" not in gd.lower() and "ZIPReader" not in gd, "incremental sync does not download or extract repository ZIPs")
-require("Copias de rescate" not in gd, "does not create permanent rescue copies")
-require("transaction_root" not in gd, "does not create transaction backup copies")
-require("DirAccess.copy_absolute" not in gd, "does not copy local files during synchronization")
-require("DirAccess.copy_absolute" not in gd, "does not copy local files during synchronization")
-require("no se crearon copias" in gd.lower() and "never uploads local files" in config.read_text(encoding="utf-8").lower(),
-        "one-way sync is documented as no-upload")
+require("func _backup_local_changes() -> String:" in gd, "backs up local files before destructive updates/deletions")
+require('const BACKUP_DIR := "github_sync_backups"' in gd and 'user://%s/%s/%s' in gd, "stores backups outside the project in per-project, per-session folders")
+require("backup_error := _backup_local_changes()" in gd and "No se aplicó ningún cambio" in gd, "aborts before project mutation if backups cannot be prepared")
+require("MAX_TOTAL_BYTES" in gd and "MAX_FILE_BYTES" in gd and "files_to_backup" in gd, "bounds backup sizes to protect device storage")
+require("not _is_safe_relative_path(relative) or _is_ignored_path(relative)" in gd, "rejects unsafe manifest paths before backups or file mutations")
+require('expected_hash.length() == 64 else _git_blob_sha1(local_path)' in gd, "compares deletion candidates using the same hash algorithm as their manifest")
+require("never uploads local files" in config.read_text(encoding="utf-8").lower(), "one-way sync remains documented as no-upload")
 patcher_text = patcher.read_text(encoding="utf-8")
 require("TERRAIN_DATA_GD" in patcher_text and "terrain_plugin_setting" in patcher_text and "editor_plugins" in patcher_text,
         "installer embeds and enables both custom editor addons")
