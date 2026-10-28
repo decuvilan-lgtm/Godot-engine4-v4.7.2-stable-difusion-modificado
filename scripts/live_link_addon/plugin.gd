@@ -301,10 +301,12 @@ func _project_absolute_path(relative_path: String) -> String:
     var current := root
     for part in relative_path.split("/", false):
         current = current.path_join(part)
-        if FileAccess.file_exists(current) or DirAccess.dir_exists_absolute(current):
-            var parent_dir := DirAccess.open(current.get_base_dir())
-            if parent_dir != null and parent_dir.is_link(current.get_file()):
-                return ""
+        # Check the directory entry itself, not only whether its target exists.
+        # A dangling symlink can make file_exists/dir_exists return false while
+        # still occupying this path; reject links before any read/write/rename.
+        var parent_dir := DirAccess.open(current.get_base_dir())
+        if parent_dir != null and parent_dir.is_link(current.get_file()):
+            return ""
     return absolute
 
 
