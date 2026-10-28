@@ -9,7 +9,7 @@ Python runtime dependency to the Android editor.
 Install the relay requirements in the agent environment and configure these
 values outside source control:
 
-- `LIVE_LINK_RELAY_URL`: the deployed `wss://...` WebSocket endpoint.
+- `LIVE_LINK_RELAY_URL`: the deployed `wss://...` WebSocket endpoint. The client rejects plain `ws://` for remote hosts; unencrypted WebSockets are allowed only for loopback integration tests.
 - `LIVE_LINK_ROOM`: the same room configured in the Godot add-on.
 - `LIVE_LINK_TOKEN`: the relay shared token.
 - `LIVE_LINK_PROJECT_ID`: the project ID displayed by the selected Godot project.
