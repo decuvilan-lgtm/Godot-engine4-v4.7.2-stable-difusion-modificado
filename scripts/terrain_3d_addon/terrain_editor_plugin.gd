@@ -143,8 +143,11 @@ func _exit_tree() -> void:
 		action_overlay.queue_free()
 
 func _ensure_panel_alive() -> void:
-	if panel != null and is_instance_valid(panel):
+	if panel != null and is_instance_valid(panel) and not panel.is_queued_for_deletion():
 		return
+	# A Control can still be a valid Object after queue_free() was requested.
+	# Never reattach such a panel to a newly rebuilt Inspector.
+	panel = null
 	_build_panel()
 	_refresh_ui_scale()
 
