@@ -20,6 +20,32 @@ Because the current relay uses a shared room token, use a private room and trust
 clients only; per-project credentials and stronger room authorization remain future
 hardening work.
 
+## Sin depender de una API ni de un relay de terceros
+
+Live Link puede usarse sin API de IA, sin API de GitHub y sin alojar el relay en un proveedor externo:
+
+1. Conecta el teléfono Android y el equipo que ejecuta el agente a la misma red Wi-Fi/LAN.
+2. En el equipo de confianza, inicia el relay incluido en este repositorio: `python -m pip install -r relay/requirements.txt`, define `LIVE_LINK_TOKEN` y ejecuta `python relay/server.py`.
+3. Averigua la IP privada del equipo en esa red y configura en el complemento Godot `ws://IP_PRIVADA:8765/ws`; usa el mismo token y la misma sala.
+4. En el agente, usa la misma URL, sala, token e ID de proyecto. Para el cliente Python, activa explícitamente `allow_insecure_lan=True` solo en esta red privada.
+
+Ejemplo de cliente LAN:
+
+```python
+async with LiveLinkAgentClient(
+    "ws://192.168.1.20:8765/ws",
+    room,
+    token,
+    project_id,
+    allow_insecure_lan=True,
+) as client:
+    result = await client.execute(operation)
+```
+
+Sustituye la IP de ejemplo por la IP real del equipo que aloja el relay. Permite el puerto TCP 8765 en el cortafuegos solo para la red local. El relay escucha en todas las interfaces por defecto: no lo expongas a Internet ni uses esta modalidad en Wi-Fi público; el tráfico WS de LAN no está cifrado. Usa WSS para conexiones remotas o redes no confiables.
+
+Este modo no depende de un servicio externo ni de una API, pero sí requiere que el equipo que ejecuta el relay esté encendido y accesible en la misma red. Para conectar desde fuera de la LAN sin un relay de terceros, haría falta configurar un relay propio con WSS o una VPN/red privada; no existe una conexión remota directa universal si ambos dispositivos están detrás de NAT/firewalls.
+
 ## Example
 
 ```python
