@@ -46,7 +46,7 @@ for token, label in [
     ("preview_dialog.canceled.connect(_on_preview_dismissed)", "cleans staged files when the user cancels preview"),
     ("preview_dialog.close_requested.connect(_on_preview_dismissed)", "cleans staged files when the preview window is closed"),
     ("_cleanup_staging()\n\tif request and is_instance_valid(request):", "cleans staging when the plugin unloads"),
-    ("Los cambios de GitHub se aplicaron.", "applies GitHub files directly as the source of truth"),
+    ("Sincronización completada. El proyecto coincide con GitHub.", "reports successful sync against the authoritative GitHub state"),
     ("_save_manifest()", "persists baseline for later deletions"),
     ('str(parsed.get("repository", "")) == active_repo', "only same-repository baseline permits deletion"),
     ("if not local_exists or local_sha != remote_sha:", "always compares local bytes directly to GitHub even when the previous upstream baseline is unchanged"),
