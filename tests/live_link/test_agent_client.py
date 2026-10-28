@@ -101,6 +101,20 @@ class LiveLinkAgentClientTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaisesRegex(ValueError, "policy"):
                 await agent.execute(self.operation(policy_version=2))
 
+    def test_private_lan_websocket_requires_explicit_opt_in(self):
+        with self.assertRaisesRegex(ValueError, "private-LAN"):
+            LiveLinkAgentClient("ws://192.168.1.20:8765/ws", "room", "token", PROJECT_ID)
+        client = LiveLinkAgentClient(
+            "ws://192.168.1.20:8765/ws", "room", "token", PROJECT_ID,
+            allow_insecure_lan=True,
+        )
+        self.assertTrue(client.allow_insecure_lan)
+        with self.assertRaisesRegex(ValueError, "private-LAN"):
+            LiveLinkAgentClient(
+                "ws://8.8.8.8:8765/ws", "room", "token", PROJECT_ID,
+                allow_insecure_lan=True,
+            )
+
     def test_insecure_remote_websocket_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "wss"):
             LiveLinkAgentClient("ws://example.com/ws", "room", "token", PROJECT_ID)
