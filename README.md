@@ -22,7 +22,7 @@ The project now keeps two persistent source snapshots in the GitHub Release tagg
 - The manifest is stored outside the project and tied to repository identity. Only files tracked in a previous successful manifest may be deleted. The previous ZIP/SHA-256 manifest is migrated with a one-time content comparison; subsequent runs use upstream Git blob IDs and avoid downloading unchanged files.
 - Mobile storage policy: no rescue copies, transaction copies, or rollback copies are created. Changes are applied directly only after preview confirmation. If applying changes fails partway through, re-sync is the recovery strategy; temporary changed files are removed on success, failure, preview cancellation, or plugin unload.
 - Existing files are replaced at their original relative paths, never copied to alternate scene names. A changed `.tscn` is written in place from the verified upstream file, so its serialized node paths and signal connections are retained exactly as stored in GitHub; the sync does not reconstruct scenes or create duplicate instances. Local changes are still shown in the preview before replacement. Large staged files are copied to their destination in 64 KiB chunks to avoid allocating the entire file in memory.
-- The sync excludes .git/, .godot/, and the injected sync/terrain addons from upstream overwrite/deletion. When upstream changes project.godot, the plugin preserves the chosen display name and keeps both editor plugins enabled.
+- The sync excludes .git/, .godot/, and the injected sync/terrain addons from upstream overwrite/deletion. `project.godot` is synchronized byte-for-byte from GitHub whenever it is included in the repository; local-only display-name or plugin-setting edits are not preserved.
 - scripts/apply_github_sync_patch.py embeds the addon into the native Godot source and provisions it for installed projects. scripts/validate_github_sync_source.py checks the incremental design and safety constraints. These are source checks, not proof of GDScript runtime or Android-device behavior.
 - Still unverified: GDScript parsing/runtime inside Godot, real network requests on Android, repeat-sync and deletion behavior, and LG K51 performance. No APK was packaged for this change.
 
@@ -675,10 +675,11 @@ Esta sección prevalece sobre notas antiguas de este README cuando describan un 
 ### GitHub es la única fuente de verdad
 
 - La sincronización es estrictamente **GitHub → proyecto Godot**. Nunca se sube ni se publica nada desde Godot hacia GitHub.
-- En cada sincronización se compara el contenido local real con el blob del commit remoto actual, no solo con el manifiesto anterior. Si un archivo rastreado fue editado en Godot, se reemplaza por los bytes verificados de GitHub incluso si upstream no cambió desde la última sincronización.
-- Si un archivo que figuraba en el manifiesto desapareció del repositorio, se elimina del proyecto local aunque se haya modificado localmente. Los archivos locales no rastreados por el manifiesto no se eliminan automáticamente porque no hay evidencia de que antes pertenecieran al repositorio.
-- No se crean copias de respaldo ni duplicados. La vista previa sigue mostrando altas, reemplazos y eliminaciones antes de confirmar.
-- `project.godot` también se sincroniza con los bytes de GitHub; el sincronizador ya no reescribe esa copia para conservar ajustes locales. Por tanto, los ajustes locales que no estén en el repositorio no se preservan.
+- En cada sincronización se compara el contenido local real con el blob del commit remoto actual. Si un archivo local difiere, se reemplaza por la versión verificada de GitHub aunque el archivo remoto no haya cambiado desde la sincronización anterior.
+- Si un archivo que estaba registrado en el manifiesto desapareció del repositorio, se elimina del proyecto local aunque tenga modificaciones locales. Los archivos locales que nunca estuvieron en el manifiesto no se eliminan automáticamente.
+- **No se guardan archivos locales modificados, no se crean copias de seguridad, carpetas de rescate, duplicados ni copias de reversión.** Una vez confirmada la aplicación, los cambios locales reemplazados o eliminados pueden perderse de forma permanente.
+- La vista previa muestra altas, reemplazos y eliminaciones antes de confirmar, pero no preserva los contenidos locales. Si la aplicación falla a mitad de camino, vuelve a sincronizar desde GitHub; no hay restauración local automática.
+- `project.godot` también se sincroniza con los bytes de GitHub; no se reescribe para conservar ajustes locales. Por tanto, los ajustes locales que no estén en el repositorio no se preservan.
 - Se mantienen las exclusiones internas de los addons `addons/github_sync/` y `addons/terrain_3d/`, para evitar que el proyecto sobrescriba las herramientas que el editor inyecta.
 
 ### Terreno 3D: base inicial editable
