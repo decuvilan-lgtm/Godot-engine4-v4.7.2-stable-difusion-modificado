@@ -71,7 +71,7 @@ class ProjectIdentityGateTests(unittest.TestCase):
 
     def test_secure_relay_validation_checks_dns_labels_and_port(self):
         helper = SOURCE.split("func _is_valid_dns_host(host: String) -> bool:", 1)[1].split(
-            "\\nfunc ", 1
+            "\nfunc ", 1
         )[0]
         self.assertIn("host.length() > 253", helper)
         self.assertIn("label.length() > 63", helper)
@@ -79,7 +79,7 @@ class ProjectIdentityGateTests(unittest.TestCase):
         self.assertIn('label.ends_with("-")', helper)
         self.assertIn("code != 45", helper)
         relay = SOURCE.split("func _is_allowed_relay_url(url: String) -> bool:", 1)[1].split(
-            "\\nfunc ", 1
+            "\nfunc ", 1
         )[0]
         self.assertIn("_is_valid_dns_host(secure_match.get_string(1))", relay)
         self.assertIn("_valid_port(secure_match, 3)", relay)
