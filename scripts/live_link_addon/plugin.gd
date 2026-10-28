@@ -5,6 +5,9 @@ const SETTING_URL := "live_link/relay_url"
 const SETTING_ROOM := "live_link/room"
 const SETTING_TOKEN := "live_link/token"
 const SETTING_ROLE := "live_link/role"
+const SETTING_PROJECT_ID := "live_link/project_id"
+const BACKUP_ROOT := "user://live_link_backups"
+const MAX_OPERATION_BYTES := 5 * 1024 * 1024
 const FRAME_MS := 400
 const MAX_W := 720
 const MAX_H := 1280
@@ -28,6 +31,7 @@ func _enter_tree() -> void:
     _setting(SETTING_URL, "wss://your-relay.example/ws", TYPE_STRING)
     _setting(SETTING_ROOM, "godot-room-1", TYPE_STRING)
     _setting(SETTING_ROLE, "target", TYPE_STRING)
+    _ensure_project_id()
     _build_ui()
     add_control_to_dock(DOCK_SLOT_RIGHT_UL, _panel)
     set_process(true)
@@ -54,6 +58,10 @@ func _build_ui() -> void:
     title.text = "Live Link · editor remoto experimental"
     title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     _panel.add_child(title)
+    var project_label := Label.new()
+    project_label.text = "Proyecto autorizado: " + str(ProjectSettings.get_setting(SETTING_PROJECT_ID))
+    project_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    _panel.add_child(project_label)
     _url = LineEdit.new()
     _url.text = str(ProjectSettings.get_setting(SETTING_URL))
     _url.placeholder_text = "wss://servidor/ws"
@@ -92,7 +100,7 @@ func _build_ui() -> void:
     _screen.gui_input.connect(_screen_input)
     _panel.add_child(_screen)
     var note := Label.new()
-    note.text = "La entrada remota puede ejecutar acciones en el otro editor. Conecta solo equipos propios y usa WSS. Esta opción no comparte archivos ni sustituye el guardado."
+    note.text = "Conecta solo equipos propios y usa WSS. Las operaciones de proyecto se limitan al ID mostrado y generan copias de seguridad. El cliente autorizado debe enviar operaciones; este complemento no conecta ChatGPT por sí solo."
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     _panel.add_child(note)
 
@@ -181,6 +189,162 @@ func _message(data: Dictionary) -> void:
         "remote_input":
             if _is_target() and str(data.get("from_role", "")) == "controller":
                 _dispatch(data.get("event", {}))
+        "project_operation":
+            if _is_target() and str(data.get("from_role", "")) == "agent":
+                _apply_project_operation(data)
+
+
+func _ensure_project_id() -> void:
+    var current := str(ProjectSettings.get_setting(SETTING_PROJECT_ID, ""))
+    var valid := RegEx.new()
+    valid.compile("^[a-fA-F0-9-]{16,64}$")
+    if valid.search(current) == null:
+        var crypto := Crypto.new()
+        current = crypto.generate_random_bytes(16).hex_encode()
+        ProjectSettings.set_setting(SETTING_PROJECT_ID, current)
+        ProjectSettings.save()
+
+
+func _safe_relative_path(value: Variant) -> bool:
+    if not value is String:
+        return false
+    var path := str(value)
+    if path.is_empty() or path.length() > 1024 or path.begins_with("/") or path.contains("\\") or path.contains(":"):
+        return false
+    var parts := path.split("/", false)
+    if parts.is_empty():
+        return false
+    for part in parts:
+        if part.is_empty() or part == "." or part == ".." or part.to_lower() == ".git" or part.to_lower() == ".godot":
+            return false
+    return true
+
+
+func _project_absolute_path(relative_path: String) -> String:
+    var root := ProjectSettings.globalize_path("res://").simplify_path().trim_suffix("/")
+    var absolute := (root.path_join(relative_path)).simplify_path()
+    if not absolute.begins_with(root + "/"):
+        return ""
+    var current := root
+    for part in relative_path.split("/", false):
+        current = current.path_join(part)
+        if FileAccess.file_exists(current) or DirAccess.dir_exists_absolute(current):
+            if DirAccess.is_link_absolute(current):
+                return ""
+    return absolute
+
+
+func _sha256_bytes(bytes: PackedByteArray) -> String:
+    var context := HashingContext.new()
+    if context.start(HashingContext.HASH_SHA256) != OK:
+        return ""
+    if context.update(bytes) != OK:
+        return ""
+    return context.finish().hex_encode()
+
+
+func _backup_project_file(absolute_path: String, relative_path: String, operation_id: String) -> String:
+    var source := FileAccess.open(absolute_path, FileAccess.READ)
+    if source == null:
+        return ""
+    var bytes := source.get_buffer(source.get_length())
+    source.close()
+    var safe_id := operation_id.sha256_text().substr(0, 12)
+    var backup_relative := str(ProjectSettings.get_setting(SETTING_PROJECT_ID)) + "/" + str(Time.get_unix_time_from_system()) + "_" + safe_id + "/" + relative_path
+    var backup_path := BACKUP_ROOT.path_join(backup_relative)
+    var backup_absolute := ProjectSettings.globalize_path(backup_path)
+    var parent := backup_absolute.get_base_dir()
+    if DirAccess.make_dir_recursive_absolute(parent) != OK:
+        return ""
+    var output := FileAccess.open(backup_path, FileAccess.WRITE)
+    if output == null:
+        return ""
+    output.store_buffer(bytes)
+    output.flush()
+    var write_error := output.get_error()
+    output.close()
+    if write_error != OK or not FileAccess.file_exists(backup_path):
+        return ""
+    return backup_path
+
+
+func _apply_project_operation(data: Dictionary) -> void:
+    var project_id := str(ProjectSettings.get_setting(SETTING_PROJECT_ID, ""))
+    var op_id := str(data.get("operation_id", ""))
+    var operation := str(data.get("operation", ""))
+    var relative_path := str(data.get("path", ""))
+    var status := "rejected"
+    var detail := "Operación inválida."
+    if str(data.get("project_id", "")) != project_id:
+        detail = "El ID de proyecto no coincide con este proyecto Godot."
+    elif op_id.is_empty() or op_id.length() > 100 or not _safe_relative_path(relative_path):
+        detail = "ID de operación o ruta no válida."
+    elif operation not in ["create", "update", "rename", "delete"]:
+        detail = "Tipo de operación no permitido."
+    else:
+        var absolute_path := _project_absolute_path(relative_path)
+        if absolute_path.is_empty():
+            detail = "La ruta sale del proyecto o contiene un enlace simbólico."
+        else:
+            status = _apply_validated_operation(data, operation, relative_path, absolute_path)
+            detail = "Operación completada." if status == "applied" else "No se aplicó: conflicto, archivo inválido o error de escritura."
+    _send({"type":"project_result", "project_id":project_id, "operation_id":op_id, "status":status, "message":detail})
+
+
+func _apply_validated_operation(data: Dictionary, operation: String, relative_path: String, absolute_path: String) -> String:
+    var exists := FileAccess.file_exists(absolute_path)
+    var base_hash := str(data.get("base_sha256", ""))
+    if operation == "create" and exists:
+        return "conflict"
+    if operation in ["update", "rename", "delete"]:
+        if not exists or base_hash.is_empty() or FileAccess.get_sha256(absolute_path).to_lower() != base_hash.to_lower():
+            return "conflict"
+    if operation == "delete":
+        if _backup_project_file(absolute_path, relative_path, str(data.get("operation_id", ""))).is_empty():
+            return "failed"
+        return "applied" if DirAccess.remove_absolute(absolute_path) == OK else "failed"
+    if operation == "rename":
+        var destination := str(data.get("destination_path", ""))
+        if not _safe_relative_path(destination):
+            return "rejected"
+        var destination_absolute := _project_absolute_path(destination)
+        if destination_absolute.is_empty() or FileAccess.file_exists(destination_absolute) or DirAccess.dir_exists_absolute(destination_absolute):
+            return "conflict"
+        if _backup_project_file(absolute_path, relative_path, str(data.get("operation_id", ""))).is_empty():
+            return "failed"
+        if DirAccess.make_dir_recursive_absolute(destination_absolute.get_base_dir()) != OK:
+            return "failed"
+        return "applied" if DirAccess.rename_absolute(absolute_path, destination_absolute) == OK else "failed"
+    var content_text := str(data.get("content_base64", ""))
+    var content := Marshalls.base64_to_raw(content_text)
+    if content.is_empty() and content_text != "":
+        return "rejected"
+    if content.size() > MAX_OPERATION_BYTES or _sha256_bytes(content).to_lower() != str(data.get("sha256", "")).to_lower():
+        return "rejected"
+    if operation == "update" and _backup_project_file(absolute_path, relative_path, str(data.get("operation_id", ""))).is_empty():
+        return "failed"
+    if DirAccess.make_dir_recursive_absolute(absolute_path.get_base_dir()) != OK:
+        return "failed"
+    var temp_absolute := absolute_path + ".live_link_tmp_" + str(data.get("operation_id", "")).sha256_text().substr(0, 8)
+    var temp_file := FileAccess.open(temp_absolute, FileAccess.WRITE)
+    if temp_file == null:
+        return "failed"
+    temp_file.store_buffer(content)
+    temp_file.flush()
+    var write_error := temp_file.get_error()
+    temp_file.close()
+    if write_error != OK or FileAccess.get_sha256(temp_absolute).to_lower() != str(data.get("sha256", "")).to_lower():
+        DirAccess.remove_absolute(temp_absolute)
+        return "failed"
+    if exists and DirAccess.remove_absolute(absolute_path) != OK:
+        DirAccess.remove_absolute(temp_absolute)
+        return "failed"
+    if DirAccess.rename_absolute(temp_absolute, absolute_path) != OK:
+        if exists:
+            var backup_dir := BACKUP_ROOT.path_join(project_id_placeholder)
+        return "failed"
+    EditorInterface.get_resource_filesystem().scan()
+    return "applied"
 
 func _send_frame() -> void:
     var image := get_tree().root.get_texture().get_image()
