@@ -753,3 +753,9 @@ Para iniciar una compilación completa ARM32 (`armeabi-v7a`) + ARM64 (`arm64-v8a
 - **Inspector nativo del terreno:** el nodo `Terrain3D` expone propiedades agrupadas de geometría y material en el Inspector de Godot. Forma, resolución X/Z, tamaño de celda, grosor, rango de altura, textura de superficie y texturas de hierba/roca/arena/nieve se editan desde el nodo seleccionado; los setters actualizan la geometría/material y el panel acoplado queda para acciones contextuales de esculpir/pintar, vegetación y heightmaps. Las dimensiones de cuadrícula están acotadas de 9 a 257 vértices. El addon pasó la carga/parser de Godot 4.7.2 en Windows; el remuestreo al cambiar resolución aún requiere validación funcional con datos esculpidos y deshacer/rehacer.
 - **No marcar como verificado en dispositivo:** la ubicación de ACCIÓN directamente sobre el joystick, la personalización de los joysticks nativos y la ocultación específica de la barra negra de controles de la vista previa necesitan confirmación visual/táctil en Android.
 
+## Compilación solicitada — ARM32 + ARM64 (2026-10-28)
+
+- La revisión de integración de Windows terminó correctamente en el commit `a38d0566113708a742f70a04ba32293496791eaf`: las validaciones de sincronización, compatibilidad combinada, terreno, recursos de inicio y carga de ambos addons en Godot 4.7.2 pasaron.
+- La sincronización no conserva copias locales: GitHub es la fuente de verdad y los cambios locales reemplazados o eliminados pueden perderse.
+- Este commit activa la compilación completa del editor Android para `armeabi-v7a` (ARM32) y `arm64-v8a` (ARM64). El flujo valida el APK generado, sus ABI, firma, alineación y los recursos MCP embebidos.
+- La compilación se ejecuta en el runner Android de GitHub Actions. No es una prueba de ejecución en Linux ni sustituye la instalación y prueba táctil en el LG K51.
