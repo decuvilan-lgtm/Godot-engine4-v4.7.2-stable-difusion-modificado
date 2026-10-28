@@ -321,8 +321,11 @@ func _apply_validated_operation(data: Dictionary, operation: String, relative_pa
         return "rejected"
     if content.size() > MAX_OPERATION_BYTES or _sha256_bytes(content).to_lower() != str(data.get("sha256", "")).to_lower():
         return "rejected"
-    if operation == "update" and _backup_project_file(absolute_path, relative_path, str(data.get("operation_id", ""))).is_empty():
-        return "failed"
+    var backup_path := ""
+    if operation == "update":
+        backup_path = _backup_project_file(absolute_path, relative_path, str(data.get("operation_id", "")))
+        if backup_path.is_empty():
+            return "failed"
     if DirAccess.make_dir_recursive_absolute(absolute_path.get_base_dir()) != OK:
         return "failed"
     var temp_absolute := absolute_path + ".live_link_tmp_" + str(data.get("operation_id", "")).sha256_text().substr(0, 8)
@@ -340,8 +343,9 @@ func _apply_validated_operation(data: Dictionary, operation: String, relative_pa
         DirAccess.remove_absolute(temp_absolute)
         return "failed"
     if DirAccess.rename_absolute(temp_absolute, absolute_path) != OK:
-        if exists:
-            var backup_dir := BACKUP_ROOT.path_join(project_id_placeholder)
+        if exists and not backup_path.is_empty():
+            DirAccess.copy_absolute(ProjectSettings.globalize_path(backup_path), absolute_path)
+        DirAccess.remove_absolute(temp_absolute)
         return "failed"
     EditorInterface.get_resource_filesystem().scan()
     return "applied"
