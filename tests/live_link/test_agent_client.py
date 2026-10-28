@@ -62,20 +62,20 @@ class LiveLinkAgentClientTests(unittest.IsolatedAsyncioTestCase):
         return data
 
     async def test_client_round_trip_requires_explicit_target_result(self):
-        async with LiveLinkAgentClient(
-            self.url, "agent_client_room", "test-token-live-link", PROJECT_ID, timeout=2
-        ) as agent:
-            # Join as target through the real relay handler.
-            import aiohttp
-            async with aiohttp.ClientSession() as session:
-                target = await session.ws_connect(self.url)
-                await target.send_json({
-                    "type": "join", "room": "agent_client_room",
-                    "role": "target", "token": "test-token-live-link"
-                })
-                self.assertEqual((await target.receive_json(timeout=2))["type"], "joined")
+        import aiohttp
+        async with aiohttp.ClientSession() as session:
+            target = await session.ws_connect(self.url)
+            await target.send_json({
+                "type": "join", "room": "agent_client_room",
+                "role": "target", "token": "test-token-live-link"
+            })
+            self.assertEqual((await target.receive_json(timeout=2))["type"], "joined")
+            async with LiveLinkAgentClient(
+                self.url, "agent_client_room", "test-token-live-link", PROJECT_ID, timeout=2
+            ) as agent:
                 self.assertEqual((await target.receive_json(timeout=2))["type"], "peer_joined")
-                task = __import__("asyncio").create_task(agent.execute(self.operation()))
+                import asyncio
+                task = asyncio.create_task(agent.execute(self.operation()))
                 received = await target.receive_json(timeout=2)
                 self.assertEqual(received["type"], "project_operation")
                 self.assertEqual(received["from_role"], "agent")
@@ -90,7 +90,7 @@ class LiveLinkAgentClientTests(unittest.IsolatedAsyncioTestCase):
                 result = await task
                 self.assertEqual(result["status"], "applied")
                 self.assertEqual(result["from_role"], "target")
-                await target.close()
+            await target.close()
 
     async def test_client_rejects_wrong_project_and_missing_android_policy_before_send(self):
         async with LiveLinkAgentClient(
