@@ -210,8 +210,8 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
             "operation_id": "op-2",
             "operation": "create",
             "path": "Scenes/room.tscn",
-            "content_base64": "c2NlbmU=",
-            "sha256": "a" * 64,
+            "content_base64": "YQ==",
+            "sha256": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
             "base_sha256": ""
         }
         await agent.send_json(operation)
