@@ -38,6 +38,7 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         relay.ROOMS.clear()
         relay.ROLES.clear()
         relay.LAST.clear()
+        relay.PENDING.clear()
 
     async def join(self, role, token="test-token-live-link", room="test_room"):
         ws = await self.client.ws_connect("/ws")
