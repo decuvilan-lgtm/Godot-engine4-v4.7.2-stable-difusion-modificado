@@ -141,8 +141,8 @@ No marcar una etapa como completada sin evidencia reproducible. No fusionar el P
 
 ### 2026-10-28 — Identificación explícita antes de habilitar la conexión
 
-41. Actualizado el dock Live Link para ocultar el identificador persistente hasta que el usuario pulse «Revelar código identificador». El usuario puede copiarlo al portapapeles y compartirlo en el chat para confirmar qué proyecto está seleccionado.
-42. Añadido un paso independiente «Habilitar conexión (sin activarla)» y bloqueado «Activar conexión» hasta completar ese paso. Revelar/copiar el ID no conecta ni concede permisos por sí solo; el ID sirve para identificar el destino, no como contraseña.
-43. El ID sigue siendo persistente por proyecto, generado aleatoriamente y enviado en las operaciones para evitar que ChatGPT tenga que adivinar el destino. La conexión real sigue dependiendo de un relay autenticado y de un cliente externo compatible; este cambio de interfaz no crea por sí solo la integración ChatGPT→Godot.
-44. CI previa al cambio de interfaz: ejecución `40765836179` completada con éxito, incluyendo las pruebas del relay y la carga/parsing del addon con Godot 4.7.2. La nueva modificación de UI necesita su propia ejecución CI.
+41. El dock oculta el código hasta que el usuario pulsa «Revelar código identificador». Cada revelado desconectado genera un nuevo ID aleatorio de 128 bits y lo guarda en `ProjectSettings`; esto evita que copias de un proyecto conserven accidentalmente el mismo destino. Si ya hay una conexión activa o conectándose, el ID no puede rotarse.
+42. «Copiar código» copia el ID al portapapeles. «Habilitar conexión (sin activarla)» y «Activar conexión» son pasos separados; el botón de activar comienza deshabilitado. Revelar/copiar no conecta ni concede permisos por sí solo.
+43. Añadidos cinco checks de regresión de fuente para el bloqueo de activación, rotación aleatoria, separación entre revelar/copiar/conectar y no rotar durante una sesión. Son checks estáticos y no sustituyen pruebas de UI en Android.
+44. CI anterior a esta última modificación: ejecución `40766730300` completada con éxito. La nueva lógica de generación/guardado y los nuevos checks necesitan su propia ejecución CI.
 45. Sin APK, sin fusión del PR y sin afirmar prueba funcional en Android.
