@@ -146,7 +146,7 @@ func _reveal_project_code() -> void:
     var crypto := Crypto.new()
     var project_id := crypto.generate_random_bytes(16).hex_encode()
     ProjectSettings.set_setting(SETTING_PROJECT_ID, project_id)
-    if not ProjectSettings.save():
+    if ProjectSettings.save() != OK:
         _status.text = "No se pudo guardar el identificador del proyecto."
         return
     _connection_enabled = false
