@@ -68,6 +68,22 @@ class ProjectIdentityGateTests(unittest.TestCase):
         self.assertIn("octets[1] >= 16 and octets[1] <= 31", SOURCE)
         self.assertIn('if not _is_allowed_relay_url(url):', SOURCE)
 
+
+    def test_secure_relay_validation_checks_dns_labels_and_port(self):
+        helper = SOURCE.split("func _is_valid_dns_host(host: String) -> bool:", 1)[1].split(
+            "\\nfunc ", 1
+        )[0]
+        self.assertIn("host.length() > 253", helper)
+        self.assertIn("label.length() > 63", helper)
+        self.assertIn('label.begins_with("-")', helper)
+        self.assertIn('label.ends_with("-")', helper)
+        self.assertIn("code != 45", helper)
+        relay = SOURCE.split("func _is_allowed_relay_url(url: String) -> bool:", 1)[1].split(
+            "\\nfunc ", 1
+        )[0]
+        self.assertIn("_is_valid_dns_host(secure_match.get_string(1))", relay)
+        self.assertIn("_valid_port(secure_match, 3)", relay)
+
     def test_plain_ws_is_limited_to_loopback_or_private_lan(self):
         helper = SOURCE.split("func _is_allowed_relay_url(url: String) -> bool:", 1)[1].split(
             "\nfunc ", 1
