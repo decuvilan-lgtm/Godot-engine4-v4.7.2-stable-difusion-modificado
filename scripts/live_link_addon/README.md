@@ -8,7 +8,7 @@ Complemento experimental opcional para enlazar dos editores Godot mediante un re
 - El complemento de proyecto no puede capturar todas las superficies nativas de Android ni garantizar que cada menú del editor responda a eventos sintetizados. La integración global en el editor Android requiere un cambio nativo adicional y una prueba en el dispositivo.
 - La captura de la raíz del SceneTree puede omitir ventanas/paneles nativos o no representar el framebuffer completo. Esto debe validarse en Android.
 - La conexión remota concede control de entrada al participante autorizado. Usar solo con un relay privado, token fuerte y WSS. No exponer un relay de desarrollo a Internet.
-- No comparte archivos automáticamente, no sustituye GitHub Sync ni el guardado del proyecto.
+- El addon Android todavía no aplica operaciones de archivos; no comparte archivos automáticamente y no sustituye GitHub Sync ni el guardado del proyecto. El relay ahora tiene un canal experimental de operaciones de proyecto para un rol `agent`, con validación de ruta, tamaño y SHA-256, pero esto solo transporta mensajes: aún falta implementar el receptor seguro dentro del editor Godot y el cliente autorizado que permita a ChatGPT emitir operaciones.
 
 ## Ajustes
 
