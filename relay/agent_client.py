@@ -7,7 +7,9 @@ applied them safely.
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import re
+from urllib.parse import urlsplit
 from typing import Any
 
 from aiohttp import ClientSession, ClientWebSocketResponse, WSMsgType
@@ -15,6 +17,13 @@ from aiohttp import ClientSession, ClientWebSocketResponse, WSMsgType
 PROJECT_ID_RE = re.compile(r"^[a-fA-F0-9-]{16,64}$")
 OPERATION_ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,100}$")
 VALID_OPERATIONS = {"create", "update", "rename", "delete"}
+
+
+def _is_loopback_ip(host: str) -> bool:
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
 
 
 class LiveLinkError(RuntimeError):
@@ -26,8 +35,18 @@ class LiveLinkAgentClient:
 
     def __init__(self, relay_url: str, room: str, token: str, project_id: str,
                  *, timeout: float = 30.0) -> None:
-        if not relay_url.startswith("wss://") and not relay_url.startswith("ws://localhost"):
-            raise ValueError("Use wss:// for remote relays (ws://localhost is allowed for tests).")
+        parsed_url = urlsplit(relay_url)
+        secure_remote = parsed_url.scheme == "wss" and bool(parsed_url.hostname)
+        loopback_test = (
+            parsed_url.scheme == "ws"
+            and parsed_url.hostname is not None
+            and (
+                parsed_url.hostname.lower() == "localhost"
+                or _is_loopback_ip(parsed_url.hostname)
+            )
+        )
+        if not (secure_remote or loopback_test) or parsed_url.username or parsed_url.password:
+            raise ValueError("Use wss:// for remote relays; insecure ws:// is restricted to loopback tests.")
         if not re.fullmatch(r"[A-Za-z0-9_.:-]{1,80}", room):
             raise ValueError("Invalid Live Link room.")
         if not PROJECT_ID_RE.fullmatch(project_id):
