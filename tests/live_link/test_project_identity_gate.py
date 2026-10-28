@@ -59,7 +59,7 @@ class ProjectIdentityGateTests(unittest.TestCase):
 
     def test_receiver_rejects_unsafe_paths_and_protected_directories(self):
         safe = SOURCE.split("func _safe_relative_path(value: Variant) -> bool:", 1)[1].split(
-            "\\nfunc ", 1
+            "\nfunc ", 1
         )[0]
         self.assertIn('path.begins_with("/")', safe)
         self.assertIn('path.contains("\\\\")', safe)
@@ -69,7 +69,7 @@ class ProjectIdentityGateTests(unittest.TestCase):
 
     def test_updates_deletes_and_renames_require_base_hash(self):
         apply = SOURCE.split("func _apply_validated_operation(", 1)[1].split(
-            "\\nfunc ", 1
+            "\nfunc ", 1
         )[0]
         self.assertIn('operation in ["update", "rename", "delete"]', apply)
         self.assertIn('base_hash.is_empty()', apply)
@@ -77,7 +77,7 @@ class ProjectIdentityGateTests(unittest.TestCase):
 
     def test_delete_creates_backup_before_removing_source(self):
         apply = SOURCE.split("func _apply_validated_operation(", 1)[1].split(
-            "\\nfunc ", 1
+            "\nfunc ", 1
         )[0]
         backup = apply.index('_backup_project_file(absolute_path, relative_path')
         remove = apply.index('DirAccess.remove_absolute(absolute_path)')
