@@ -26,6 +26,7 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         relay.ROOMS.clear()
         relay.ROLES.clear()
         relay.LAST.clear()
+        relay.PENDING.clear()
         test_app = web.Application(client_max_size=relay.MAX_MESSAGE)
         test_app.router.add_get("/health", relay.health)
         test_app.router.add_get("/ws", relay.websocket)
@@ -230,16 +231,25 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
             await agent.receive(timeout=0.15)
         result = {
             "type": "project_result",
-            "project_id": operation["project_id"],
+            "project_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
             "operation_id": "op-2",
             "status": "applied",
-            "message": "validated by test receiver"
+            "message": "must not be accepted for another project"
         }
+        await target.send_json(result)
+        with self.assertRaises(asyncio.TimeoutError):
+            await agent.receive(timeout=0.15)
+        result["project_id"] = operation["project_id"]
+        result["message"] = "validated by test receiver"
         await target.send_json(result)
         received_result = await agent.receive_json(timeout=2)
         self.assertEqual(received_result["type"], "project_result")
         self.assertEqual(received_result["status"], "applied")
         self.assertEqual(received_result["from_role"], "target")
+        # A result is one-shot: replaying it after completion must not reach the agent.
+        await target.send_json(result)
+        with self.assertRaises(asyncio.TimeoutError):
+            await agent.receive(timeout=0.15)
         await agent.close()
         await target.close()
 
