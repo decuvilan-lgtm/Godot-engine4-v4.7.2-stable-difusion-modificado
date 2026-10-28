@@ -118,3 +118,13 @@ No marcar una etapa como completada sin evidencia reproducible. No fusionar el P
 27. Corregido `scripts/live_link_addon/plugin.gd`: el complemento ahora rastrea explícitamente el intento de conexión y limpia `_connecting`, `_connected` y el mensaje de unión pendiente cuando el WebSocket termina cerrado tras un rechazo o una desconexión. El estado visible informa que la conexión se cerró o fue rechazada e indica revisar URL, token y sala antes de reintentar.
 28. Confirmada CI `40758835812`: **success** para el cambio anterior. Pasaron los checks de integración del parcheador, las ocho pruebas del relay y la carga/parsing de los tres addons con Godot 4.7.2.
 29. Límite: esto valida el estado de conexión del complemento y el protocolo relay en CI, no una sesión entre dos editores reales. La reconexión automática todavía no está implementada; el usuario debe pulsar «Conectar». La captura completa, el control de interfaz nativa, la sincronización de archivos, compilación C++ y las pruebas Android siguen pendientes.
+
+
+### 2026-10-28 — Primer canal de operaciones de proyecto (transporte solamente)
+
+30. Se añadió el documento `docs/CHATGPT_PROJECT_BRIDGE.md` para corregir el objetivo de producto: ChatGPT debe modificar archivos reales del proyecto seleccionado; pantalla/entrada remota no es el mecanismo principal.
+31. El relay ahora admite un rol `agent` adicional y los mensajes `project_operation` (agent → target) y `project_result` (target → agent), conservando el flujo de pantalla/entrada anterior sin mezclar los tipos de mensaje.
+32. El relay valida identificador de proyecto y operación, tipo de operación, rutas relativas, exclusión de `.git/` y `.godot/`, límites de tamaño, codificación Base64 y SHA-256 del contenido. El rol `target` no puede emitir operaciones y el rol `agent` no puede falsificar resultados.
+33. Añadidos tests para validación de rutas/hash y encaminamiento agente→target→agente, más un workflow ligero `.github/workflows/validate-live-link-relay.yml` que ejecuta py_compile y la suite de relay al cambiar esos archivos.
+34. **Límite explícito:** el relay solo transporta y valida el sobre del mensaje. Todavía no existe receptor de operaciones en el addon Godot, registro/selección de proyecto autorizada, cliente de herramientas conectado a ChatGPT, aplicación atómica/backups en el dispositivo ni prueba de extremo a extremo. No afirmar que ChatGPT puede modificar el proyecto Android todavía.
+35. No se generó APK ni se fusionó el PR. La validación CI de los cambios recientes está pendiente de observarse en Actions.
