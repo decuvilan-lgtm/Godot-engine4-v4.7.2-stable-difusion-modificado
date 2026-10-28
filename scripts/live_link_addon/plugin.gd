@@ -126,7 +126,7 @@ func _build_ui() -> void:
     _screen.gui_input.connect(_screen_input)
     _panel.add_child(_screen)
     var note := Label.new()
-    note.text = "El código identifica este proyecto, pero no es una contraseña ni activa la conexión. Primero revela y copia el código; después habilita la conexión y actívala por separado. Usa WSS y un relay autenticado. El cliente de ChatGPT aún debe conectarse mediante una integración externa."
+    note.text = "El código identifica este proyecto, pero no es una contraseña. Para evitar servicios externos, puedes alojar relay/server.py en un equipo de tu misma Wi-Fi y usar ws://IP_PRIVADA:8765/ws con el mismo token. WS de LAN no está cifrado: nunca lo expongas a Internet. Para conexiones remotas usa WSS. El cliente de ChatGPT aún requiere una integración externa."
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     _panel.add_child(note)
 
