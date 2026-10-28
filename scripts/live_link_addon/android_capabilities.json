@@ -6,7 +6,10 @@
     "device_profile": "LG K51",
     "android_version": 11,
     "logical_resolution": "720x1600",
-    "architectures": ["armeabi-v7a", "arm64-v8a"],
+    "architectures": [
+      "armeabi-v7a",
+      "arm64-v8a"
+    ],
     "primary_workflow": "Android device only"
   },
   "rules": {
@@ -47,5 +50,13 @@
     "When capability is uncertain, inspect the repository/API and mark it unverified instead of assuming desktop parity.",
     "Keep changes scoped to the selected project ID; never infer the target from a project name alone.",
     "After each operation, wait for the target editor's explicit result; do not claim success from message delivery alone."
-  ]
+  ],
+  "operation_envelope": {
+    "required_fields": {
+      "target_platform": "android_editor",
+      "policy_version": 1
+    },
+    "reject_if_missing_or_different": true,
+    "note": "The relay enforces this envelope; it is not a substitute for checking individual API and dependency compatibility."
+  }
 }
