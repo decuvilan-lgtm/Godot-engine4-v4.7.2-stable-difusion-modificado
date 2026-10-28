@@ -31,6 +31,8 @@ var _join: Dictionary = {}
 var _last_frame := 0
 var _remote_size := Vector2i(720, 1280)
 var _last_pos := Vector2.ZERO
+var _approval_dialog: ConfirmationDialog
+var _pending_project_operation: Dictionary = {}
 
 func _enter_tree() -> void:
     _setting(SETTING_URL, "wss://your-relay.example/ws", TYPE_STRING)
@@ -129,6 +131,14 @@ func _build_ui() -> void:
     note.text = "El código identifica este proyecto, pero no es una contraseña. Para evitar servicios externos, puedes alojar relay/server.py en un equipo de tu misma Wi-Fi y usar ws://IP_PRIVADA:8765/ws con el mismo token. WS de LAN no está cifrado: nunca lo expongas a Internet. Para conexiones remotas usa WSS. El cliente de ChatGPT aún requiere una integración externa."
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     _panel.add_child(note)
+
+    _approval_dialog = ConfirmationDialog.new()
+    _approval_dialog.title = "Confirmar cambio remoto"
+    _approval_dialog.ok_button_text = "Aplicar cambio"
+    _approval_dialog.cancel_button_text = "Rechazar"
+    _approval_dialog.confirmed.connect(_approve_pending_project_operation)
+    _approval_dialog.canceled.connect(_reject_pending_project_operation)
+    add_child(_approval_dialog)
 
 func _field(caption: String, control: Control) -> Control:
     var box := VBoxContainer.new()
@@ -403,7 +413,9 @@ func _apply_project_operation(data: Dictionary) -> void:
     var relative_path := str(data.get("path", ""))
     var status := "rejected"
     var detail := "Operación inválida."
-    if str(data.get("target_platform", "")) != "android_editor" or int(data.get("policy_version", -1)) != 1:
+    if not _pending_project_operation.is_empty():
+        detail = "Ya hay una operación esperando aprobación; esta operación no se ha aplicado."
+    elif str(data.get("target_platform", "")) != "android_editor" or int(data.get("policy_version", -1)) != 1:
         detail = "La operación no declara la política de compatibilidad Android requerida."
     elif str(data.get("project_id", "")) != project_id:
         detail = "El ID de proyecto no coincide con este proyecto Godot."
@@ -416,9 +428,47 @@ func _apply_project_operation(data: Dictionary) -> void:
         if absolute_path.is_empty():
             detail = "La ruta sale del proyecto o contiene un enlace simbólico."
         else:
+            _pending_project_operation = data.duplicate(true)
+            _approval_dialog.dialog_text = "Proyecto: " + project_id + "\nOperación: " + operation + "\nArchivo: " + relative_path + "\n\nSolo se aplicará si confirmas. Revisa la ruta antes de continuar."
+            _approval_dialog.popup_centered()
+            _status.text = "Esperando aprobación para " + operation + ": " + relative_path
+            return
+    _send({"type":"project_result", "project_id":project_id, "operation_id":op_id, "status":status, "message":detail})
+
+
+func _approve_pending_project_operation() -> void:
+    if _pending_project_operation.is_empty():
+        return
+    var data := _pending_project_operation
+    _pending_project_operation = {}
+    var project_id := str(ProjectSettings.get_setting(SETTING_PROJECT_ID, ""))
+    var op_id := str(data.get("operation_id", ""))
+    var operation := str(data.get("operation", ""))
+    var relative_path := str(data.get("path", ""))
+    var status := "rejected"
+    var detail := "Operación inválida."
+    if str(data.get("project_id", "")) != project_id:
+        detail = "El ID de proyecto cambió antes de la aprobación."
+    elif not _safe_relative_path(relative_path):
+        detail = "La ruta dejó de ser válida."
+    else:
+        var absolute_path := _project_absolute_path(relative_path)
+        if absolute_path.is_empty():
+            detail = "La ruta sale del proyecto o contiene un enlace simbólico."
+        else:
             status = _apply_validated_operation(data, operation, relative_path, absolute_path)
             detail = "Operación completada." if status == "applied" else "No se aplicó: conflicto, archivo inválido o error de escritura."
     _send({"type":"project_result", "project_id":project_id, "operation_id":op_id, "status":status, "message":detail})
+    _status.text = detail
+
+
+func _reject_pending_project_operation() -> void:
+    if _pending_project_operation.is_empty():
+        return
+    var data := _pending_project_operation
+    _pending_project_operation = {}
+    _send({"type":"project_result", "project_id":str(ProjectSettings.get_setting(SETTING_PROJECT_ID, "")), "operation_id":str(data.get("operation_id", "")), "status":"rejected", "message":"Operación rechazada por el usuario en Godot."})
+    _status.text = "Operación remota rechazada."
 
 
 func _apply_validated_operation(data: Dictionary, operation: String, relative_path: String, absolute_path: String) -> String:
