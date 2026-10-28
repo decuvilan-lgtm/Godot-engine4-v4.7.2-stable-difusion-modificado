@@ -9,6 +9,7 @@ SOURCE = ROOT / "editor/project_manager/project_dialog.cpp"
 MANAGER_SOURCE = ROOT / "editor/project_manager/project_manager.cpp"
 ADDON = REPO_ROOT / "scripts/github_sync_addon"
 TERRAIN_ADDON = REPO_ROOT / "scripts/terrain_3d_addon"
+LIVE_LINK_ADDON = REPO_ROOT / "scripts/live_link_addon"
 
 def replace_once(content: str, old: str, new: str, label: str) -> str:
     count = content.count(old)
@@ -23,17 +24,21 @@ config_path = ADDON / "plugin.cfg"
 terrain_plugin_path = TERRAIN_ADDON / "terrain_editor_plugin.gd"
 terrain_data_path = TERRAIN_ADDON / "terrain_data.gd"
 terrain_config_path = TERRAIN_ADDON / "plugin.cfg"
-if not all(p.is_file() for p in (plugin_path, config_path, terrain_plugin_path, terrain_data_path, terrain_config_path)):
-    sys.exit("GitHub sync or terrain addon files are missing.")
+live_link_plugin_path = LIVE_LINK_ADDON / "plugin.gd"
+live_link_config_path = LIVE_LINK_ADDON / "plugin.cfg"
+if not all(p.is_file() for p in (plugin_path, config_path, terrain_plugin_path, terrain_data_path, terrain_config_path, live_link_plugin_path, live_link_config_path)):
+    sys.exit("GitHub sync, terrain, or Live Link addon files are missing.")
 
 plugin = plugin_path.read_text(encoding="utf-8")
 config = config_path.read_text(encoding="utf-8")
 terrain_plugin = terrain_plugin_path.read_text(encoding="utf-8")
 terrain_data = terrain_data_path.read_text(encoding="utf-8")
 terrain_config = terrain_config_path.read_text(encoding="utf-8")
+live_link_plugin = live_link_plugin_path.read_text(encoding="utf-8")
+live_link_config = live_link_config_path.read_text(encoding="utf-8")
 # Delimiter is intentionally long and checked so addon source cannot terminate the C++ raw string.
 delimiter = "GHGODOTSYNC"
-for value in (plugin, config, terrain_plugin, terrain_data, terrain_config):
+for value in (plugin, config, terrain_plugin, terrain_data, terrain_config, live_link_plugin, live_link_config):
     if f"){delimiter}\"" in value:
         raise RuntimeError("Addon content collides with the generated C++ raw-string delimiter.")
 
@@ -47,6 +52,8 @@ generated_header.write_text(
     f'static const char *TERRAIN_PLUGIN_GD = R"{delimiter}({terrain_plugin}){delimiter}";\n'
     f'static const char *TERRAIN_DATA_GD = R"{delimiter}({terrain_data}){delimiter}";\n'
     f'static const char *TERRAIN_PLUGIN_CFG = R"{delimiter}({terrain_config}){delimiter}";\n'
+    f'static const char *LIVE_LINK_PLUGIN_GD = R"{delimiter}({live_link_plugin}){delimiter}";\n'
+    f'static const char *LIVE_LINK_PLUGIN_CFG = R"{delimiter}({live_link_config}){delimiter}";\n'
     "}\n",
     encoding="utf-8",
 )
@@ -96,6 +103,17 @@ insertion = """\t\terr = cfg.save(project_godot);
 \t\t\taddon_err = write_sync_addon_file(addon_dir_path.path_join("plugin.gd"), String::utf8(GitHubSyncAddonData::PLUGIN_GD));
 \t\t\tif (addon_err == OK) {
 \t\t\t\taddon_err = write_sync_addon_file(addon_dir_path.path_join("plugin.cfg"), String::utf8(GitHubSyncAddonData::PLUGIN_CFG));
+\t\t\tconst String live_link_addon_dir_path = path.path_join("addons/live_link");
+\t\t\tif (addon_err == OK) {
+\t\t\t\tRef<DirAccess> live_link_addon_dir = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
+\t\t\t\taddon_err = live_link_addon_dir->make_dir_recursive(live_link_addon_dir_path);
+\t\t\t}
+\t\t\tif (addon_err == OK) {
+\t\t\t\taddon_err = write_sync_addon_file(live_link_addon_dir_path.path_join("plugin.gd"), String::utf8(GitHubSyncAddonData::LIVE_LINK_PLUGIN_GD));
+\t\t\t}
+\t\t\tif (addon_err == OK) {
+\t\t\t\taddon_err = write_sync_addon_file(live_link_addon_dir_path.path_join("plugin.cfg"), String::utf8(GitHubSyncAddonData::LIVE_LINK_PLUGIN_CFG));
+\t\t\t}
 \t\t\tconst String terrain_addon_dir_path = path.path_join("addons/terrain_3d");
 \t\t\tif (addon_err == OK) {
 \t\t\t\tRef<DirAccess> terrain_addon_dir = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
@@ -119,6 +137,7 @@ insertion = """\t\terr = cfg.save(project_godot);
 \t\t\tPackedStringArray enabled_plugins = cfg.get_value("editor_plugins", "enabled", PackedStringArray());
 \t\t\tconst String plugin_setting = "res://addons/github_sync/plugin.cfg";
 \t\t\tconst String terrain_plugin_setting = "res://addons/terrain_3d/plugin.cfg";
+\t\t\tconst String live_link_plugin_setting = "res://addons/live_link/plugin.cfg";
 \t\t\tbool plugins_changed = false;
 \t\t\tif (!enabled_plugins.has(plugin_setting)) {
 \t\t\t\tenabled_plugins.push_back(plugin_setting);
@@ -126,6 +145,10 @@ insertion = """\t\terr = cfg.save(project_godot);
 \t\t\t}
 \t\t\tif (!enabled_plugins.has(terrain_plugin_setting)) {
 \t\t\t\tenabled_plugins.push_back(terrain_plugin_setting);
+\t\t\t\tplugins_changed = true;
+\t\t\t}
+\t\t\tif (!enabled_plugins.has(live_link_plugin_setting)) {
+\t\t\t\tenabled_plugins.push_back(live_link_plugin_setting);
 \t\t\t\tplugins_changed = true;
 \t\t\t}
 \t\t\tif (plugins_changed) {
@@ -159,10 +182,14 @@ manager_insertion = """\t\t// Make the in-editor tools available to existing pro
 \t\t// Existing addon files are left untouched; this only fills missing files and enables the plugins.
 \t\tconst String sync_addon_dir = path.path_join("addons/github_sync");
 \t\tconst String terrain_addon_dir = path.path_join("addons/terrain_3d");
+\t\tconst String live_link_addon_dir = path.path_join("addons/live_link");
 \t\tRef<DirAccess> addon_directory = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
 \t\tError addon_install_error = addon_directory->make_dir_recursive(sync_addon_dir);
 \t\tif (addon_install_error == OK) {
 \t\t\taddon_install_error = addon_directory->make_dir_recursive(terrain_addon_dir);
+\t\t}
+\t\tif (addon_install_error == OK) {
+\t\t\taddon_install_error = addon_directory->make_dir_recursive(live_link_addon_dir);
 \t\t}
 \t\tauto write_addon_if_missing = [](const String &p_path, const String &p_content) -> Error {
 \t\t\tif (FileAccess::exists(p_path)) {
@@ -191,6 +218,12 @@ manager_insertion = """\t\t// Make the in-editor tools available to existing pro
 \t\t\taddon_install_error = write_addon_if_missing(terrain_addon_dir.path_join("plugin.cfg"), String::utf8(GitHubSyncAddonData::TERRAIN_PLUGIN_CFG));
 \t\t}
 \t\tif (addon_install_error == OK) {
+\t\t\taddon_install_error = write_addon_if_missing(live_link_addon_dir.path_join("plugin.gd"), String::utf8(GitHubSyncAddonData::LIVE_LINK_PLUGIN_GD));
+\t\t}
+\t\tif (addon_install_error == OK) {
+\t\t\taddon_install_error = write_addon_if_missing(live_link_addon_dir.path_join("plugin.cfg"), String::utf8(GitHubSyncAddonData::LIVE_LINK_PLUGIN_CFG));
+\t\t}
+\t\tif (addon_install_error == OK) {
 \t\t\tConfigFile project_cfg;
 \t\t\taddon_install_error = project_cfg.load(conf);
 \t\t\tif (addon_install_error == OK) {
@@ -198,12 +231,17 @@ manager_insertion = """\t\t// Make the in-editor tools available to existing pro
 \t\t\t\tbool plugins_changed = false;
 \t\t\t\tconst String sync_plugin = "res://addons/github_sync/plugin.cfg";
 \t\t\t\tconst String terrain_plugin = "res://addons/terrain_3d/plugin.cfg";
+\t\t\t\tconst String live_link_plugin = "res://addons/live_link/plugin.cfg";
 \t\t\t\tif (!enabled_plugins.has(sync_plugin)) {
 \t\t\t\t\tenabled_plugins.push_back(sync_plugin);
 \t\t\t\t\tplugins_changed = true;
 \t\t\t\t}
 \t\t\t\tif (!enabled_plugins.has(terrain_plugin)) {
 \t\t\t\t\tenabled_plugins.push_back(terrain_plugin);
+\t\t\t\t\tplugins_changed = true;
+\t\t\t\t}
+\t\t\t\tif (!enabled_plugins.has(live_link_plugin)) {
+\t\t\t\t\tenabled_plugins.push_back(live_link_plugin);
 \t\t\t\t\tplugins_changed = true;
 \t\t\t\t}
 \t\t\t\tif (plugins_changed) {
