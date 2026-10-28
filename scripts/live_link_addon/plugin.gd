@@ -185,7 +185,7 @@ func _show_frame(data: Dictionary) -> void:
         return
     _remote_size = Vector2i(int(data.get("width", image.get_width())), int(data.get("height", image.get_height())))
     var texture := _screen.texture as ImageTexture
-    if texture == null or texture.get_size() != image.get_size():
+    if texture == null or texture.get_size() != Vector2(image.get_size()):
         _screen.texture = ImageTexture.create_from_image(image)
     else:
         texture.update(image)
