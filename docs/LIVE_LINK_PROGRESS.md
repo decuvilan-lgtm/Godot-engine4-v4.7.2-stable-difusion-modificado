@@ -137,3 +137,12 @@ No marcar una etapa como completada sin evidencia reproducible. No fusionar el P
 38. Las modificaciones y eliminaciones respaldan primero la versión anterior en `user://live_link_backups/`; las escrituras se preparan en un temporal, se verifica el hash y se solicita un escaneo del FileSystem de Godot tras completar la operación. Los conflictos de versión base se rechazan sin sobrescritura.
 39. Ampliado el workflow de validación para cargar el addon con el editor headless oficial Godot 4.7.2 además de ejecutar las pruebas del relay. **Este paso está pendiente de resultado en Actions para el receptor recién añadido.**
 40. Sigue pendiente la prueba funcional de escritura/renombrado/borrado contra un proyecto temporal real y en Android. La carga GDScript, aunque pase, no demuestra el comportamiento del sistema de archivos Android ni la conexión con ChatGPT.
+
+
+### 2026-10-28 — Identificación explícita antes de habilitar la conexión
+
+41. Actualizado el dock Live Link para ocultar el identificador persistente hasta que el usuario pulse «Revelar código identificador». El usuario puede copiarlo al portapapeles y compartirlo en el chat para confirmar qué proyecto está seleccionado.
+42. Añadido un paso independiente «Habilitar conexión (sin activarla)» y bloqueado «Activar conexión» hasta completar ese paso. Revelar/copiar el ID no conecta ni concede permisos por sí solo; el ID sirve para identificar el destino, no como contraseña.
+43. El ID sigue siendo persistente por proyecto, generado aleatoriamente y enviado en las operaciones para evitar que ChatGPT tenga que adivinar el destino. La conexión real sigue dependiendo de un relay autenticado y de un cliente externo compatible; este cambio de interfaz no crea por sí solo la integración ChatGPT→Godot.
+44. CI previa al cambio de interfaz: ejecución `40765836179` completada con éxito, incluyendo las pruebas del relay y la carga/parsing del addon con Godot 4.7.2. La nueva modificación de UI necesita su propia ejecución CI.
+45. Sin APK, sin fusión del PR y sin afirmar prueba funcional en Android.
