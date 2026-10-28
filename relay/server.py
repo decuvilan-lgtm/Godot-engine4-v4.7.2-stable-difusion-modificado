@@ -78,7 +78,7 @@ async def websocket(request):
                 if not isinstance(data.get("data"), str) or len(data["data"]) > 6 * 1024 * 1024: continue
                 w, h = data.get("width"), data.get("height")
                 if type(w) is not int or type(h) is not int or not (1 <= w <= 1280 and 1 <= h <= 1920): continue
-            else:
+            elif kind == "remote_input":
                 if role != "controller": continue
                 ev = data.get("event")
                 if not isinstance(ev, dict) or ev.get("kind") not in ("mouse_motion", "mouse_button", "key"): continue
@@ -86,6 +86,10 @@ async def websocket(request):
                     try: x, y = float(ev.get("x", -1)), float(ev.get("y", -1))
                     except (TypeError, ValueError): continue
                     if not (0 <= x <= 1 and 0 <= y <= 1): continue
+            elif kind == "project_operation":
+                if role != "agent" or not valid_project_operation(data): continue
+            elif kind == "project_result":
+                if role != "target" or not isinstance(data.get("project_id"), str) or not PROJECT_ID_RE.fullmatch(data["project_id"]) or not isinstance(data.get("operation_id"), str) or not OPERATION_ID_RE.fullmatch(data["operation_id"]) or data.get("status") not in ("applied", "rejected", "conflict", "failed"): continue
             now = time.monotonic(); previous = LAST[ws].get(kind, 0.0)
             if previous and now - previous < 1.0 / LIMITS[kind]: continue
             LAST[ws][kind] = now; data["from_role"] = role
@@ -94,6 +98,8 @@ async def websocket(request):
                 if peer is ws or peer.closed: continue
                 if kind == "screen_frame" and ROLES.get(peer) == "controller": await peer.send_str(encoded)
                 elif kind == "remote_input" and ROLES.get(peer) == "target": await peer.send_str(encoded)
+                elif kind == "project_operation" and ROLES.get(peer) == "target": await peer.send_str(encoded)
+                elif kind == "project_result" and ROLES.get(peer) == "agent": await peer.send_str(encoded)
     except (TimeoutError, ConnectionResetError): pass
     finally:
         ROLES.pop(ws, None); LAST.pop(ws, None)
