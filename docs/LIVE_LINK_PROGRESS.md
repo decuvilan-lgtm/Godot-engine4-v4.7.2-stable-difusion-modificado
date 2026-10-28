@@ -98,3 +98,7 @@ No marcar una etapa como completada sin evidencia reproducible. No fusionar el P
 16. La ejecución CI `40754700090` terminó en `success` para el estado previo de la rama. La nueva ejecución disparada por los cambios de CI debe confirmar explícitamente el addon Live Link y las pruebas de relay.
 
 17. La nueva CI detectó un error real de GDScript en Live Link: comparación entre `Vector2` y `Vector2i` al actualizar la textura del frame. Corregido en `scripts/live_link_addon/plugin.gd` convirtiendo el tamaño de imagen a `Vector2`. La suite de relay sí pasó en esa ejecución; queda esperar la nueva validación del parser Godot para confirmar el arreglo.
+
+18. Confirmada la ejecución CI `40755224884`: **success**. Los cinco tests de relay pasaron y Godot 4.7.2 cargó los tres addons (GitHub Sync, Terreno 3D y Live Link) sin errores de GDScript ni recursos; también se procesaron las escenas fixture anidadas. La prueba detectó y permitió corregir el error `Vector2/Vector2i` de Live Link.
+19. Añadidos checks de regresión para verificar que el header C++ generado contiene Live Link y que tanto importación ZIP como apertura de proyectos lo provisionan y habilitan. Esos nuevos checks están pendientes de la siguiente ejecución CI.
+20. Sigue sin compilarse el C++ del motor ni probarse la app en Android. La carga del addon en el editor oficial Windows es una validación de GDScript, no prueba de control remoto real de la interfaz nativa.
