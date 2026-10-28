@@ -26,6 +26,14 @@ def _is_loopback_ip(host: str) -> bool:
         return False
 
 
+def _is_private_lan_ip(host: str) -> bool:
+    try:
+        address = ipaddress.ip_address(host)
+        return address.version == 4 and address.is_private and not address.is_loopback and not address.is_link_local
+    except ValueError:
+        return False
+
+
 class LiveLinkError(RuntimeError):
     """Base exception for connection and protocol failures."""
 
@@ -34,7 +42,7 @@ class LiveLinkAgentClient:
     """Single-operation-at-a-time client requiring a matching target result."""
 
     def __init__(self, relay_url: str, room: str, token: str, project_id: str,
-                 *, timeout: float = 30.0) -> None:
+                 *, timeout: float = 30.0, allow_insecure_lan: bool = False) -> None:
         parsed_url = urlsplit(relay_url)
         secure_remote = parsed_url.scheme == "wss" and bool(parsed_url.hostname)
         loopback_test = (
@@ -45,8 +53,16 @@ class LiveLinkAgentClient:
                 or _is_loopback_ip(parsed_url.hostname)
             )
         )
-        if not (secure_remote or loopback_test) or parsed_url.username or parsed_url.password:
-            raise ValueError("Use wss:// for remote relays; insecure ws:// is restricted to loopback tests.")
+        lan_test = (
+            allow_insecure_lan
+            and parsed_url.scheme == "ws"
+            and parsed_url.hostname is not None
+            and _is_private_lan_ip(parsed_url.hostname)
+        )
+        if not (secure_remote or loopback_test or lan_test) or parsed_url.username or parsed_url.password:
+            raise ValueError(
+                "Use wss:// remotely; ws:// is allowed only for loopback tests or an explicitly enabled private-LAN relay."
+            )
         if not re.fullmatch(r"[A-Za-z0-9_.:-]{1,80}", room):
             raise ValueError("Invalid Live Link room.")
         if not PROJECT_ID_RE.fullmatch(project_id):
@@ -60,6 +76,7 @@ class LiveLinkAgentClient:
         self.token = token
         self.project_id = project_id
         self.timeout = timeout
+        self.allow_insecure_lan = allow_insecure_lan
         self._session: ClientSession | None = None
         self._ws: ClientWebSocketResponse | None = None
         self._lock = asyncio.Lock()
