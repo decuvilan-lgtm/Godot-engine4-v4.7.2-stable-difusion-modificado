@@ -93,6 +93,24 @@ class ProjectIdentityGateTests(unittest.TestCase):
         self.assertIn('secure_regex.compile("^wss://', helper)
         self.assertNotIn('url.begins_with("wss://") or is_local_ws or is_lan_ws', SOURCE)
 
+    def test_remote_file_changes_require_explicit_user_approval(self):
+        apply = SOURCE.split("func _apply_project_operation(data: Dictionary) -> void:", 1)[1].split(
+            "\\nfunc _approve_pending_project_operation", 1
+        )[0]
+        self.assertIn("_approval_dialog.popup_centered()", apply)
+        self.assertIn("_pending_project_operation = data.duplicate(true)", apply)
+        self.assertIn("return", apply)
+        self.assertIn("_approval_dialog.confirmed.connect(_approve_pending_project_operation)", SOURCE)
+        self.assertIn("_approval_dialog.canceled.connect(_reject_pending_project_operation)", SOURCE)
+        approve = SOURCE.split("func _approve_pending_project_operation() -> void:", 1)[1].split(
+            "\\nfunc _reject_pending_project_operation", 1
+        )[0]
+        self.assertIn("_apply_validated_operation(data, operation, relative_path, absolute_path)", approve)
+        reject = SOURCE.split("func _reject_pending_project_operation() -> void:", 1)[1].split(
+            "\\nfunc ", 1
+        )[0]
+        self.assertIn('"status":"rejected"', reject)
+
     def test_receiver_enforces_android_policy_envelope(self):
         apply = SOURCE.split("func _apply_project_operation(data: Dictionary) -> void:", 1)[1].split(
             "\nfunc ", 1
