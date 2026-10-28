@@ -36,7 +36,7 @@ jobs:
       - name: Install relay dependencies
         run: python -m pip install -r relay/requirements.txt
       - name: Check Python syntax
-        run: python -m py_compile relay/server.py tests/live_link/test_relay.py
+        run: python -m py_compile relay/server.py relay/agent_client.py tests/live_link/test_relay.py
       - name: Run relay and project-operation tests
         run: python -m unittest discover -s tests/live_link -v
       - name: Parse Live Link addon with Godot 4.7.2
