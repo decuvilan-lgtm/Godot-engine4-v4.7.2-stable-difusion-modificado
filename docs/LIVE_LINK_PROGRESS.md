@@ -90,3 +90,9 @@ Se modificó `scripts/apply_github_sync_patch.py` para que el generador incruste
 6. Solo después de las pruebas Linux, revisar compilación nativa y pruebas en Android ARM32/ARM64; reservar la prueba final de uso real para el LG K51.
 
 No marcar una etapa como completada sin evidencia reproducible. No fusionar el PR ni generar APK mientras haya criterios pendientes.
+
+### 2026-10-28 — Pruebas de relay y CI ampliada
+
+14. Ejecutada la suite de relay en entorno local aislado: `python -m py_compile relay/server.py tests/live_link/test_relay.py` y `python -m unittest discover -s tests/live_link -v` → **5 pruebas OK**. El primer intento detectó un defecto en el fixture de pruebas (la aplicación aiohttp se reutilizaba entre bucles de eventos); se corrigió creando una aplicación nueva por prueba y se confirmó el pase.
+15. Ampliada `scripts/validate_gdscript_load.py` para cargar también `scripts/live_link_addon` en Godot 4.7.2, y agregado al workflow de GitHub Actions el paso de pruebas del relay.
+16. La ejecución CI `40754700090` terminó en `success` para el estado previo de la rama. La nueva ejecución disparada por los cambios de CI debe confirmar explícitamente el addon Live Link y las pruebas de relay.
