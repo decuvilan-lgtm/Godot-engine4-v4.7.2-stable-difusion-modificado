@@ -161,4 +161,4 @@ async def websocket(request):
 app = web.Application(client_max_size=MAX_MESSAGE)
 app.router.add_get("/health", health)
 app.router.add_get("/ws", websocket)
-if __name__ == "__main__": web.run_app(app, host=os.environ.get("HOST", "0.0.0.0"), port=int(os.environ.get("PORT", "8765")))
+if __name__ == "__main__": web.run_app(app, host=os.environ.get("HOST", "127.0.0.1"), port=int(os.environ.get("PORT", "8765")))
