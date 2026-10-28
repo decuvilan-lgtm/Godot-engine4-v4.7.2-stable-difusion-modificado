@@ -17,6 +17,8 @@ class ProjectIdentityGateTests(unittest.TestCase):
         )[0]
         self.assertIn("if not _connection_enabled:", connect)
         self.assertIn("Primero revela el código y habilita la conexión.", connect)
+        self.assertIn("if not _code_copied:", SOURCE)
+        self.assertIn("Primero copia el código y compártelo en el chat.", SOURCE)
 
     def test_reveal_generates_fresh_random_project_id(self):
         reveal = SOURCE.split("func _reveal_project_code() -> void:", 1)[1].split(
