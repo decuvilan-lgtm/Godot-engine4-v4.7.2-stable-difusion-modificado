@@ -149,6 +149,35 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         await controller.close()
         await target.close()
 
+    async def test_controller_cannot_publish_screen_frames(self):
+        target = await self.join("target", room="direction_room")
+        await target.receive_json(timeout=2)
+        controller = await self.join("controller", room="direction_room")
+        await controller.receive_json(timeout=2)
+        await target.receive_json(timeout=2)  # peer_joined
+        await controller.send_json({
+            "type": "screen_frame", "width": 320, "height": 240, "data": "aGVsbG8="
+        })
+        with self.assertRaises(asyncio.TimeoutError):
+            await target.receive(timeout=0.2)
+        await controller.close()
+        await target.close()
+
+    async def test_target_cannot_publish_remote_input(self):
+        target = await self.join("target", room="direction_input_room")
+        await target.receive_json(timeout=2)
+        controller = await self.join("controller", room="direction_input_room")
+        await controller.receive_json(timeout=2)
+        await target.receive_json(timeout=2)  # peer_joined
+        await target.send_json({
+            "type": "remote_input",
+            "event": {"kind": "key", "keycode": 65, "pressed": True}
+        })
+        with self.assertRaises(asyncio.TimeoutError):
+            await controller.receive(timeout=0.2)
+        await controller.close()
+        await target.close()
+
 
 if __name__ == "__main__":
     unittest.main()
