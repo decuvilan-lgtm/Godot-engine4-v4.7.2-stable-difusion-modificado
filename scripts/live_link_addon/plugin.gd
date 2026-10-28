@@ -108,8 +108,11 @@ func _connect_clicked() -> void:
     var url := _url.text.strip_edges()
     var room := _room.text.strip_edges()
     var token := _token.text
-    if not (url.begins_with("wss://") or url.begins_with("ws://127.0.0.1") or url.begins_with("ws://localhost")):
-        _status.text = "Usa WSS; WS solo se permite para localhost."
+    var local_ws_regex := RegEx.new()
+    local_ws_regex.compile("^ws://(127\\.0\\.0\\.1|localhost)(:[0-9]{1,5})?(/[^\\s]*)?$")
+    var is_local_ws := local_ws_regex.search(url) != null
+    if not (url.begins_with("wss://") or is_local_ws):
+        _status.text = "Usa WSS; WS solo se permite para localhost exacto."
         return
     var room_regex := RegEx.new()
     room_regex.compile("^[A-Za-z0-9_.:-]{1,80}$")
