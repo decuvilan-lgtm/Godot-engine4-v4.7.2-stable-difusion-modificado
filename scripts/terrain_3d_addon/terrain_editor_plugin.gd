@@ -98,7 +98,9 @@ func _enter_tree() -> void:
 	_refresh_ui_scale()
 	inspector_tools = TerrainInspectorTools.new(self)
 	add_inspector_plugin(inspector_tools)
-	EditorInterface.get_selection().selection_changed.connect(_update_action_overlay_visibility)
+	var editor_selection := EditorInterface.get_selection()
+	if editor_selection and not editor_selection.selection_changed.is_connected(_update_action_overlay_visibility):
+		editor_selection.selection_changed.connect(_update_action_overlay_visibility)
 	# Terrain brush input is active only while the terrain is selected in the Inspector.
 	set_input_event_forwarding_always_enabled()
 	set_process(true)
@@ -107,6 +109,14 @@ func handles(object: Object) -> bool:
 	return object is Node and object.has_meta(TERRAIN_META)
 
 func _exit_tree() -> void:
+	# Disconnect editor-owned signals before tearing down controls. This keeps
+	# enable/disable cycles from retaining stale callbacks or duplicating them.
+	var editor_settings := EditorInterface.get_editor_settings()
+	if editor_settings and editor_settings.settings_changed.is_connected(_refresh_ui_scale):
+		editor_settings.settings_changed.disconnect(_refresh_ui_scale)
+	var editor_selection := EditorInterface.get_selection()
+	if editor_selection and editor_selection.selection_changed.is_connected(_update_action_overlay_visibility):
+		editor_selection.selection_changed.disconnect(_update_action_overlay_visibility)
 	if terrain_button:
 		remove_control_from_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_MENU, terrain_button)
 		terrain_button.queue_free()
