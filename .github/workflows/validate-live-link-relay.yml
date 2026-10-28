@@ -1,0 +1,32 @@
+name: Validate Live Link project-operation relay
+
+on:
+  pull_request:
+    paths:
+      - "relay/**"
+      - "tests/live_link/**"
+      - ".github/workflows/validate-live-link-relay.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  relay-protocol:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: relay/requirements.txt
+      - name: Install relay dependencies
+        run: python -m pip install -r relay/requirements.txt
+      - name: Check Python syntax
+        run: python -m py_compile relay/server.py tests/live_link/test_relay.py
+      - name: Run relay and project-operation tests
+        run: python -m unittest discover -s tests/live_link -v
