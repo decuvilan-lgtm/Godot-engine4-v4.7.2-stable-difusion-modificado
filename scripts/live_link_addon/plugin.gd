@@ -20,6 +20,10 @@ var _room: LineEdit
 var _url: LineEdit
 var _token: LineEdit
 var _role: OptionButton
+var _project_code_label: Label
+var _enable_button: Button
+var _connect_button: Button
+var _connection_enabled := false
 var _connected := false
 var _connecting := false
 var _join: Dictionary = {}
@@ -59,9 +63,29 @@ func _build_ui() -> void:
     title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     _panel.add_child(title)
     var project_label := Label.new()
-    project_label.text = "Proyecto autorizado: " + str(ProjectSettings.get_setting(SETTING_PROJECT_ID))
+    project_label.text = "Identificación del proyecto"
     project_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     _panel.add_child(project_label)
+    var reveal_button := Button.new()
+    reveal_button.text = "1. Revelar código identificador"
+    reveal_button.pressed.connect(_reveal_project_code)
+    _panel.add_child(reveal_button)
+    _project_code_label = Label.new()
+    _project_code_label.text = ""
+    _project_code_label.visible = false
+    _project_code_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    _panel.add_child(_project_code_label)
+    var copy_button := Button.new()
+    copy_button.text = "Copiar código"
+    copy_button.pressed.connect(_copy_project_code)
+    copy_button.disabled = true
+    copy_button.name = "CopyProjectCodeButton"
+    _panel.add_child(copy_button)
+    _enable_button = Button.new()
+    _enable_button.text = "2. Habilitar conexión (sin activarla)"
+    _enable_button.disabled = true
+    _enable_button.pressed.connect(_enable_connection)
+    _panel.add_child(_enable_button)
     _url = LineEdit.new()
     _url.text = str(ProjectSettings.get_setting(SETTING_URL))
     _url.placeholder_text = "wss://servidor/ws"
@@ -82,10 +106,11 @@ func _build_ui() -> void:
     _role.add_item("Este editor controla al remoto", 1)
     _role.select(1 if str(ProjectSettings.get_setting(SETTING_ROLE)) == "controller" else 0)
     _panel.add_child(_field("Modo", _role))
-    var connect_button := Button.new()
-    connect_button.text = "Conectar"
-    connect_button.pressed.connect(_connect_clicked)
-    _panel.add_child(connect_button)
+    _connect_button = Button.new()
+    _connect_button.text = "3. Activar conexión"
+    _connect_button.disabled = true
+    _connect_button.pressed.connect(_connect_clicked)
+    _panel.add_child(_connect_button)
     _status = Label.new()
     _status.text = "Desconectado"
     _status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -100,7 +125,7 @@ func _build_ui() -> void:
     _screen.gui_input.connect(_screen_input)
     _panel.add_child(_screen)
     var note := Label.new()
-    note.text = "Conecta solo equipos propios y usa WSS. Las operaciones de proyecto se limitan al ID mostrado y generan copias de seguridad. El cliente autorizado debe enviar operaciones; este complemento no conecta ChatGPT por sí solo."
+    note.text = "El código identifica este proyecto, pero no es una contraseña ni activa la conexión. Primero revela y copia el código; después habilita la conexión y actívala por separado. Usa WSS y un relay autenticado. El cliente de ChatGPT aún debe conectarse mediante una integración externa."
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     _panel.add_child(note)
 
@@ -112,7 +137,35 @@ func _field(caption: String, control: Control) -> Control:
     box.add_child(control)
     return box
 
+func _reveal_project_code() -> void:
+    # El identificador persistente se revela solo cuando el usuario lo solicita.
+    # No es un secreto ni concede autorización por sí mismo.
+    _project_code_label.text = "Código de este proyecto: " + str(ProjectSettings.get_setting(SETTING_PROJECT_ID, ""))
+    _project_code_label.visible = true
+    _enable_button.disabled = false
+    for child in _panel.find_children("CopyProjectCodeButton", "Button", true, false):
+        child.disabled = false
+    _status.text = "Código revelado. Cópialo y compártelo para identificar el destino correcto."
+
+
+func _copy_project_code() -> void:
+    var project_id := str(ProjectSettings.get_setting(SETTING_PROJECT_ID, ""))
+    if not project_id.is_empty():
+        DisplayServer.clipboard_set(project_id)
+        _status.text = "Código copiado. Aún no hay conexión activa."
+
+
+func _enable_connection() -> void:
+    _connection_enabled = true
+    _connect_button.disabled = false
+    _enable_button.disabled = true
+    _status.text = "Conexión habilitada, pero todavía desconectada. Pulsa «Activar conexión» cuando estés listo."
+
+
 func _connect_clicked() -> void:
+    if not _connection_enabled:
+        _status.text = "Primero revela el código y habilita la conexión."
+        return
     var url := _url.text.strip_edges()
     var room := _room.text.strip_edges()
     var token := _token.text
