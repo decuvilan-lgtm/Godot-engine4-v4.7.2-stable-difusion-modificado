@@ -110,3 +110,11 @@ No marcar una etapa como completada sin evidencia reproducible. No fusionar el P
 24. Revisión adicional del flujo de conexión: el nombre de sala predeterminado `godot-room-1` incluía guiones, pero el addon lo validaba con `is_valid_identifier()`, que podía rechazarlo antes de conectar. Alineada la validación del addon con el patrón permitido por el relay (`[A-Za-z0-9_.:-]{1,80}`). La CI se ejecutará de nuevo para validar esta corrección junto con los checks existentes.
 
 25. Confirmada CI `40755946850`: **success** tras la corrección de validación de sala. La versión actual pasó los checks del generador/integración, las seis pruebas de relay y la carga de los tres addons en Godot 4.7.2.
+
+
+### 2026-10-28 — Teclado remoto, aislamiento y estado de conexión
+
+26. Confirmada CI `40757878782`: **success**. Las ocho pruebas del relay pasan, incluidas las regresiones que verifican el reenvío de teclas sin coordenadas de puntero y el aislamiento entre salas.
+27. Corregido `scripts/live_link_addon/plugin.gd`: el complemento ahora rastrea explícitamente el intento de conexión y limpia `_connecting`, `_connected` y el mensaje de unión pendiente cuando el WebSocket termina cerrado tras un rechazo o una desconexión. El estado visible informa que la conexión se cerró o fue rechazada e indica revisar URL, token y sala antes de reintentar.
+28. Confirmada CI `40758835812`: **success** para el cambio anterior. Pasaron los checks de integración del parcheador, las ocho pruebas del relay y la carga/parsing de los tres addons con Godot 4.7.2.
+29. Límite: esto valida el estado de conexión del complemento y el protocolo relay en CI, no una sesión entre dos editores reales. La reconexión automática todavía no está implementada; el usuario debe pulsar «Conectar». La captura completa, el control de interfaz nativa, la sincronización de archivos, compilación C++ y las pruebas Android siguen pendientes.
