@@ -34,6 +34,12 @@ class AndroidCapabilityPolicyTests(unittest.TestCase):
         self.assertTrue(any("filesystem" in item.lower() for item in checks))
         self.assertIn("When capability is uncertain, inspect the repository/API and mark it unverified instead of assuming desktop parity.", self.policy["agent_behavior"])
 
+    def test_operation_envelope_requires_android_editor_policy_version(self):
+        envelope = self.policy["operation_envelope"]
+        self.assertEqual(envelope["required_fields"]["target_platform"], "android_editor")
+        self.assertEqual(envelope["required_fields"]["policy_version"], 1)
+        self.assertTrue(envelope["reject_if_missing_or_different"])
+
     def test_mobile_policy_is_documented_and_not_misrepresented_as_live(self):
         self.assertIn("no se debe presentar esa integración como terminada", self.doc)
         self.assertIn("720×1600", self.doc)
