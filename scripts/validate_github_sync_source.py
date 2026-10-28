@@ -47,8 +47,6 @@ for token, label in [
     ("preview_dialog.close_requested.connect(_on_preview_dismissed)", "cleans staged files when the preview window is closed"),
     ("_cleanup_staging()\n\tif request and is_instance_valid(request):", "cleans staging when the plugin unloads"),
     ("Los cambios de GitHub se aplicaron.", "applies GitHub files directly as the source of truth"),
-    ("Los respaldos previos se conservan en:", "preserves the backup location if applying a later operation fails"),
-    ("se guardan fuera del proyecto", "explains that replaced/deleted local files are backed up outside the project"),
     ("_save_manifest()", "persists baseline for later deletions"),
     ('str(parsed.get("repository", "")) == active_repo', "only same-repository baseline permits deletion"),
     ("if not local_exists or local_sha != remote_sha:", "always compares local bytes directly to GitHub even when the previous upstream baseline is unchanged"),
@@ -77,11 +75,10 @@ for token, label in [
 
     require(token in gd, label)
 require("zipball" not in gd.lower() and "ZIPReader" not in gd, "incremental sync does not download or extract repository ZIPs")
-require("func _backup_local_changes() -> String:" in gd, "backs up local files before destructive updates/deletions")
-require('const BACKUP_DIR := "github_sync_backups"' in gd and 'user://%s/%s/%s' in gd, "stores backups outside the project in per-project, per-session folders")
-require("backup_error := _backup_local_changes()" in gd and "No se aplicó ningún cambio" in gd, "aborts before project mutation if backups cannot be prepared")
-require("MAX_TOTAL_BYTES" in gd and "MAX_FILE_BYTES" in gd and "files_to_backup" in gd, "bounds backup sizes to protect device storage")
-require("not _is_safe_relative_path(relative) or _is_ignored_path(relative)" in gd, "rejects unsafe manifest paths before backups or file mutations")
+require("_backup_local_changes" not in gd and "github_sync_backups" not in gd and "backup_session_root" not in gd, "contains no local backup or recovery-copy implementation")
+require("GitHub es la fuente de verdad" in gd and "No se crean copias de respaldo" in gd, "warns that GitHub is authoritative and local edits can be lost without backups")
+require("Los cambios locales reemplazados o eliminados no se guardaron" in gd, "reports explicitly that local edits are not preserved")
+require("not _is_safe_relative_path(relative) or _is_ignored_path(relative)" in gd, "rejects unsafe manifest paths before file mutations")
 require('expected_hash.length() == 64 else _git_blob_sha1(local_path)' in gd, "compares deletion candidates using the same hash algorithm as their manifest")
 require("never uploads local files" in config.read_text(encoding="utf-8").lower(), "one-way sync remains documented as no-upload")
 patcher_text = patcher.read_text(encoding="utf-8")
