@@ -111,7 +111,7 @@ class ProjectIdentityGateTests(unittest.TestCase):
         )[0]
         self.assertIn('"status":"rejected"', reject)
 
-    def test_remote_file_changes_require_explicit_user_approval(self):
+    def test_remote_approval_dialog_contract(self):
         apply = SOURCE.split("func _apply_project_operation(data: Dictionary) -> void:", 1)[1].split(
             "\\nfunc _approve_pending_project_operation", 1
         )[0]
