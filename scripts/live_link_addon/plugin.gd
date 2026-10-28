@@ -238,13 +238,18 @@ func _input(event: InputEvent) -> void:
 func _dispatch(event: Variant) -> void:
     if not event is Dictionary:
         return
-    var nx := float(event.get("x", -1.0))
-    var ny := float(event.get("y", -1.0))
-    if not is_finite(nx) or not is_finite(ny) or nx < 0.0 or nx > 1.0 or ny < 0.0 or ny > 1.0:
-        return
-    var viewport_size := get_tree().root.get_visible_rect().size
-    var pos := Vector2(nx * viewport_size.x, ny * viewport_size.y)
-    match str(event.get("kind", "")):
+    var kind := str(event.get("kind", ""))
+    # Keyboard events have no normalized pointer coordinates. Validate pointer
+    # coordinates only for pointer events, otherwise every key event is dropped.
+    var pos := Vector2.ZERO
+    if kind == "mouse_motion" or kind == "mouse_button":
+        var nx := float(event.get("x", -1.0))
+        var ny := float(event.get("y", -1.0))
+        if not is_finite(nx) or not is_finite(ny) or nx < 0.0 or nx > 1.0 or ny < 0.0 or ny > 1.0:
+            return
+        var viewport_size := get_tree().root.get_visible_rect().size
+        pos = Vector2(nx * viewport_size.x, ny * viewport_size.y)
+    match kind:
         "mouse_motion":
             var motion := InputEventMouseMotion.new()
             motion.position = pos
