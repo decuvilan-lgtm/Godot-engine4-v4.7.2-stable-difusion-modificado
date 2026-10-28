@@ -35,6 +35,8 @@ const TERRAIN_META := "github_terrain_3d"
 
 var terrain_button: Button
 var panel: VBoxContainer
+var inspector_scroll: ScrollContainer
+var inspector_content: VBoxContainer
 var terrain_tabs: TabContainer
 var paint_mode_picker: OptionButton
 var terrain_width: SpinBox
@@ -180,24 +182,42 @@ func _build_panel() -> void:
 	panel.add_theme_constant_override("separation", roundi(8.0 * EditorInterface.get_editor_scale()))
 	panel.hide()
 	panel.visibility_changed.connect(_update_action_overlay_visibility)
+
+	# Scroll the complete injected Inspector section, not only the inner tabs.
+	# On narrow phone layouts, controls outside the tabs otherwise get clipped.
+	inspector_scroll = ScrollContainer.new()
+	inspector_scroll.name = "TerrainInspectorVerticalScroll"
+	inspector_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	inspector_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inspector_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS
+	inspector_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	inspector_scroll.scroll_deadzone = 4
+	inspector_scroll.follow_focus = false
+	panel.add_child(inspector_scroll)
+	inspector_content = VBoxContainer.new()
+	inspector_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	inspector_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inspector_content.add_theme_constant_override("separation", roundi(8.0 * EditorInterface.get_editor_scale()))
+	inspector_scroll.add_child(inspector_content)
+
 	# The tool UI is attached to the native Inspector for the selected Terrain3D node.
 	terrain_tabs = TabContainer.new()
 	terrain_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	terrain_tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	terrain_tabs.tab_changed.connect(func(_tab: int) -> void: _update_action_overlay_visibility())
-	panel.add_child(terrain_tabs)
+	inspector_content.add_child(terrain_tabs)
 
 	# Keep the pencil controls available while switching between Sculpt and Paint.
-	_add_section(panel, "Lápiz táctil")
-	pencil_sensitivity = _add_slider(panel, "Sensibilidad del lápiz (0–100)", 50.0, 0.0, 100.0, 1.0)
+	_add_section(inspector_content, "Lápiz táctil")
+	pencil_sensitivity = _add_slider(inspector_content, "Sensibilidad del lápiz (0–100)", 50.0, 0.0, 100.0, 1.0)
 	_bind_editor_float_setting(pencil_sensitivity, "terrain_3d/pencil_sensitivity", 50.0, 0.0, 100.0)
 	pencil_state_label = Label.new()
 	pencil_state_label.text = "Lápiz negro / inactivo"
 	pencil_state_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	panel.add_child(pencil_state_label)
+	inspector_content.add_child(pencil_state_label)
 	continuous_stroke = CheckButton.new()
 	continuous_stroke.text = "Trazo continuo mientras mantienes ACCIÓN"
-	panel.add_child(continuous_stroke)
+	inspector_content.add_child(continuous_stroke)
 
 	# Native joystick customization lives in Godot Editor Settings; do not duplicate it here.
 	_position_action_button()
@@ -223,12 +243,12 @@ func _build_panel() -> void:
 		action_overlay.add_child(action_button)
 	else:
 		# Defensive fallback for unusual editor startup ordering.
-		panel.add_child(action_button)
+		inspector_content.add_child(action_button)
 	_position_action_button()
 	var pencil_help := Label.new()
 	pencil_help.text = "Desliza sobre el visor 3D para mover el lápiz. Tocar controles o soltar el dedo lo desactiva; ACCIÓN aplica la herramienta elegida."
 	pencil_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	panel.add_child(pencil_help)
+	inspector_content.add_child(pencil_help)
 	var home := _make_tab_page(terrain_tabs, "Inicio")
 	var sculpt := _make_tab_page(terrain_tabs, "Esculpir")
 	var paint := _make_tab_page(terrain_tabs, "Pintar")
@@ -350,7 +370,7 @@ func _build_panel() -> void:
 	status_label = Label.new()
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status_label.text = "Abre una escena 3D para comenzar."
-	panel.add_child(status_label)
+	inspector_content.add_child(status_label)
 	# This control is attached by TerrainInspectorTools only while Terrain3D is selected.
 	panel.show()
 	_create_cursor()
@@ -386,6 +406,8 @@ func _refresh_ui_scale() -> void:
 	var scale := EditorInterface.get_editor_scale()
 	if panel:
 		panel.add_theme_constant_override("separation", roundi(8.0 * scale))
+	if inspector_content and is_instance_valid(inspector_content):
+		inspector_content.add_theme_constant_override("separation", roundi(8.0 * scale))
 	if action_button:
 		action_button.custom_minimum_size = Vector2(120, 52) * scale
 		_position_action_button()
@@ -416,25 +438,31 @@ func _make_tab_page(tabs: TabContainer, title: String) -> VBoxContainer:
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# Godot's native touch drag remains enabled; expose a thumb for direct scrolling.
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS
-	scroll.scroll_deadzone = 12
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# Let touch drags become scroll gestures quickly instead of activating a child option.
+	scroll.scroll_deadzone = 4
+	scroll.follow_focus = false
 	tabs.add_child(scroll)
 	var content := VBoxContainer.new()
-	content.custom_minimum_size = Vector2(250, 0)
+	content.custom_minimum_size = Vector2(0, 0)
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 12)
+	content.add_theme_constant_override("separation", roundi(10.0 * EditorInterface.get_editor_scale()))
 	scroll.add_child(content)
 	return content
 
-func _make_labeled_control(label_text: String, control: Control) -> HBoxContainer:
-	var row := HBoxContainer.new()
+func _make_labeled_control(label_text: String, control: Control) -> VBoxContainer:
+	var column := VBoxContainer.new()
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_theme_constant_override("separation", roundi(4.0 * EditorInterface.get_editor_scale()))
 	var label := Label.new()
 	label.text = label_text
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	row.add_child(label)
+	column.add_child(label)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(control)
-	return row
+	control.custom_minimum_size.x = 0
+	column.add_child(control)
+	return column
 
 func _add_section(parent: Control, text: String) -> void:
 	var label := Label.new()
@@ -444,20 +472,23 @@ func _add_section(parent: Control, text: String) -> void:
 	parent.add_child(separator)
 
 func _add_spin(parent: Control, label_text: String, value: float, minimum: float, maximum: float, step: float) -> SpinBox:
-	var row := HBoxContainer.new()
+	var column := VBoxContainer.new()
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_theme_constant_override("separation", roundi(4.0 * EditorInterface.get_editor_scale()))
 	var label := Label.new()
 	label.text = label_text
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	row.add_child(label)
+	column.add_child(label)
 	var spin := SpinBox.new()
 	spin.min_value = minimum
 	spin.max_value = maximum
 	spin.step = step
 	spin.value = value
-	spin.custom_minimum_size = Vector2(112, 44) * EditorInterface.get_editor_scale()
-	row.add_child(spin)
-	parent.add_child(row)
+	spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spin.custom_minimum_size = Vector2(0, 44) * EditorInterface.get_editor_scale()
+	column.add_child(spin)
+	parent.add_child(column)
 	return spin
 
 func _add_slider(parent: Control, label_text: String, value: float, minimum: float, maximum: float, step: float) -> HSlider:
