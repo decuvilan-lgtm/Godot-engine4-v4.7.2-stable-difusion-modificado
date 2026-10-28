@@ -102,6 +102,38 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         await controller.close()
         await target.close()
 
+    async def test_routes_keyboard_input_without_pointer_coordinates(self):
+        target = await self.join("target", room="keyboard_room")
+        self.assertEqual((await target.receive_json(timeout=2))["type"], "joined")
+        controller = await self.join("controller", room="keyboard_room")
+        self.assertEqual((await controller.receive_json(timeout=2))["type"], "joined")
+        self.assertEqual((await target.receive_json(timeout=2))["type"], "peer_joined")
+        key_event = {
+            "kind": "key", "keycode": 65, "physical_keycode": 65,
+            "unicode": 97, "pressed": True, "echo": False,
+            "shift": False, "ctrl": True, "alt": False, "meta": False
+        }
+        await controller.send_json({"type": "remote_input", "event": key_event})
+        received = await target.receive_json(timeout=2)
+        self.assertEqual(received["type"], "remote_input")
+        self.assertEqual(received["from_role"], "controller")
+        self.assertEqual(received["event"], key_event)
+        await controller.close()
+        await target.close()
+
+    async def test_rooms_are_isolated(self):
+        target_a = await self.join("target", room="isolated_a")
+        self.assertEqual((await target_a.receive_json(timeout=2))["type"], "joined")
+        controller_b = await self.join("controller", room="isolated_b")
+        self.assertEqual((await controller_b.receive_json(timeout=2))["type"], "joined")
+        await target_a.send_json({
+            "type": "screen_frame", "width": 320, "height": 240, "data": "aGVsbG8="
+        })
+        with self.assertRaises(asyncio.TimeoutError):
+            await controller_b.receive(timeout=0.2)
+        await controller_b.close()
+        await target_a.close()
+
     async def test_rejects_out_of_range_remote_input(self):
         target = await self.join("target", room="input_room")
         await target.receive_json(timeout=2)
