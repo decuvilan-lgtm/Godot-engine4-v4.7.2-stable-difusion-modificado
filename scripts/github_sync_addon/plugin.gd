@@ -4,6 +4,7 @@ extends EditorPlugin
 const PLUGIN_PATH := "res://addons/github_sync/plugin.cfg"
 const TERRAIN_PLUGIN_PATH := "res://addons/terrain_3d/plugin.cfg"
 const MANIFEST_DIR := "github_sync_manifests"
+const BACKUP_DIR := "github_sync_backups"
 const MAX_TREE_FILES := 6000
 const MAX_FILE_BYTES := 256 * 1024 * 1024
 const MAX_TOTAL_BYTES := 1024 * 1024 * 1024
@@ -32,6 +33,7 @@ var operations: Array[Dictionary] = []
 var baseline: Dictionary = {}
 var project_root := ""
 var project_key := ""
+var backup_session_root := ""
 
 func _enter_tree() -> void:
 	project_root = ProjectSettings.globalize_path("res://").trim_suffix("/")
@@ -71,7 +73,7 @@ func _build_dialogs() -> void:
 	var root := VBoxContainer.new()
 	root.custom_minimum_size = Vector2(420, 0)
 	var info := Label.new()
-	info.text = "Solo aplica los archivos de GitHub al proyecto. No crea copias ni sube archivos."
+	info.text = "Solo aplica archivos de GitHub al proyecto. Los archivos locales reemplazados o eliminados se guardan fuera del proyecto; nunca se suben archivos."
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(info)
 	repo_input = LineEdit.new()
@@ -295,8 +297,9 @@ func _build_incremental_download_queue() -> void:
 			continue
 		var local_path := project_root.path_join(str(relative))
 		if FileAccess.file_exists(local_path):
-			var local_hash := FileAccess.get_sha256(local_path)
-			operations.append({"kind": "delete", "path": str(relative), "modified": legacy_baseline or local_hash != str(baseline[relative])})
+			var expected_hash := str(baseline[relative])
+			var local_hash := FileAccess.get_sha256(local_path) if expected_hash.length() == 64 else _git_blob_sha1(local_path)
+			operations.append({"kind": "delete", "path": str(relative), "modified": local_hash != expected_hash})
 	status_label.text = "Árbol comparado: %d archivos; descargando solo contenido necesario…" % tree_entries.size()
 
 func _download_next_file() -> void:
@@ -411,11 +414,16 @@ func _load_baseline() -> void:
 	var parsed = JSON.parse_string(file.get_as_text())
 	file.close()
 	if parsed is Dictionary and parsed.get("files", null) is Dictionary and str(parsed.get("repository", "")) == active_repo:
-		baseline = parsed.files
-		for value in baseline.values():
-			if str(value).length() == 64:
+		for raw_path in parsed.files.keys():
+			var relative := str(raw_path)
+			var digest := str(parsed.files[raw_path])
+			if not _is_safe_relative_path(relative) or _is_ignored_path(relative):
+				continue
+			if digest.length() != 40 and digest.length() != 64:
+				continue
+			baseline[relative] = digest
+			if digest.length() == 64:
 				legacy_baseline = true
-				break
 
 func _build_change_plan() -> void:
 	# Deletions were planned from the prior successful manifest before downloading.
@@ -450,7 +458,7 @@ func _show_preview() -> void:
 		if lines.size() < 80:
 			var marker := "A" if operation.kind == "add" else ("D" if operation.kind == "delete" else "U")
 			lines.append("%s  %s%s" % [marker, operation.path, "  [se reemplazará]" if operation.modified else ""])
-	var summary := "Repositorio: %s\nReferencia: %s\n\nAñadir: %d   Actualizar: %d   Eliminar: %d\nLos archivos del repositorio reemplazarán sus versiones locales cuando corresponda.\n\n" % [active_repo, active_ref if not active_ref.is_empty() else "(rama predeterminada)", adds, updates, deletes]
+	var summary := "Repositorio: %s\nReferencia: %s\n\nAñadir: %d   Actualizar: %d   Eliminar: %d\nLos archivos del repositorio reemplazarán sus versiones locales cuando corresponda.\nLos archivos locales reemplazados o eliminados se guardarán fuera del proyecto en user://%s/<proyecto>/<sesión> antes de aplicar cambios.\n\n" % [active_repo, active_ref if not active_ref.is_empty() else "(rama predeterminada)", adds, updates, deletes, BACKUP_DIR]
 	summary += "\n".join(lines)
 	summary += "\n\nLas escenas .tscn se actualizan en su misma ruta; no se crean escenas duplicadas. Las conexiones serializadas en la versión de GitHub se conservan tal cual."
 	if operations.size() > lines.size():
@@ -474,13 +482,62 @@ func _on_preview_dismissed() -> void:
 	_cleanup_staging()
 	operations.clear()
 
+
+func _backup_local_changes() -> String:
+	# Validate the complete plan before creating backups or changing project files.
+	var files_to_backup: Array[Dictionary] = []
+	var total_bytes := 0
+	for operation in operations:
+		var relative := str(operation.get("path", ""))
+		if not _is_safe_relative_path(relative) or _is_ignored_path(relative):
+			return "Ruta no permitida en el plan: " + relative
+		if operation.kind != "update" and operation.kind != "delete":
+			continue
+		var local_path := project_root.path_join(relative)
+		if not FileAccess.file_exists(local_path):
+			continue
+		var source := FileAccess.open(local_path, FileAccess.READ)
+		if source == null:
+			return "No se pudo leer el archivo local que se iba a reemplazar o eliminar: " + relative
+		var file_size := source.get_length()
+		source.close()
+		if file_size > MAX_FILE_BYTES:
+			return "El archivo local supera el límite de respaldo de %d MiB: %s" % [MAX_FILE_BYTES / (1024 * 1024), relative]
+		total_bytes += file_size
+		if total_bytes > MAX_TOTAL_BYTES:
+			return "Los respaldos superan el límite total de %d MiB. No se modificó el proyecto." % (MAX_TOTAL_BYTES / (1024 * 1024))
+		files_to_backup.append({"path": relative, "local_path": local_path})
+	if files_to_backup.is_empty():
+		backup_session_root = ""
+		return ""
+	backup_session_root = "user://%s/%s/%s" % [BACKUP_DIR, project_key, "%d_%d" % [int(Time.get_unix_time_from_system()), Time.get_ticks_msec()]]
+	for entry in files_to_backup:
+		var relative := str(entry.path)
+		var backup_path := backup_session_root.path_join(relative)
+		var directory_error := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(backup_path.get_base_dir()))
+		if directory_error != OK:
+			return "No se pudo crear la carpeta de respaldo para: " + relative + " (error %d)." % directory_error
+		var copy_error := _copy_file_streaming(str(entry.local_path), backup_path)
+		if copy_error != OK:
+			return "No se pudo respaldar '%s' (error %d). Los respaldos parciales se conservan en %s." % [relative, copy_error, backup_session_root]
+	return ""
+
 func _apply_changes() -> void:
 	if operations.is_empty():
+		return
+	var backup_error := _backup_local_changes()
+	if not backup_error.is_empty():
+		_cleanup_staging()
+		_show_error("No se aplicó ningún cambio porque no se pudieron preparar todos los respaldos.\n" + backup_error)
 		return
 	var possible_moves := _detect_possible_moves()
 	_log_sync("INICIO DE ACTUALIZACIÓN\nProyecto local: %s\nRepositorio: %s\nCommit: %s\nCambios a aplicar: %d" % [project_root.get_file(), active_repo, remote_commit_sha, operations.size()])
 	for operation in operations:
-		var relative: String = operation.path
+		var relative: String = str(operation.get("path", ""))
+		if not _is_safe_relative_path(relative) or _is_ignored_path(relative):
+			_cleanup_staging()
+			_show_error("Se canceló la sincronización: el plan contiene una ruta insegura: " + relative)
+			return
 		var local_path := project_root.path_join(relative)
 		var operation_error := OK
 		var connection_change := ""
@@ -490,7 +547,7 @@ func _apply_changes() -> void:
 				if possible_moves.has(relative):
 					_log_sync("POSIBLE MOVIMIENTO/RENOMBRE: '%s' → '%s' (se elimina la ruta anterior y se instala la nueva)." % [relative, str(possible_moves[relative])])
 				else:
-					_log_sync("ARCHIVO ELIMINADO\nArchivo: %s\nYa no existe en GitHub y se quitó del proyecto local." % relative)
+					_log_sync("ARCHIVO ELIMINADO\nArchivo: %s\nYa no existe en GitHub y se quitó del proyecto local. Su versión anterior se conservó fuera del proyecto." % relative)
 		else:
 			var staged_path := staged_root.path_join(relative)
 			DirAccess.make_dir_recursive_absolute(local_path.get_base_dir())
@@ -540,8 +597,8 @@ func _apply_changes() -> void:
 			changed_scene_paths.append("res://" + changed_path)
 	if not changed_scene_paths.is_empty():
 		call_deferred("_organize_synced_scenes", changed_scene_paths)
-	_log_sync("ACTUALIZACIÓN TERMINADA\nCambios aplicados: %d\nArchivos temporales eliminados. No se subió ningún archivo a GitHub." % operations.size())
-	_show_notice("Sincronización completada. Se aplicaron los cambios de GitHub directamente; los temporales se eliminaron y no se subió ningún archivo.")
+	_log_sync("ACTUALIZACIÓN TERMINADA\nCambios aplicados: %d\nRespaldos locales: %s\nArchivos temporales eliminados. No se subió ningún archivo a GitHub." % [operations.size(), backup_session_root if not backup_session_root.is_empty() else "no necesarios"])
+	_show_notice("Sincronización completada. Los cambios de GitHub se aplicaron. Los respaldos locales están en: %s. No se subió ningún archivo." % (backup_session_root if not backup_session_root.is_empty() else "no fueron necesarios"))
 
 func _auto_organize_project_scenes() -> void:
 	# Let the editor's initial filesystem scan finish before loading scene resources.
