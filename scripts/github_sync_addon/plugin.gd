@@ -28,7 +28,6 @@ var tree_entries: Dictionary = {}
 var pending_downloads: Array[String] = []
 var download_index := 0
 var staged_bytes := 0
-var legacy_baseline := false
 var operations: Array[Dictionary] = []
 var baseline: Dictionary = {}
 var project_root := ""
@@ -273,11 +272,6 @@ func _is_ignored_path(relative: String) -> bool:
 func _build_incremental_download_queue() -> void:
 	pending_downloads.clear()
 	upstream_files.clear()
-	legacy_baseline = false
-	for value in baseline.values():
-		if str(value).length() == 64:
-			legacy_baseline = true
-			break
 	for relative in tree_entries.keys():
 		var metadata: Dictionary = tree_entries[relative]
 		var remote_sha := str(metadata.sha)
@@ -404,7 +398,6 @@ func _manifest_path() -> String:
 
 func _load_baseline() -> void:
 	baseline = {}
-	legacy_baseline = false
 	var path := _manifest_path()
 	if not FileAccess.file_exists(path):
 		return
@@ -422,8 +415,6 @@ func _load_baseline() -> void:
 			if digest.length() != 40 and digest.length() != 64:
 				continue
 			baseline[relative] = digest
-			if digest.length() == 64:
-				legacy_baseline = true
 
 func _build_change_plan() -> void:
 	# Deletions were planned from the prior successful manifest before downloading.
