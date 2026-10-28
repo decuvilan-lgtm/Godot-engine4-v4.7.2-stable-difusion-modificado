@@ -206,6 +206,21 @@ func _is_private_ipv4(host: String) -> bool:
     return octets[0] == 10 or (octets[0] == 192 and octets[1] == 168) or (octets[0] == 172 and octets[1] >= 16 and octets[1] <= 31)
 
 
+func _is_valid_dns_host(host: String) -> bool:
+    if host.is_empty() or host.length() > 253 or host.begins_with(".") or host.ends_with("."):
+        return false
+    var labels := host.split(".")
+    for label in labels:
+        if label.is_empty() or label.length() > 63 or label.begins_with("-") or label.ends_with("-"):
+            return false
+        for i in range(label.length()):
+            var code := label.unicode_at(i)
+            var is_letter_or_digit := (code >= 48 and code <= 57) or (code >= 65 and code <= 90) or (code >= 97 and code <= 122)
+            if not is_letter_or_digit and code != 45:
+                return false
+    return true
+
+
 func _is_allowed_relay_url(url: String) -> bool:
     var local_regex := RegEx.new()
     local_regex.compile("^ws://(127\\.0\\.0\\.1|localhost)(:([0-9]{1,5}))?(/[^\\s]*)?$")
@@ -218,9 +233,9 @@ func _is_allowed_relay_url(url: String) -> bool:
     if lan_match != null:
         return _is_private_ipv4(lan_match.get_string(1)) and _valid_port(lan_match, 3)
     var secure_regex := RegEx.new()
-    secure_regex.compile("^wss://[A-Za-z0-9.-]+(:([0-9]{1,5}))?(/[^\\s]*)?$")
+    secure_regex.compile("^wss://([A-Za-z0-9.-]+)(:([0-9]{1,5}))?(/[^\\s]*)?$")
     var secure_match = secure_regex.search(url)
-    return secure_match != null and _valid_port(secure_match, 2)
+    return secure_match != null and _is_valid_dns_host(secure_match.get_string(1)) and _valid_port(secure_match, 3)
 
 func _connect_clicked() -> void:
     if not _connection_enabled:
