@@ -378,7 +378,10 @@ func _apply_validated_operation(data: Dictionary, operation: String, relative_pa
     if operation == "delete":
         if _backup_project_file(absolute_path, relative_path, str(data.get("operation_id", ""))).is_empty():
             return "failed"
-        return "applied" if DirAccess.remove_absolute(absolute_path) == OK else "failed"
+        if DirAccess.remove_absolute(absolute_path) != OK:
+            return "failed"
+        EditorInterface.get_resource_filesystem().scan()
+        return "applied"
     if operation == "rename":
         var destination := str(data.get("destination_path", ""))
         if not _safe_relative_path(destination):
@@ -390,7 +393,10 @@ func _apply_validated_operation(data: Dictionary, operation: String, relative_pa
             return "failed"
         if DirAccess.make_dir_recursive_absolute(destination_absolute.get_base_dir()) != OK:
             return "failed"
-        return "applied" if DirAccess.rename_absolute(absolute_path, destination_absolute) == OK else "failed"
+        if DirAccess.rename_absolute(absolute_path, destination_absolute) != OK:
+            return "failed"
+        EditorInterface.get_resource_filesystem().scan()
+        return "applied"
     var content_text := str(data.get("content_base64", ""))
     var content := Marshalls.base64_to_raw(content_text)
     if content.is_empty() and content_text != "":
