@@ -211,7 +211,7 @@ func _safe_relative_path(value: Variant) -> bool:
     var path := str(value)
     if path.is_empty() or path.length() > 1024 or path.begins_with("/") or path.contains("\\") or path.contains(":"):
         return false
-    var parts := path.split("/", false)
+    var parts := path.split("/", true)
     if parts.is_empty():
         return false
     for part in parts:
