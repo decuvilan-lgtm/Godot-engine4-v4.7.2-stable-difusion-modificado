@@ -110,8 +110,10 @@ func _connect_clicked() -> void:
     if not (url.begins_with("wss://") or url.begins_with("ws://127.0.0.1") or url.begins_with("ws://localhost")):
         _status.text = "Usa WSS; WS solo se permite para localhost."
         return
-    if room.is_empty() or room.length() > 80 or not room.is_valid_identifier():
-        _status.text = "Nombre de sala no válido. Usa letras, números y guion bajo."
+    var room_regex := RegEx.new()
+    room_regex.compile("^[A-Za-z0-9_.:-]{1,80}$")
+    if room_regex.search(room) == null:
+        _status.text = "Sala no válida. Usa letras, números, guion bajo, punto, dos puntos o guion."
         return
     if token.is_empty():
         _status.text = "Falta el token."
