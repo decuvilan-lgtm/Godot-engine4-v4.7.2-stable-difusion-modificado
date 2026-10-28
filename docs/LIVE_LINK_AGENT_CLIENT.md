@@ -102,3 +102,32 @@ The relay is a transport, not a security sandbox. The Android add-on must contin
 to validate paths, project identity, hashes, backups and each operation before
 changing project files. CI parser/tests do not prove the editor is connected to a
 real phone; Android end-to-end testing is still required.
+
+
+## Objetivo: usarlo desde el mismo Android, sin PC
+
+La topología actual del complemento sigue siendo **cliente WebSocket**: Godot se conecta a un relay. No debe describirse como una conexión peer-to-peer ni como una conexión nativa de ChatGPT.
+
+Se puede experimentar sin PC usando una terminal Android como Termux para ejecutar Python y el relay en el propio teléfono, y configurar Godot con `ws://127.0.0.1:8765/ws`. Esto elimina el equipo anfitrión, pero todavía no convierte a ChatGPT en un cliente local: el agente Python necesita que una IA u otro proceso le proporcione las operaciones.
+
+### Límite de integración con ChatGPT
+
+La aplicación de ChatGPT no obtiene acceso automático al sistema de archivos de Godot por compartir teléfono, y un servidor en `127.0.0.1` no es accesible desde la nube de ChatGPT. Para una conexión directa y automática con un modelo alojado en la nube hace falta una vía de integración que ese producto autorice y pueda alcanzar; evitar la API del proveedor no elimina esta limitación de red y aislamiento entre aplicaciones.
+
+Por eso, el diseño debe mantener separadas estas capas:
+
+1. **Destino Godot:** el complemento identifica un proyecto exacto y valida cada operación antes de escribir.
+2. **Transporte local opcional:** relay autoalojado en el mismo Android o en la LAN; no requiere proveedor de relay.
+3. **Agente:** proceso que traduce las decisiones de una IA en operaciones verificables. Puede ejecutarse en Android, pero necesita una fuente de decisiones.
+4. **Adaptador de IA:** integración opcional con una IA compatible. No se debe afirmar que ChatGPT está conectado hasta probar el flujo real de ida y vuelta.
+
+La ruta que evita API de IA, PC y servicios externos es posible si el propio dispositivo ejecuta también el modelo/agente; su capacidad dependerá del modelo y de la memoria disponible. Para usar específicamente ChatGPT alojado en la nube sin API ni integración autorizada, no existe una conexión automática que este complemento pueda habilitar por sí solo. Mientras tanto, la edición asistida por intercambio explícito de archivos o parches es una alternativa sin conexión automática y debe presentarse como tal.
+
+### Criterios de aceptación para una futura conexión Android-only
+
+- Seleccionar y mostrar el ID del proyecto de destino antes de aceptar cambios.
+- Requerir aprobación explícita por operación o por una sesión claramente autorizada.
+- Mantener copias de seguridad, hashes base, rutas relativas seguras y resultados correlacionados por ID de operación.
+- Mostrar en Godot si la operación se aplicó, fue rechazada, entró en conflicto o quedó con resultado desconocido.
+- No guardar tokens en el repositorio ni exponer un puerto de escucha a Internet.
+- Probar en el dispositivo Android real; las pruebas de CI no cuentan como prueba de conexión con ChatGPT.
