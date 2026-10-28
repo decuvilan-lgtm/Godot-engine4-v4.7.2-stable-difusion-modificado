@@ -1,10 +1,15 @@
 name: Build Godot Android Editor (source pipeline)
 
+# Pushes run a fast integration preflight only. Full ARM32+ARM64 APK builds are manual,
+# so each source fix does not trigger another long Android compilation.
 on:
+  push:
+    branches:
+      - feature/github-sync-and-safe-mcp
   workflow_dispatch:
     inputs:
       run_type:
-        description: "Manual run: build and validate the ARM64-only Android editor, or validate only the import patch"
+        description: "Choose full ARM32+ARM64 APK build, or import-only validation"
         type: choice
         required: true
         default: full-android-build
@@ -13,15 +18,161 @@ on:
           - validate-import-only
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: godot-android-editor-${{ github.ref }}
-  cancel-in-progress: true
+  # Never cancel a long Android build because a follow-up commit arrives.
+  cancel-in-progress: false
 
 jobs:
+  preflight-integration:
+    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.run_type == 'validate-import-only') }}
+    # GDScript/parser and integration validation must not run on a Linux host.
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+      - name: Checkout official Godot 4.7.2 source
+        uses: actions/checkout@v4
+        env:
+          # Godot's C# test fixtures contain paths beyond Win32's legacy limit.
+          # Set this on the checkout action itself, before it writes the working tree.
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: core.longpaths
+          GIT_CONFIG_VALUE_0: "true"
+        with:
+          repository: godotengine/godot
+          ref: 4.7.2-stable
+          path: godot-source
+      - name: Audit custom GDScript API calls against Godot 4.7.2 docs
+        run: python scripts/validate_gdscript_api.py
+      - name: Validate Python syntax for all patchers and validators
+        shell: bash
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          files = sorted(Path("scripts").glob("*.py"))
+          for path in files:
+              ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+          print(f"Validated Python syntax for {len(files)} scripts")
+          PY
+      - name: Apply GitHub import integration
+        run: python scripts/apply_github_import_patch.py
+      - name: Validate preview overlays and immersive mode
+        run: python scripts/validate_debug_overlay_patch.py
+      - name: Validate incremental GitHub sync safety
+        run: python scripts/validate_github_sync_source.py
+      - name: Apply GitHub sync and terrain editor integration
+        run: python scripts/apply_github_sync_patch.py
+      - name: Apply Android startup/loading patch
+        run: python scripts/apply_android_startup_patch.py
+      - name: Validate Android startup/loading resources
+        run: python scripts/validate_android_startup_patch.py
+      - name: Validate terrain editor source
+        run: python scripts/validate_terrain_3d_source.py
+      - name: Validate combined patch compatibility and regressions
+        run: python scripts/validate_combined_patches.py
+      - name: Download official Godot 4.7.2 Windows editor
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP "godot-4.7.2-win64.zip"
+          $folder = Join-Path $env:RUNNER_TEMP "godot-4.7.2-win64"
+          $uri = "https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_win64.exe.zip"
+          Invoke-WebRequest -Uri $uri -OutFile $archive
+          Expand-Archive -Path $archive -DestinationPath $folder -Force
+          $godot = Get-ChildItem -Path $folder -Filter "Godot_v4.7.2-stable_win64.exe" -Recurse | Select-Object -First 1
+          if ($null -eq $godot -or $godot.Length -lt 10000000) {
+            throw "Official Godot 4.7.2 Windows editor was not downloaded/extracted correctly."
+          }
+          "GODOT_EXE=$($godot.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Parse and load both addons in Godot 4.7.2
+        shell: pwsh
+        run: python scripts/validate_gdscript_load.py --godot "$env:GODOT_EXE"
+
+      - name: Rotate source cores after successful Windows preflight
+        if: ${{ github.event_name == 'push' && !contains(github.event.head_commit.message, '[build-apk]') }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="godot-modified-core-slots"
+          ROTATION_DIR=".godot-core-rotation"
+          mkdir -p "$ROTATION_DIR"
+
+          python - <<'PY'
+          from datetime import datetime, timezone
+          from pathlib import Path
+          import hashlib, json, os, subprocess
+          root = Path.cwd()
+          patch_hashes = {}
+          for path in sorted((root / "scripts").rglob("*")):
+              if path.is_file():
+                  patch_hashes[str(path.relative_to(root))] = hashlib.sha256(path.read_bytes()).hexdigest()
+          source_commit = subprocess.check_output(
+              ["git", "-C", "godot-source", "rev-parse", "HEAD"], text=True
+          ).strip()
+          manifest = {
+              "format_version": 1,
+              "snapshot_type": "source after successful Windows preflight validation",
+              "validation": "Windows preflight passed; no Android APK build was run for this snapshot",
+              "source_repository": "godotengine/godot",
+              "source_ref": "4.7.2-stable",
+              "source_commit": source_commit,
+              "custom_repository": os.environ["GITHUB_REPOSITORY"],
+              "custom_commit": os.environ["GITHUB_SHA"],
+              "created_at_utc": datetime.now(timezone.utc).isoformat(),
+              "patcher_and_addon_sha256": patch_hashes,
+          }
+          (root / "godot-core-manifest.json").write_text(
+              json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+          )
+          print(json.dumps({k: manifest[k] for k in (
+              "source_commit", "custom_commit", "validation"
+          )}, indent=2))
+          PY
+
+          ARCHIVE="$ROTATION_DIR/godot-core-next.tar.gz"
+          tar -czf "$ARCHIVE" \
+            --exclude='godot-source/.git' \
+            --exclude='godot-source/bin' \
+            --exclude='godot-source/platform/android/java/.gradle' \
+            --exclude='godot-source/platform/android/java/build' \
+            --exclude='godot-source/platform/android/java/editor/build' \
+            -C "$GITHUB_WORKSPACE" godot-source scripts docs .github/workflows README.md godot-core-manifest.json
+          test -s "$ARCHIVE"
+          sha256sum "$ARCHIVE"
+
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --title "Godot modified source — rotating core slots" \
+              --notes "Persistent source snapshots for the modified Android Godot editor. Rotation: previous posterior becomes anterior; new validated source becomes posterior. Each archive contains godot-core-manifest.json." \
+              --prerelease --target "$GITHUB_SHA"
+          fi
+
+          gh release upload "$TAG" "$ARCHIVE" --repo "$GITHUB_REPOSITORY" \
+            --clobber
+          if gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --pattern godot-core-posterior.tar.gz --dir "$ROTATION_DIR"; then
+            cp "$ROTATION_DIR/godot-core-posterior.tar.gz" "$ROTATION_DIR/godot-core-anterior.tar.gz"
+            gh release upload "$TAG" "$ROTATION_DIR/godot-core-anterior.tar.gz" \
+              --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            echo "First core snapshot: no posterior existed to rotate."
+          fi
+          cp "$ARCHIVE" "$ROTATION_DIR/godot-core-posterior.tar.gz"
+          gh release upload "$TAG" "$ROTATION_DIR/godot-core-posterior.tar.gz" --repo "$GITHUB_REPOSITORY" \
+            --clobber
+          gh release delete-asset "$TAG" godot-core-next.tar.gz \
+            --repo "$GITHUB_REPOSITORY" --yes
+          echo "Core rotation complete: anterior=previous posterior, posterior=latest validated source."
+
   build-android-editor:
-    if: ${{ inputs.run_type == 'full-android-build' }}
+    # Allow an explicit [build-apk] commit to start the full build when workflow_dispatch is unavailable.
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.run_type == 'full-android-build') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[build-apk]')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -30,13 +181,94 @@ jobs:
 
       - name: Checkout official Godot 4.7.2 source
         uses: actions/checkout@v4
+        env:
+          # Godot's C# test fixtures contain paths beyond Win32's legacy limit.
+          # Set this on the checkout action itself, before it writes the working tree.
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: core.longpaths
+          GIT_CONFIG_VALUE_0: "true"
         with:
           repository: godotengine/godot
           ref: 4.7.2-stable
           path: godot-source
 
+      - name: Give the custom editor a distinct Android package ID
+        shell: bash
+        working-directory: godot-source
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("platform/android/java/editor/build.gradle")
+          s = p.read_text(encoding="utf-8")
+          old = 'applicationIdSuffix ".debug"'
+          new = 'applicationIdSuffix ".debug.prilcustom"'
+          if s.count(old) != 1:
+              raise SystemExit(f"Expected exactly one default editor package suffix; found {s.count(old)}")
+          p.write_text(s.replace(old, new, 1), encoding="utf-8")
+          print("Custom package suffix configured: .debug.prilcustom")
+          PY
+
+      - name: Checkout reviewed public MCP addon
+        uses: actions/checkout@v4
+        with:
+          repository: GeorgeMee/godot-mcp-android
+          ref: 5df91076250ece38ab182b2ca8b8a4a5d9a2d938
+          path: godot-mcp-android-source
+
+      - name: Package and harden MCP addon
+        run: python scripts/package_safe_mcp_android.py
+
+      - name: Embed MCP addon source files in Android editor assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          ASSET_DIR="$GITHUB_WORKSPACE/godot-source/platform/android/java/editor/src/main/assets/mcp-addon"
+          mkdir -p "$ASSET_DIR"
+          cp -R "$GITHUB_WORKSPACE/dist/addons/godot_mcp_android/." "$ASSET_DIR/"
+          test -s "$ASSET_DIR/plugin.cfg"
+          test -s "$ASSET_DIR/scripts/protocol/mcp_tool_registry.gd"
+          if find "$ASSET_DIR" -name 'execute_script_tool.gd' -o -iname '*delete_project*' | grep -q .; then
+            echo "Unsafe MCP files found in Android assets."
+            exit 1
+          fi
+          echo "Embedded MCP addon files: $(find "$ASSET_DIR" -type f | wc -l)"
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZIP_DEFLATED, ZipFile
+          root = Path("dist/addons/godot_mcp_android")
+          archive = Path("godot-source/platform/android/java/editor/src/main/assets/mcp-addon.zip")
+          with ZipFile(archive, "w", ZIP_DEFLATED) as zf:
+              for path in sorted(root.rglob("*")):
+                  if path.is_file():
+                      zf.write(path, path.relative_to(root.parent).as_posix())
+          with ZipFile(archive) as zf:
+              names = zf.namelist()
+              assert "godot_mcp_android/plugin.cfg" in names
+              assert "godot_mcp_android/scripts/protocol/mcp_tool_registry.gd" in names
+          print(f"Created verified MCP bundle: {archive} ({archive.stat().st_size} bytes)")
+          PY
+
       - name: Apply GitHub import integration
         run: python "$GITHUB_WORKSPACE/scripts/apply_github_import_patch.py"
+
+      - name: Validate preview overlays and immersive mode
+        run: python "$GITHUB_WORKSPACE/scripts/validate_debug_overlay_patch.py"
+
+      - name: Validate incremental GitHub sync safety
+        run: python "$GITHUB_WORKSPACE/scripts/validate_github_sync_source.py"
+
+      - name: Apply GitHub sync and terrain editor integration
+        run: python "$GITHUB_WORKSPACE/scripts/apply_github_sync_patch.py"
+
+      - name: Apply Android startup/loading patch
+        run: python "$GITHUB_WORKSPACE/scripts/apply_android_startup_patch.py"
+
+      - name: Validate Android startup/loading resources
+        run: python "$GITHUB_WORKSPACE/scripts/validate_android_startup_patch.py"
+
+      - name: Validate terrain editor source
+        run: python "$GITHUB_WORKSPACE/scripts/validate_terrain_3d_source.py"
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -56,86 +288,191 @@ jobs:
         working-directory: godot-source
         run: python misc/scripts/install_swappy_android.py
 
-      - name: Compile Android editor engine for ARM64 only
+      - name: Compile Android editor engine for ARM32 and ARM64
         working-directory: godot-source
         run: |
           set -euo pipefail
+          scons platform=android target=editor arch=arm32 production=yes dev_mode=yes module_text_server_fb_enabled=yes swappy=yes cache_path="${{ github.workspace }}/.scons-cache" -j2
           scons platform=android target=editor arch=arm64 production=yes dev_mode=yes module_text_server_fb_enabled=yes swappy=yes generate_android_binaries=yes cache_path="${{ github.workspace }}/.scons-cache" -j2
 
       - name: Generate Android Editor APK
         working-directory: godot-source/platform/android/java
         run: ./gradlew --no-daemon generateGodotEditor
 
-      - name: Locate, stage, and validate ARM64-only APK
+      - name: Locate, stage, and validate ARM32+ARM64 APK
         shell: bash
         run: |
           set -euo pipefail
-          # Godot's documented Android editor output is generated under bin/android_editor_builds.
-          # Do not accidentally package the small Gradle intermediate/bootstrap APK from editor/build/outputs.
           APK="$GITHUB_WORKSPACE/godot-source/bin/android_editor_builds/android_editor-android-debug.apk"
           if [ ! -s "$APK" ]; then
             echo "Complete Android editor APK not found at the expected output path."
-            echo "Available APKs produced by this build:"
             find "$GITHUB_WORKSPACE/godot-source" -type f -name '*.apk' -printf '%s bytes %p\\n' | sort -nr
             exit 1
           fi
-
           APK_SIZE="$(stat -c '%s' "$APK")"
           echo "Selected source-built editor APK: $APK ($APK_SIZE bytes)"
-          # The previous run mistakenly staged a ~13 MB intermediate APK. Fail closed rather than
-          # publishing an incomplete editor if the expected full editor package is not present.
           if [ "$APK_SIZE" -lt 50000000 ]; then
             echo "ERROR: Android editor APK is unexpectedly small (<50 MB); refusing to publish it."
             exit 1
           fi
-
-          cp "$APK" "$GITHUB_WORKSPACE/godot-editor-arm64.apk"
-          APK="$GITHUB_WORKSPACE/godot-editor-arm64.apk"
-
+          cp "$APK" "$GITHUB_WORKSPACE/godot-editor-arm32-arm64.apk"
+          APK="$GITHUB_WORKSPACE/godot-editor-arm32-arm64.apk"
           BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
           AAPT="$BUILD_TOOLS/aapt"
           APKSIGNER="$BUILD_TOOLS/apksigner"
           ZIPALIGN="$BUILD_TOOLS/zipalign"
-
-          echo "=== APK details ==="
           ls -lh "$APK"
           sha256sum "$APK"
           unzip -t "$APK"
           "$AAPT" dump badging "$APK" | tee apk-badging.txt
-
-          echo "=== Enforce ARM64-only native code ==="
           NATIVE_LINE="$(grep '^native-code:' apk-badging.txt || true)"
           echo "$NATIVE_LINE"
-          if [ "$NATIVE_LINE" != "native-code: 'arm64-v8a'" ]; then
-            echo "ERROR: APK must contain only arm64-v8a; found: $NATIVE_LINE"
+          python - <<'PY'
+          from pathlib import Path
+          text = Path("apk-badging.txt").read_text(encoding="utf-8")
+          line = next((item for item in text.splitlines() if item.startswith("native-code:")), "")
+          found = set(line.replace("native-code:", "").replace("'", "").split())
+          expected = {"armeabi-v7a", "arm64-v8a"}
+          if found != expected:
+              raise SystemExit(f"Expected exactly {sorted(expected)}; found {sorted(found)} in {line!r}")
+          print("Verified native ABIs:", ", ".join(sorted(found)))
+          PY
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          "$ZIPALIGN" -c -v 4 "$APK"
+          unzip -Z1 "$APK" | grep -Fx 'assets/mcp-addon/plugin.cfg'
+          unzip -Z1 "$APK" | grep -Fx 'assets/mcp-addon/scripts/protocol/mcp_tool_registry.gd'
+          unzip -Z1 "$APK" | grep -Fx 'assets/mcp-addon.zip'
+          unzip -p "$APK" assets/mcp-addon.zip > "$RUNNER_TEMP/mcp-addon.zip"
+          python - <<'PY'
+          from zipfile import ZipFile
+          import os
+          with ZipFile(os.environ["RUNNER_TEMP"] + "/mcp-addon.zip") as zf:
+              names = zf.namelist()
+              assert "godot_mcp_android/plugin.cfg" in names
+              assert "godot_mcp_android/scripts/protocol/mcp_tool_registry.gd" in names
+              assert all(not n.startswith("/") and ".." not in n.split("/") for n in names)
+          PY
+          EMBEDDED_REGISTRY="$(unzip -p "$APK" assets/mcp-addon/scripts/protocol/mcp_tool_registry.gd)"
+          if grep -q 'ExecuteScriptTool\\|delete_project' <<< "$EMBEDDED_REGISTRY"; then
+            echo "ERROR: unsafe MCP tool registration found inside APK."
+            exit 1
+          fi
+          EMBEDDED_HTTP="$(unzip -p "$APK" assets/mcp-addon/scripts/server/mcp_http_server.gd)"
+          EMBEDDED_WS="$(unzip -p "$APK" assets/mcp-addon/scripts/server/mcp_websocket_server.gd)"
+          grep -Fq 'bind_host = "127.0.0.1"' <<< "$EMBEDDED_HTTP"
+          grep -Fq 'bind_host = "127.0.0.1"' <<< "$EMBEDDED_WS"
+          if grep -Fq 'Access-Control-Allow-Origin: *' <<< "$EMBEDDED_HTTP"; then
+            echo "ERROR: wildcard CORS found inside APK."
             exit 1
           fi
 
-          echo "=== Verify APK signature ==="
-          "$APKSIGNER" verify --verbose --print-certs "$APK"
+      - name: Rotate persistent modified Godot source cores (anterior/posterior)
+        if: success() && ((github.event_name == 'workflow_dispatch' && inputs.run_type == 'full-android-build') || github.event_name == 'push')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="godot-modified-core-slots"
+          ROTATION_DIR="$RUNNER_TEMP/godot-core-rotation"
+          mkdir -p "$ROTATION_DIR"
 
-          echo "=== Verify ZIP alignment ==="
-          "$ZIPALIGN" -c -v 4 "$APK"
+          python - <<'PY'
+          from datetime import datetime, timezone
+          from pathlib import Path
+          import hashlib, json, os, subprocess
+          root = Path.cwd()
+          scripts = sorted((root / "scripts").glob("*.py"))
+          patch_hashes = {}
+          for path in scripts:
+              patch_hashes[str(path.relative_to(root))] = hashlib.sha256(path.read_bytes()).hexdigest()
+          source_commit = subprocess.check_output(
+              ["git", "-C", "godot-source", "rev-parse", "HEAD"], text=True
+          ).strip()
+          apk = root / "godot-editor-arm32-arm64.apk"
+          manifest = {
+              "format_version": 1,
+              "snapshot_type": "post-patch source after successful ARM32+ARM64 APK validation",
+              "source_repository": "godotengine/godot",
+              "source_ref": "4.7.2-stable",
+              "source_commit": source_commit,
+              "custom_repository": os.environ["GITHUB_REPOSITORY"],
+              "custom_commit": os.environ["GITHUB_SHA"],
+              "created_at_utc": datetime.now(timezone.utc).isoformat(),
+              "validated_apk_sha256": hashlib.sha256(apk.read_bytes()).hexdigest(),
+              "patcher_sha256": patch_hashes,
+          }
+          (root / "godot-core-manifest.json").write_text(
+              json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+          )
+          print(json.dumps({k: manifest[k] for k in (
+              "source_commit", "custom_commit", "validated_apk_sha256"
+          )}, indent=2))
+          PY
 
-      - name: Upload ARM64-only Android editor APK
-        if: always() && inputs.run_type == 'full-android-build'
+          ARCHIVE="$ROTATION_DIR/godot-core-next.tar.gz"
+          tar -czf "$ARCHIVE" \
+            --exclude='godot-source/.git' \
+            --exclude='godot-source/bin' \
+            --exclude='godot-source/platform/android/java/.gradle' \
+            --exclude='godot-source/platform/android/java/build' \
+            --exclude='godot-source/platform/android/java/editor/build' \
+            -C "$GITHUB_WORKSPACE" godot-source scripts .github/workflows README.md godot-core-manifest.json
+          test -s "$ARCHIVE"
+          sha256sum "$ARCHIVE"
+
+          # The temporary upload makes rotation recoverable if a later upload fails.
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --title "Godot modified source — rotating core slots" \
+              --notes "Persistent source snapshots for the modified Android Godot editor. Asset rotation: previous posterior becomes anterior; the new validated source becomes posterior. See godot-core-manifest.json inside each archive." \
+              --prerelease --target "$GITHUB_SHA"
+          fi
+
+          gh release upload "$TAG" "$ARCHIVE" --repo "$GITHUB_REPOSITORY" \
+            --clobber
+
+          if gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --pattern godot-core-posterior.tar.gz --dir "$ROTATION_DIR"; then
+            cp "$ROTATION_DIR/godot-core-posterior.tar.gz" "$ROTATION_DIR/godot-core-anterior.tar.gz"
+            gh release upload "$TAG" "$ROTATION_DIR/godot-core-anterior.tar.gz" \
+              --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            echo "No previous posterior core exists; this is the first saved core."
+          fi
+
+          cp "$ARCHIVE" "$ROTATION_DIR/godot-core-posterior.tar.gz"
+          gh release upload "$TAG" "$ROTATION_DIR/godot-core-posterior.tar.gz" --repo "$GITHUB_REPOSITORY" \
+            --clobber
+          gh release delete-asset "$TAG" godot-core-next.tar.gz \
+            --repo "$GITHUB_REPOSITORY" --yes
+          echo "Core rotation complete: anterior=previous posterior, posterior=new validated core."
+
+      - name: Upload ARM32+ARM64 Android editor APK
+        if: always() && ((github.event_name == 'workflow_dispatch' && inputs.run_type == 'full-android-build') || github.event_name == 'push')
         uses: actions/upload-artifact@v4
         with:
-          name: godot-4.7.2-android-editor-arm64-only
+          name: godot-4.7.2-android-editor-arm32-arm64
           if-no-files-found: error
           path: |
-            godot-editor-arm64.apk
+            godot-editor-arm32-arm64.apk
             apk-badging.txt
           retention-days: 30
 
   validate-import-only:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_type == 'validate-import-only' }}
-    runs-on: ubuntu-24.04
+    runs-on: windows-latest
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v4
       - name: Checkout official Godot 4.7.2 source
         uses: actions/checkout@v4
+        env:
+          # Godot's C# test fixtures contain paths beyond Win32's legacy limit.
+          # Set this on the checkout action itself, before it writes the working tree.
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: core.longpaths
+          GIT_CONFIG_VALUE_0: "true"
         with:
           repository: godotengine/godot
           ref: 4.7.2-stable
@@ -144,3 +481,28 @@ jobs:
         run: python -m py_compile scripts/apply_github_import_patch.py
       - name: Run import integration patcher
         run: python scripts/apply_github_import_patch.py
+
+  package-safe-mcp-addon:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+      - name: Checkout public Android MCP addon
+        uses: actions/checkout@v4
+        with:
+          repository: GeorgeMee/godot-mcp-android
+          ref: 5df91076250ece38ab182b2ca8b8a4a5d9a2d938
+          path: godot-mcp-android-source
+      - name: Package and validate safe MCP addon
+        run: python scripts/package_safe_mcp_android.py
+      - name: Upload safe MCP addon
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-mcp-android-safe
+          path: dist/godot-mcp-android-safe.zip
+          if-no-files-found: error
+          retention-days: 30
+
+# Build trigger after successful preflight: 2026-10-26

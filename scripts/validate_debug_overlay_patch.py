@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+"""Source-only regression checks for the running-game preview debug overlay."""
+from pathlib import Path
+import ast
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+PATCHER = ROOT / "scripts" / "apply_github_import_patch.py"
+README = ROOT / "README.md"
+
+def require(condition: bool, message: str) -> None:
+    if not condition:
+        print(f"FAIL: {message}", file=sys.stderr)
+        raise SystemExit(1)
+    print(f"PASS: {message}")
+
+require(PATCHER.is_file(), "Godot source patcher exists")
+source = PATCHER.read_text(encoding="utf-8")
+ast.parse(source, filename=str(PATCHER))
+require(True, "patcher has valid Python syntax")
+
+for token, label in [
+    ("__GodotPreviewDebugOverlay", "debug overlay is created inside the running game window"),
+    ('button->set_text("☀️")', "runtime preview exposes the sun-icon debug dropdown"),
+    ("set_custom_minimum_size(Size2(60, 44))", "legacy in-game trigger remains available but hidden so controls are not duplicated"),
+    ("button->hide()", "debug controls are not drawn over the running game; they live in the GameView toolbar"),
+    ("_create_runtime_debug_overlay();", "runtime overlay is installed by SceneDebugger"),
+    ("Retry overlay creation here as well as at debugger initialization", "preview tools are initialized again after the running game window exists"),
+    ("The upstream ERR_FAIL_COND_V reports this expected stale UI event as an ERROR.", "stale debugger frame requests after preview stop are handled quietly"),
+    ("if (!is_session_active() || p_frame < 0) {\\n\\t\\treturn false;", "stack-frame requests return safely when the debugger session has ended"),
+    ("_runtime_debug_button_pressed", "runtime button opens its menu"),
+    ("_runtime_debug_item_pressed", "runtime menu toggles overlays live"),
+    ("callable_mp_static(&SceneDebugger::_runtime_debug_item_pressed)", "runtime menu signal is wired"),
+    ('popup->add_check_item("Colisiones 2D/3D, formas y raycasts", 0)', "menu contains collision shapes and raycasts"),
+    ("rectángulos, círculos, cápsulas, polígonos, cajas 3D, Area2D/Area3D y RayCast2D/3D", "collision tooltip names the supported 2D/3D shape variants and detection areas"),
+    ('popup->add_check_item("Rutas Path2D/Path3D", 1)', "menu contains 2D/3D path overlays"),
+    ('popup->add_check_item("Mallas de navegación", 2)', "menu contains navigation overlays"),
+    ('popup->add_check_item("Áreas y velocidades de evasión", 3)', "menu contains avoidance overlays"),
+    ('popup->add_check_item("Redibujado 2D", 4)', "menu contains CanvasItem redraw debugging"),
+    ('Mostrar FPS (esquina superior derecha)', "optional FPS counter appears in the existing runtime menu"),
+    ('fps_label->set_anchors_and_offsets_preset(Control::PRESET_TOP_RIGHT)', "FPS counter is anchored to the top-right corner"),
+    ('fps_label->set_offset(SIDE_TOP, 56)', "FPS counter has a fixed unobtrusive position in the running game"),
+    ('fps_label->set_mouse_filter(Control::MOUSE_FILTER_IGNORE)', "FPS counter does not intercept game input"),
+    ('Engine::get_singleton()->get_frames_per_second()', "FPS counter reads live engine FPS"),
+    ('fps_timer->set_wait_time(0.25)', "FPS counter refreshes at four updates per second"),
+    ("set_debug_collisions_hint(bool(p_args[0]))", "collision toggle updates physics debug state"),
+    ("path_2d->debug_update_runtime()", "live Path2D renderer refresh"),
+    ("path_3d->debug_update_runtime(enabled)", "live Path3D renderer refresh"),
+    ("canvas_item_set_debug_redraw(bool(p_args[0]))", "RenderingServer live redraw toggle"),
+    ('message_handlers["set_debug_paths"] = _msg_set_debug_paths', "path handler is registered"),
+    ('message_handlers["set_debug_canvas_item_redraw"] = _msg_set_debug_canvas_item_redraw', "redraw handler is registered"),
+    ("Android immersive preview mode", "Android immersive preview patch is present"),
+    ("project_run_bar == nullptr || !project_run_bar->is_playing()", "preview debug menu cannot desynchronize its checkmarks when no game is running"),
+    ('#include "platform/android/java_godot_wrapper.h"', "Android immersive mode includes the complete GodotJavaWrapper definition"),
+    ("mobile_immersive_exit_button->show()", "immersive mode keeps a floating return button"),
+    ("title_bar->hide()", "immersive mode hides the editor top bar"),
+    ("window_set_mode(DisplayServerEnums::WINDOW_MODE_FULLSCREEN)", "immersive mode requests fullscreen"),
+    ("set_mobile_immersive_preview(true)", "immersive mode sends a stretch request to the running game"),
+    ("set_mobile_immersive_preview(false)", "exiting immersive mode restores the running game's original scale"),
+    ("set_content_scale_aspect(Window::CONTENT_SCALE_ASPECT_IGNORE)", "running game fills the available screen"),
+    ("set_content_scale_mode(mobile_immersive_previous_scale_mode)", "game scaling mode is restored on exit"),
+    ("Size2i(680 * EDSCALE, 560 * EDSCALE)", "GitHub import dialog is sized for mobile readability"),
+    ("popup_centered_clamped", "GitHub dialog clamps to available screen size"),
+    ("void Path3D::debug_update_runtime(bool p_enabled)", "Path3D creates/updates its runtime debug instance"),
+]:
+    require(token in source, label)
+
+require("enable_immersive_mode(true)" not in source and "enable_immersive_mode(mobile_previous_system_immersive)" not in source,
+        "preview immersive does not change Android status/navigation bar visibility")
+require('mobile_immersive_toolbar_button->set_text(TTR("inm"))' in source and 'embedding_hb->add_child(mobile_immersive_toolbar_button)' in source,
+        "preview immersive control is inserted into GameView's preview toolbar")
+require('mobile_preview_debug_button->set_text(TTR("🔅"))' in source and 'embedding_hb->add_child(mobile_preview_debug_button)' in source and 'mobile_preview_debug_menu->add_check_item(TTR("Mostrar FPS"), 5)' in source,
+        "debug dropdown is inserted into the preview toolbar and exposes all debug options")
+require('main_editor_button_hb->add_child(mobile_immersive_toolbar_button)' not in source and 'main_editor_button_hb->add_child(mobile_preview_debug_button)' not in source,
+        "preview controls are not attached to the editor workspace toolbar")
+require('distraction_free->set_text(TTR("inm"))' in source,
+        "native editor immersive control retains its icon and is labelled inm")
+require('EditorRunBar::_immersive_preview_pressed' not in source, "immersive control is not misplaced in the Play/Stop run bar")
+require('message_handlers["set_debug_fps"] = _msg_set_debug_fps;' in source, "FPS toggle is forwarded to the running preview")
+
+require("Visible Paths" in README.read_text(encoding="utf-8") and "CanvasItem Redraws" in README.read_text(encoding="utf-8"),
+        "README documents the preview debugging controls")
+print("Source-only checks passed. This does not prove C++ compilation or in-game runtime behavior.")

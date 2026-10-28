@@ -1,0 +1,5 @@
+Final reviewed Android editor build request.
+
+Included review fixes: restore terrain Inspector visibility on reselection; rebuild and recover missing terrain collision after scene ownership/load; guard preview debug toggles while the game is stopped.
+
+Build ARM32 and ARM64. Source validation must pass before considering the APK publishable. This build does not replace LG K51 touch/runtime verification. Fullscreen preview remains a device-level validation item because Android game embedding uses a floating window.
