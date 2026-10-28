@@ -29,11 +29,11 @@ El primer prototipo comprometido contiene:
 
 **Importante:** estos archivos son una base experimental, no evidencia de que la conexión completa funcione en el editor Android.
 
-## Bloqueo de integración actual
+## Estado de integración actual
 
-`scripts/apply_github_sync_patch.py` actualmente incrusta GitHub Sync y Terreno 3D en el código C++ del motor y los provisiona al abrir proyectos. Live Link todavía no está agregado a ese mecanismo. Por tanto, el addon no aparece garantizadamente como opción del Godot modificado y aún no hay integración global de captura/control.
+Se modificó `scripts/apply_github_sync_patch.py` para que el generador incruste también `scripts/live_link_addon/plugin.gd` y `plugin.cfg` en el encabezado C++ generado, copie esos archivos al importar ZIP y complete los archivos ausentes al abrir un proyecto existente. El script agrega Live Link a la lista de plugins habilitados siguiendo el patrón que ya usa para GitHub Sync y Terreno 3D; en proyectos existentes no sobrescribe archivos de addon que ya existan.
 
-Antes de modificar ese script, comprobar cada ancla exacta y la salida del generador. No activar ni sobrescribir archivos de proyectos existentes sin una política explícita y segura.
+**Límite importante:** el cambio está guardado en la rama, pero todavía no se ejecutó el parcheador contra el árbol real de código fuente Godot ni se compiló el C++. Por eso la integración debe considerarse implementada en el generador, no validada ni funcional todavía. Tampoco agrega aún captura/control en la capa nativa del editor: sigue siendo el complemento experimental.
 
 ## Matriz de validación y aceptación
 
@@ -67,6 +67,13 @@ Antes de modificar ese script, comprobar cada ancla exacta y la salida del gener
 6. Añadido `docs/LIVE_LINK_SYNC_PROTOCOL.md` con un diseño preliminar para sincronización de archivos bidireccional: hashes SHA-256, operaciones idempotentes, rutas seguras, transferencias por fragmentos, conflictos explícitos y borrados versionados.
 7. La integración del addon en `scripts/apply_github_sync_patch.py) sigue pendiente. Se detectaron anclas sensibles al escape de tabulaciones en el código C++ embebido; no se guardó ninguna modificación parcial en ese archivo. No afirmar que Live Link ya se instala automáticamente.
 8. No se ha desplegado el relay, ni se ha probado el addon GDScript en esta rama, ni se ha generado APK.
+
+
+### 2026-10-28 — Integración inicial en el generador
+
+9. Actualizado `scripts/apply_github_sync_patch.py` (commit `53887f313ee0df000adf0f1cd63039394bc40805`) para incrustar el GDScript y el manifiesto de Live Link en el header generado y provisionarlo en importación ZIP/apertura de proyectos.
+10. La ruta para proyectos existentes conserva los archivos de addon que ya existen; solo escribe los archivos de Live Link ausentes. La activación automática sigue el patrón previo de GitHub Sync/Terreno 3D.
+11. **Pendiente de validar:** no se ha ejecutado este generador con `godot-source`, no se ha compilado el C++ modificado y no se han ejecutado las pruebas del relay de esta rama. No hay APK ni prueba Android.
 
 ## Próximos pasos técnicos
 
