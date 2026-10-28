@@ -8,7 +8,33 @@ ROOMS: dict[str, set[web.WebSocketResponse]] = {}
 ROLES: dict[web.WebSocketResponse, str] = {}
 LAST: dict[web.WebSocketResponse, dict[str, float]] = {}
 MAX_MESSAGE = 8 * 1024 * 1024
-LIMITS = {"screen_frame": 3.0, "remote_input": 120.0}
+LIMITS = {"screen_frame": 3.0, "remote_input": 120.0, "project_operation": 20.0, "project_result": 60.0}
+MAX_PROJECT_CONTENT = 5 * 1024 * 1024
+PROJECT_ID_RE = re.compile(r"^[a-fA-F0-9-]{16,64}$")
+OPERATION_ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,100}$")
+
+def valid_project_operation(data):
+    """Validate envelope only; the target must still validate paths and hashes before writing."""
+    project_id, op_id, operation, path = (data.get(k) for k in ("project_id", "operation_id", "operation", "path"))
+    if not isinstance(project_id, str) or not PROJECT_ID_RE.fullmatch(project_id): return False
+    if not isinstance(op_id, str) or not OPERATION_ID_RE.fullmatch(op_id): return False
+    if operation not in ("create", "update", "rename", "delete"): return False
+    if not isinstance(path, str) or not path or len(path) > 1024 or "\\\\" in path or path.startswith("/") or re.match(r"^[A-Za-z]:", path): return False
+    parts = path.split("/")
+    if any(part in ("", ".", "..") for part in parts): return False
+    if any(part.lower() in (".git", ".godot") for part in parts): return False
+    if operation in ("create", "update"):
+        content = data.get("content_base64")
+        digest = data.get("sha256")
+        base = data.get("base_sha256", "")
+        if not isinstance(content, str) or len(content) > (MAX_PROJECT_CONTENT * 4 // 3 + 8): return False
+        if not isinstance(digest, str) or not re.fullmatch(r"[a-fA-F0-9]{64}", digest): return False
+        if not isinstance(base, str) or (base and not re.fullmatch(r"[a-fA-F0-9]{64}", base)): return False
+    if operation == "rename":
+        dest = data.get("destination_path")
+        if not isinstance(dest, str) or not dest or len(dest) > 1024 or dest.startswith("/") or "\\\\" in dest: return False
+        if any(part in ("", ".", "..") for part in dest.split("/")): return False
+    return True
 
 async def health(_request):
     return web.json_response({"service":"godot-live-link-relay", "status":"ok"})
@@ -24,7 +50,7 @@ async def websocket(request):
         try: hello = json.loads(first.data)
         except Exception:
             await ws.close(message=b"invalid json"); return ws
-        if not isinstance(hello, dict) or hello.get("type") != "join" or hello.get("role") not in ("controller", "target"):
+        if not isinstance(hello, dict) or hello.get("type") != "join" or hello.get("role") not in ("controller", "target", "agent"):
             await ws.close(message=b"invalid join"); return ws
         requested = hello.get("room")
         if not isinstance(requested, str) or not re.fullmatch(r"[A-Za-z0-9_.:-]{1,80}", requested):
