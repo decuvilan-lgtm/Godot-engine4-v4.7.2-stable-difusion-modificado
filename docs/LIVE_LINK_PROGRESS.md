@@ -61,6 +61,13 @@ Antes de modificar ese script, comprobar cada ancla exacta y la salida del gener
 3. Confirmado en el README del addon que la captura de la raíz del SceneTree puede no cubrir toda la interfaz y que los eventos sintetizados no garantizan el control de todas las superficies nativas.
 4. Añadida esta bitácora para registrar decisiones, pruebas y bloqueos sin confundir código subido con una función terminada.
 
+### 2026-10-28 — Primeros artefactos de prueba y diseño de sincronización
+
+5. Añadido `tests/live_link/test_relay.py` con pruebas de integración para health, token incorrecto, rol duplicado, encaminamiento de pantalla y rechazo de coordenadas fuera de rango. **El archivo de pruebas está creado, pero aún no se ha ejecutado contra el relay de esta rama**; no contar como prueba superada.
+6. Añadido `docs/LIVE_LINK_SYNC_PROTOCOL.md` con un diseño preliminar para sincronización de archivos bidireccional: hashes SHA-256, operaciones idempotentes, rutas seguras, transferencias por fragmentos, conflictos explícitos y borrados versionados.
+7. La integración del addon en `scripts/apply_github_sync_patch.py) sigue pendiente. Se detectaron anclas sensibles al escape de tabulaciones en el código C++ embebido; no se guardó ninguna modificación parcial en ese archivo. No afirmar que Live Link ya se instala automáticamente.
+8. No se ha desplegado el relay, ni se ha probado el addon GDScript en esta rama, ni se ha generado APK.
+
 ## Próximos pasos técnicos
 
 1. Integrar Live Link en el generador de addons del motor con anclas comprobadas, sin cambiar el comportamiento de GitHub Sync ni Terreno 3D.
