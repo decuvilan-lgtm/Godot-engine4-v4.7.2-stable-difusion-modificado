@@ -128,3 +128,12 @@ No marcar una etapa como completada sin evidencia reproducible. No fusionar el P
 33. Añadidos tests para validación de rutas/hash y encaminamiento agente→target→agente, más un workflow ligero `.github/workflows/validate-live-link-relay.yml` que ejecuta py_compile y la suite de relay al cambiar esos archivos.
 34. **Límite explícito:** el relay solo transporta y valida el sobre del mensaje. Todavía no existe receptor de operaciones en el addon Godot, registro/selección de proyecto autorizada, cliente de herramientas conectado a ChatGPT, aplicación atómica/backups en el dispositivo ni prueba de extremo a extremo. No afirmar que ChatGPT puede modificar el proyecto Android todavía.
 35. No se generó APK ni se fusionó el PR. La validación CI de los cambios recientes está pendiente de observarse en Actions.
+
+
+### 2026-10-28 — Receptor experimental en el addon Godot
+
+36. Añadido un ID persistente por proyecto en `ProjectSettings`, generado con bytes aleatorios, y mostrado en el dock para que el transporte pueda dirigir operaciones al proyecto correcto.
+37. El addon ahora reconoce mensajes `project_operation` del rol `agent` y comprueba que el ID coincida con el proyecto abierto. Implementa las operaciones `create`, `update`, `rename` y `delete`, con validación de rutas relativas, bloqueo de `.git/` y `.godot/`, detección de enlaces simbólicos por las APIs de directorio, límites de contenido y verificación SHA-256.
+38. Las modificaciones y eliminaciones respaldan primero la versión anterior en `user://live_link_backups/`; las escrituras se preparan en un temporal, se verifica el hash y se solicita un escaneo del FileSystem de Godot tras completar la operación. Los conflictos de versión base se rechazan sin sobrescritura.
+39. Ampliado el workflow de validación para cargar el addon con el editor headless oficial Godot 4.7.2 además de ejecutar las pruebas del relay. **Este paso está pendiente de resultado en Actions para el receptor recién añadido.**
+40. Sigue pendiente la prueba funcional de escritura/renombrado/borrado contra un proyecto temporal real y en Android. La carga GDScript, aunque pase, no demuestra el comportamiento del sistema de archivos Android ni la conexión con ChatGPT.
