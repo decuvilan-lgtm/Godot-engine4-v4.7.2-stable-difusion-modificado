@@ -146,3 +146,7 @@ No marcar una etapa como completada sin evidencia reproducible. No fusionar el P
 43. Añadidos cinco checks de regresión de fuente para el bloqueo de activación, rotación aleatoria, separación entre revelar/copiar/conectar y no rotar durante una sesión. Son checks estáticos y no sustituyen pruebas de UI en Android.
 44. CI anterior a esta última modificación: ejecución `40766730300` completada con éxito. La nueva lógica de generación/guardado y los nuevos checks necesitan su propia ejecución CI.
 45. Sin APK, sin fusión del PR y sin afirmar prueba funcional en Android.
+
+46. Endurecido el flujo de consentimiento: «Habilitar conexión» permanece deshabilitado tras revelar el código y solo se habilita cuando se pulsa «Copiar código». La acción de revelar no copia ni conecta automáticamente. El identificador no se puede regenerar mientras haya una conexión activa o en curso.
+47. Añadidos checks estáticos para verificar que copiar el código es requisito para habilitar y que revelar/copiar/conectar son acciones separadas. La CI `40767603817` terminó en success para el complemento y la suite ejecutada; la prueba estática adicional agregada después debe confirmarse en una ejecución posterior.
+48. Límite de cobertura: estos checks inspeccionan el contrato del código fuente. No simulan el portapapeles real, no ejecutan operaciones de archivos sobre un proyecto temporal y no sustituyen las pruebas en Android.
