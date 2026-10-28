@@ -5,6 +5,7 @@ on:
     paths:
       - "relay/**"
       - "tests/live_link/**"
+      - "scripts/live_link_addon/**"
       - ".github/workflows/validate-live-link-relay.yml"
   workflow_dispatch:
 
