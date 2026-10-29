@@ -193,6 +193,12 @@ class ProjectIdentityGateTests(unittest.TestCase):
         remove = apply.index('DirAccess.remove_absolute(absolute_path)')
         self.assertLess(backup, remove)
 
+    def test_recovery_journal_runs_when_live_link_addon_starts(self):
+        enter = SOURCE.split("func _enter_tree() -> void:", 1)[1].split(
+            "\nfunc ", 1
+        )[0]
+        self.assertIn("_recover_interrupted_file_transactions()", enter)
+
     def test_file_replacement_uses_recovery_journal_and_rollback_rename(self):
         recovery = SOURCE.split("func _recover_interrupted_file_transactions() -> void:", 1)[1].split(
             "\nfunc ", 1
