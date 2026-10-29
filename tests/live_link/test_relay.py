@@ -204,6 +204,10 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
             candidate = dict(base, path=path)
             self.assertFalse(relay.valid_project_operation(candidate), path)
         self.assertFalse(relay.valid_project_operation(dict(base, project_id="bad")))
+        for invalid_id in ("123", "12345", "12a4", "1234-5678", "12345678-1234-1234-1234-123456789abc"):
+            self.assertFalse(relay.valid_project_operation(dict(base, project_id=invalid_id)), invalid_id)
+        for valid_id in ("0000", "4827", "9999"):
+            self.assertTrue(relay.valid_project_operation(dict(base, project_id=valid_id)), valid_id)
         self.assertFalse(relay.valid_project_operation(dict(base, sha256="not-a-hash")))
         self.assertFalse(relay.valid_project_operation(dict(base, content_base64="x" * (relay.MAX_PROJECT_CONTENT * 2))))
 
