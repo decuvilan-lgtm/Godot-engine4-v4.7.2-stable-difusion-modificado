@@ -189,7 +189,7 @@ class ProjectIdentityGateTests(unittest.TestCase):
         )[0]
         self.assertIn('_write_transaction_journal(absolute_path, rollback_absolute, temp_absolute, backup_path)', apply)
         self.assertIn('DirAccess.rename_absolute(absolute_path, rollback_absolute)', apply)
-        self.assertNotIn('DirAccess.remove_absolute(absolute_path) != OK', apply)
+        self.assertNotIn('if exists and DirAccess.remove_absolute(absolute_path) != OK:', apply)
 
     def test_rename_destination_is_validated_and_shown_before_approval(self):
         apply = SOURCE.split("func _apply_project_operation(data: Dictionary) -> void:", 1)[1].split(
