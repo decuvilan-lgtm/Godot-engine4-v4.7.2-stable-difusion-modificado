@@ -23,6 +23,10 @@ on:
       - ".github/workflows/validate-live-link-relay.yml"
   workflow_dispatch:
 
+concurrency:
+  group: live-link-validation-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   relay-protocol:
     permissions:
