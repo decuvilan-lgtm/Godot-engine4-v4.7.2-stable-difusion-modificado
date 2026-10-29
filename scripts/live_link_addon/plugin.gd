@@ -499,11 +499,25 @@ func _apply_project_operation(data: Dictionary) -> void:
         if absolute_path.is_empty():
             detail = "La ruta sale del proyecto o contiene un enlace simbólico."
         else:
-            _pending_project_operation = data.duplicate(true)
-            _approval_dialog.dialog_text = "Proyecto: " + project_id + "\nOperación: " + operation + "\nArchivo: " + relative_path + "\n\nSolo se aplicará si confirmas. Revisa la ruta antes de continuar."
-            _approval_dialog.popup_centered()
-            _status.text = "Esperando aprobación para " + operation + ": " + relative_path
-            return
+            var approval_text := "Proyecto: " + project_id + "\nOperación: " + operation + "\nArchivo: " + relative_path
+            if operation == "rename":
+                var destination := str(data.get("destination_path", ""))
+                if not _safe_relative_path(destination):
+                    detail = "La ruta de destino no es válida."
+                else:
+                    var destination_absolute := _project_absolute_path(destination)
+                    if destination_absolute.is_empty():
+                        detail = "El destino sale del proyecto o contiene un enlace simbólico."
+                    elif FileAccess.file_exists(destination_absolute) or DirAccess.dir_exists_absolute(destination_absolute):
+                        detail = "El destino ya existe; no se ha aplicado ningún cambio."
+                    else:
+                        approval_text += "\nDestino: " + destination
+            if operation != "rename" or approval_text.contains("\nDestino: "):
+                _pending_project_operation = data.duplicate(true)
+                _approval_dialog.dialog_text = approval_text + "\n\nSolo se aplicará si confirmas. Revisa todas las rutas antes de continuar."
+                _approval_dialog.popup_centered()
+                _status.text = "Esperando aprobación para " + operation + ": " + relative_path
+                return
     _send({"type":"project_result", "project_id":project_id, "operation_id":op_id, "status":status, "message":detail})
 
 
