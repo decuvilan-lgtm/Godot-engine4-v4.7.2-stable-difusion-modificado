@@ -218,6 +218,28 @@ class ProjectIdentityGateTests(unittest.TestCase):
         self.assertIn('DirAccess.rename_absolute(absolute_path, rollback_absolute)', apply)
         self.assertNotIn('if exists and DirAccess.remove_absolute(absolute_path) != OK:', apply)
 
+    def test_recovery_journal_rejects_normalized_path_traversal_and_symlinks(self):
+        normalized = SOURCE.split("func _is_normalized_child(path: String, root: String) -> bool:", 1)[1].split(
+            "\nfunc ", 1
+        )[0]
+        self.assertIn("path.simplify_path()", normalized)
+        self.assertIn('normalized_path.begins_with(normalized_root + "/")', normalized)
+        recovery = SOURCE.split("func _recover_interrupted_file_transactions() -> void:", 1)[1].split(
+            "\nfunc ", 1
+        )[0]
+        self.assertIn("_is_normalized_child(original, project_root)", recovery)
+        self.assertIn("_is_normalized_child(backup, backup_root)", recovery)
+        self.assertIn("_is_symlink_path(rollback) or _is_symlink_path(temporary) or _is_symlink_path(backup)", recovery)
+        self.assertIn("original.simplify_path() != expected_original", recovery)
+
+    def test_recovery_transaction_suffix_is_fixed_length_hex(self):
+        helper = SOURCE.split("func _has_transaction_suffix(path: String, original: String, marker: String) -> bool:", 1)[1].split(
+            "\nfunc ", 1
+        )[0]
+        self.assertIn("suffix.length() != 8", helper)
+        self.assertIn("code >= 48 and code <= 57", helper)
+        self.assertIn("code >= 97 and code <= 102", helper)
+
     def test_rename_destination_is_validated_and_shown_before_approval(self):
         apply = SOURCE.split("func _apply_project_operation(data: Dictionary) -> void:", 1)[1].split(
             "\nfunc _approve_pending_project_operation", 1
