@@ -111,6 +111,22 @@ func _test_recovery_after_original_moved(receiver: Variant) -> void:
     _check(not FileAccess.file_exists(temporary), "recovery removes uncommitted temporary file")
     _check(not FileAccess.file_exists(receiver._transaction_journal_path()), "recovery clears completed journal")
 
+    # Simulate a crash after the new file was installed but before the old
+    # rollback file and journal were cleaned up. Recovery must keep the new file.
+    var committed_relative := TEST_ROOT + "/recover-committed.txt"
+    var committed_absolute := ProjectSettings.globalize_path("res://" + committed_relative)
+    var committed_rollback := committed_absolute + ".live_link_rollback_deadbeef"
+    var committed_temporary := committed_absolute + ".live_link_tmp_cafebabe"
+    _write_text(committed_absolute, "new committed content")
+    _write_text(committed_rollback, "old rollback content")
+    _write_text(committed_temporary, "stale temporary content")
+    _check(receiver._write_transaction_journal(committed_absolute, committed_rollback, committed_temporary, ""), "committed recovery journal written")
+    receiver._recover_interrupted_file_transactions()
+    _check(FileAccess.get_file_as_string(committed_absolute) == "new committed content", "recovery preserves installed replacement")
+    _check(not FileAccess.file_exists(committed_rollback), "recovery removes obsolete rollback file")
+    _check(not FileAccess.file_exists(committed_temporary), "recovery removes stale temporary file after install")
+    _check(not FileAccess.file_exists(receiver._transaction_journal_path()), "recovery clears committed journal")
+
 
 func _operation_data(receiver: Variant, operation_id: String, bytes: PackedByteArray, base_hash: String) -> Dictionary:
     return {
