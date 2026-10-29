@@ -96,8 +96,9 @@ class LiveLinkAgentClientTests(unittest.IsolatedAsyncioTestCase):
         async with LiveLinkAgentClient(
             self.url, "agent_validation_room", "test-token-live-link", PROJECT_ID, timeout=1
         ) as agent:
-            with self.assertRaisesRegex(ValueError, "project_id"):
-                await agent.execute(self.operation(project_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"))
+            for invalid_id in ("123", "12345", "12a4", "12345678-1234-1234-1234-123456789abc"):
+                with self.assertRaisesRegex(ValueError, "project_id"):
+                    await agent.execute(self.operation(project_id=invalid_id))
             with self.assertRaisesRegex(ValueError, "policy"):
                 await agent.execute(self.operation(policy_version=2))
 
