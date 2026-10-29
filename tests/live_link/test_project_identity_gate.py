@@ -240,6 +240,19 @@ class ProjectIdentityGateTests(unittest.TestCase):
         self.assertIn("code >= 48 and code <= 57", helper)
         self.assertIn("code >= 97 and code <= 102", helper)
 
+    def test_operation_envelope_is_validated_before_approval(self):
+        operation = SOURCE.split("func _apply_project_operation(data: Dictionary) -> void:", 1)[1].split(
+            "\nfunc _approve_pending_project_operation", 1
+        )[0]
+        self.assertIn('_valid_operation_id(data.get("operation_id", null))', operation)
+        self.assertIn('_safe_relative_path(data.get("path", null))', operation)
+        self.assertIn('operation in ["update", "rename", "delete"] and not _is_sha256(data.get("base_sha256", null))', operation)
+        self.assertIn('operation in ["create", "update"]', operation)
+        self.assertIn('int(MAX_OPERATION_BYTES * 4 / 3) + 8', operation)
+        self.assertIn('not _is_sha256(data.get("sha256", null))', operation)
+        self.assertIn('regex.compile("^[A-Za-z0-9_.:-]{1,100}$")', SOURCE)
+        self.assertIn('regex.compile("^[a-fA-F0-9]{64}$")', SOURCE)
+
     def test_rename_destination_is_validated_and_shown_before_approval(self):
         apply = SOURCE.split("func _apply_project_operation(data: Dictionary) -> void:", 1)[1].split(
             "\nfunc _approve_pending_project_operation", 1
