@@ -184,6 +184,10 @@ class ProjectIdentityGateTests(unittest.TestCase):
         self.assertIn('JSON.parse_string(file.get_as_text())', recovery)
         self.assertIn('DirAccess.rename_absolute(rollback, original)', recovery)
         self.assertIn('temporary', recovery)
+        self.assertIn('_safe_relative_path(relative_original)', recovery)
+        self.assertIn('rollback.begins_with(original + ".live_link_rollback_")', recovery)
+        self.assertIn('temporary.begins_with(original + ".live_link_tmp_")', recovery)
+        self.assertIn('backup.begins_with(backup_root)', recovery)
         apply = SOURCE.split("func _apply_validated_operation(", 1)[1].split(
             "\nfunc ", 1
         )[0]
