@@ -38,6 +38,7 @@ var _sender_queue: Array[Dictionary] = []
 var _sender_inflight: Dictionary = {}
 var _sender_baseline: Dictionary = {}
 var _sender_baseline_loaded := false
+var _sender_baseline_target_id := ""
 var _baseline_confirm_dialog: ConfirmationDialog
 
 func _enter_tree() -> void:
@@ -118,6 +119,8 @@ func _build_ui() -> void:
     _role.add_item("Este editor comparte pantalla", 0)
     _role.add_item("Este editor controla al remoto", 1)
     _role.add_item("Este editor envía cambios al Android", 2)
+    if OS.get_name() == "Android":
+        _role.set_item_disabled(2, true)
     var current_role := str(ProjectSettings.get_setting(SETTING_ROLE, "target"))
     _role.select(2 if current_role == "agent" else (1 if current_role == "controller" else 0))
     _panel.add_child(_field("Modo", _role))
@@ -341,7 +344,12 @@ func _process(_delta: float) -> void:
             _connecting = false
             _connected = false
             _join.clear()
-            _status.text = "Conexión cerrada o rechazada por el relay. Revisa URL, token y sala; pulsa Conectar para reintentar."
+            if not _sender_inflight.is_empty():
+                _status.text = "Conexión perdida durante una operación; su resultado es desconocido. Revisa Android antes de reintentar."
+                _sender_inflight.clear()
+                _sender_queue.clear()
+            else:
+                _status.text = "Conexión cerrada o rechazada por el relay. Revisa URL, token y sala; pulsa Conectar para reintentar."
         return
     _ws.poll()
     if _ws.get_ready_state() == WebSocketPeer.STATE_OPEN and not _join.is_empty():
@@ -921,7 +929,7 @@ func _sender_manifest_path(target_id: String) -> String:
 
 
 func _show_baseline_confirmation() -> void:
-    if not _is_agent():
+    if _role.selected != 2:
         _status.text = "Selecciona el modo emisor Linux antes de preparar la línea base."
         return
     if not _target_id_is_valid():
@@ -934,7 +942,7 @@ func _show_baseline_confirmation() -> void:
 
 
 func _initialize_sender_baseline() -> void:
-    if not _is_agent() or not _target_id_is_valid():
+    if _role.selected != 2 or not _target_id_is_valid():
         _status.text = "Selecciona el modo emisor e introduce un ID Android válido."
         return
     var target_id := _target_project_id.text.strip_edges()
@@ -947,6 +955,7 @@ func _initialize_sender_baseline() -> void:
             baseline[relative_path] = digest.to_lower()
     _sender_baseline = baseline
     _sender_baseline_loaded = true
+    _sender_baseline_target_id = target_id
     if not _save_sender_baseline(target_id):
         _status.text = "No se pudo guardar la línea base local."
         return
@@ -966,6 +975,7 @@ func _load_sender_baseline(target_id: String) -> bool:
         return false
     _sender_baseline = parsed["files"].duplicate(true)
     _sender_baseline_loaded = true
+    _sender_baseline_target_id = target_id
     return true
 
 
@@ -1025,7 +1035,7 @@ func _send_changed_files() -> void:
         _status.text = "Introduce el ID Android de exactamente cuatro dígitos."
         return
     var target_id := _target_project_id.text.strip_edges()
-    if not _sender_baseline_loaded and not _load_sender_baseline(target_id):
+    if (not _sender_baseline_loaded or _sender_baseline_target_id != target_id) and not _load_sender_baseline(target_id):
         _status.text = "Primero registra la línea base cuando ambos proyectos sean idénticos."
         return
     if not _sender_inflight.is_empty() or not _sender_queue.is_empty():
@@ -1097,7 +1107,7 @@ func _process_sender_queue() -> void:
 func _handle_sender_result(data: Dictionary) -> void:
     if _sender_inflight.is_empty():
         return
-    var target_id := _target_project_id.text.strip_edges()
+    var target_id := str(_sender_inflight.get("project_id", ""))
     if str(data.get("project_id", "")) != target_id or str(data.get("operation_id", "")) != str(_sender_inflight.get("operation_id", "")):
         return
     var result_status := str(data.get("status", "failed"))
@@ -1108,6 +1118,7 @@ func _handle_sender_result(data: Dictionary) -> void:
         else:
             _sender_baseline[path] = str(_sender_inflight.get("sha256", ""))
         _sender_baseline_loaded = true
+        _sender_baseline_target_id = target_id
         _save_sender_baseline(target_id)
     _status.text = "Android respondió " + result_status + ": " + path
     _sender_inflight.clear()
