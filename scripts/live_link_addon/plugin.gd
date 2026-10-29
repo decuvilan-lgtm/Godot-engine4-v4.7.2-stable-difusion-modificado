@@ -40,6 +40,7 @@ func _enter_tree() -> void:
     _setting(SETTING_ROOM, "godot-room-1", TYPE_STRING)
     _setting(SETTING_ROLE, "target", TYPE_STRING)
     _ensure_project_id()
+    _ensure_project_room()
     _recover_interrupted_file_transactions()
     _build_ui()
     add_control_to_dock(DOCK_SLOT_RIGHT_UL, _panel)
@@ -342,6 +343,18 @@ func _ensure_project_id() -> void:
         var save_error := ProjectSettings.save()
         if save_error != OK:
             push_error("Live Link could not persist the four-digit project ID.")
+
+
+func _ensure_project_room() -> void:
+    # Each four-digit project ID gets a separate relay room by default.
+    # Preserve an explicitly configured custom room.
+    var room := str(ProjectSettings.get_setting(SETTING_ROOM, ""))
+    if room.is_empty() or room == "godot-room-1":
+        var project_id := str(ProjectSettings.get_setting(SETTING_PROJECT_ID, ""))
+        ProjectSettings.set_setting(SETTING_ROOM, "project-" + project_id)
+        var save_error := ProjectSettings.save()
+        if save_error != OK:
+            push_error("Live Link could not persist the project-specific relay room.")
 
 
 func _safe_relative_path(value: Variant) -> bool:
