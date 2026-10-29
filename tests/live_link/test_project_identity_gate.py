@@ -33,6 +33,12 @@ class ProjectIdentityGateTests(unittest.TestCase):
         self.assertIn("_connection_enabled = false", reveal)
         self.assertIn("_connect_button.disabled = true", reveal)
 
+    def test_default_relay_room_is_scoped_to_project_id(self):
+        room = SOURCE.split("func _ensure_project_room() -> void:", 1)[1].split("\nfunc ", 1)[0]
+        self.assertIn('room == "godot-room-1"', room)
+        self.assertIn('"project-" + project_id', room)
+        self.assertIn("ProjectSettings.save()", room)
+
     def test_reveal_does_not_connect_or_copy_automatically(self):
         reveal = SOURCE.split("func _reveal_project_code() -> void:", 1)[1].split(
             "\nfunc ", 1
