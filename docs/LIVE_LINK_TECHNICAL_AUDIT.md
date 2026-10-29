@@ -19,16 +19,18 @@ El harness `tests/live_link/godot_filesystem_harness/godot_filesystem_harness.gd
 
 Estas pruebas son mucho más fuertes que las comprobaciones estáticas, pero **no** simulan matar el proceso Godot en cada instrucción ni prueban el teléfono LG K51, el diálogo de aprobación/rechazo, la captura completa de pantalla o la entrada global del editor Android.
 
-## Arquitectura necesaria
+## Arquitectura objetivo aclarada: Linux como extremo de trabajo y Android como vista/ejecución
 
-1. **Godot Android:** el complemento Live Link identifica el proyecto y recibe operaciones. No debe ejecutar comandos arbitrarios ni aplicar cambios sin la confirmación visible del usuario.
-2. **Relay:** autentica conexiones y transporta pantalla, eventos y resultados. El servidor de desarrollo no debe exponerse directamente a Internet; el acceso remoto requiere TLS/WSS, token fuerte y secretos fuera del repositorio.
-3. **Agente:** `relay/agent_client.py` envía una operación y espera una respuesta explícita del editor. Que el relay haya recibido un mensaje no significa que el archivo haya cambiado.
-4. **Puente de ChatGPT:** para que ChatGPT invoque herramientas de forma directa hace falta un servidor MCP remoto que exponga herramientas limitadas y llame al cliente agente. El cliente Python actual no es por sí mismo una herramienta conectada a ChatGPT.
+El usuario ha aclarado el flujo deseado: modificará en otro chat una **versión Linux modificada de Godot** y quiere poder compartir en este chat el Godot Linux/proyecto y un identificador de conexión, para que ChatGPT use las capacidades autorizadas disponibles y los cambios se reflejen en su Godot Android. El propósito principal es editar el proyecto real, no simplemente retransmitir pantalla o mover el cursor.
 
-Una integración MCP no necesita llamar a la API de modelos de OpenAI si ChatGPT invoca las herramientas del conector, pero requiere que la cuenta y la interfaz de ChatGPT admitan ese tipo de conexión y acciones de escritura. La documentación actual indica que las conexiones MCP personalizadas son solo para la web, que ChatGPT no conecta directamente con un servidor MCP local y que la disponibilidad de escritura depende del plan. Verifica las condiciones vigentes antes de invertir en desplegar el puente.
+1. **ChatGPT en este chat:** prepara cambios de proyecto (por ejemplo, una casa 3D, un enemigo, escenas, scripts, materiales o ajustes). ChatGPT no tiene acceso mágico a un proceso arbitrario por recibir un ID: ese ID solo identifica un destino dentro del protocolo y nunca debe funcionar como credencial secreta ni saltarse la autorización de herramientas.
+2. **Godot Linux modificado:** es el extremo de trabajo/control que el usuario desarrollará en paralelo. Debe ofrecer herramientas explícitas y limitadas para consultar el proyecto activo, aplicar cambios, revisar diffs, validar escenas/recursos y devolver resultados. El usuario quiere pasar este componente a ChatGPT para que pueda trabajar con él, sin API de inferencia.
+3. **Godot Android modificado:** es el editor real en el teléfono. Debe identificar el proyecto receptor, aceptar solo operaciones autorizadas, proteger los archivos y reflejar cambios de proyecto. El objetivo no es reemplazarlo por una app espejo.
+4. **Sincronización entre ambos Godot:** los archivos del proyecto son la fuente compartida de verdad. Un cambio preparado en Linux debe llegar a Android con control de versiones/conflictos y resultado comprobado; abrir/recargar el recurso o escena en Android debe mostrar el cambio. La sincronización de archivos es prioritaria respecto al control remoto de cada botón del editor.
+5. **Red y servicios:** no exigir la misma LAN/Wi‑Fi y no llamar a una API de modelo. Debe investigarse un canal de transporte entre redes diferentes. Un ID por sí solo no crea conectividad. La conexión directa puede estar limitada por NAT/firewalls; si el diseño requiere un relay u otro servicio externo, documentarlo como dependencia y no presentarlo como una conexión sin intermediarios.
+6. **Seguridad y control:** el ID identifica el proyecto, no sustituye autenticación. Aplicar permisos explícitos, confirmación en el editor cuando corresponda, operaciones acotadas al proyecto, diff/backup, hashes, límites de tamaño y resultados inequívocos.
 
-Mientras ese puente no esté disponible, el flujo viable desde el ChatGPT actual es: editar el repositorio con la conexión GitHub, revisar los cambios y sincronizarlos desde el editor Android. Eso no es control en vivo de la UI.
+Una prueba de aceptación de extremo a extremo será: el usuario comparte el proyecto/componente Linux y su ID; ChatGPT solicita una modificación autorizada (por ejemplo, crear una casa 3D); el Godot Linux modificado aplica el cambio al proyecto real; Android recibe los archivos y actualiza/abre la escena; el usuario ve la casa en su teléfono; y el sistema informa qué cambió y si hubo conflictos. Debe repetirse con un enemigo 3D y una segunda modificación incremental sin generar un APK nuevo.
 
 ## Restricciones de arquitectura confirmadas por el usuario
 
@@ -121,4 +123,4 @@ El diario y los archivos temporales/rollback reducen el riesgo de perder el orig
 
 ## Regla para declarar éxito
 
-No marcar Live Link como terminado hasta que se demuestre el flujo completo: ChatGPT/herramienta autorizada → agente → relay → proyecto Godot seleccionado → aprobación explícita → cambio de archivo → resultado verificado; además de pruebas de Android ARM32/ARM64 y una prueba física del editor.
+No marcar Live Link como terminado hasta demostrar el flujo objetivo aclarado: ChatGPT prepara un cambio mediante una herramienta autorizada → Godot Linux modificado aplica/verifica el cambio al proyecto real → el proyecto se sincroniza al Godot Android del usuario → el teléfono refleja la modificación sin reconstruir un APK. Debe funcionar con el Linux y el teléfono en redes diferentes, sin API de inferencia y con autorización/validación/backup/resultados verificables. Además, se requieren pruebas Android ARM32/ARM64 y una prueba física en el LG K51.
