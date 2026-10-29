@@ -7,15 +7,15 @@ Rama revisada: `feature/live-editor-link`
 
 Live Link ya tiene tres piezas separadas: un complemento dentro del editor Godot, un relay WebSocket autenticado y un cliente Python de agente. La ruta de operaciones admite `create`, `update`, `rename` y `delete`; el editor valida el proyecto destino, pide aprobación explícita, compara SHA-256 para detectar conflictos y mantiene copias de seguridad.
 
-Esto todavía **no equivale a una integración ChatGPT→Godot terminada**. Faltan un puente de herramientas compatible con ChatGPT y pruebas reales de mutación/recuperación de archivos y de entrada/captura en el dispositivo Android.
+Esto todavía **no equivale a una integración ChatGPT→Godot terminada**. Ya se añadió una prueba de integración de filesystem que ejecuta operaciones reales dentro de Godot 4.7.2 headless; faltan simulación de cierre abrupto del proceso, pruebas del diálogo de aprobación, entrada/captura en Android físico y el puente de herramientas compatible con ChatGPT.
 
 ## Estado verificado en CI
 
-La ejecución [40794293143](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40794293143) terminó correctamente en el commit `9ca1c55dc51b965280586d207ddf61f838e996e3`. Pasaron la sintaxis Python, las pruebas del relay y de operaciones del proyecto, y la carga del complemento con Godot 4.7.2 headless.
+La ejecución [40794825337](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40794825337) terminó en **success** en el commit `d42d847e119e1ea77372643437074ba62ff510a2`. Corrieron 47 pruebas Python y la carga de Godot 4.7.2 headless ejecutó además `LIVE_LINK_FS_TESTS_PASSED` sin errores, errores de parseo ni fugas ObjectDB.
 
-La ejecución [40794212632](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40794212632) validó el código del commit `616cedd56d0d4853a91f0c17740e2ca8f415e614): 47 pruebas Python, incluyendo la validación de la envoltura de operación antes de mostrar la aprobación. La carga del complemento en Godot 4.7.2 también pasó.
+El harness `tests/live_link/godot_filesystem_harness/godot_filesystem_harness.gd` opera sobre archivos reales del proyecto temporal de Godot: creación normal, creación de archivo vacío, actualización, conflicto por SHA-256 obsoleto, renombrado, eliminación, recuperación tras mover el original a rollback y recuperación tras instalar el reemplazo pero antes de limpiar rollback/temporal. Durante la prueba se detectó y corrigió un defecto real: `HashingContext.update()` rechaza un buffer vacío; `_sha256_bytes()` ahora finaliza directamente el contexto inicializado para obtener el hash SHA-256 correcto del archivo vacío.
 
-Estas ejecuciones **no** prueban el APK Android, el teléfono LG K51, la entrada global de la UI del editor, la captura completa de pantalla, ni una interrupción real del proceso durante una transacción de archivo. Parte de las pruebas de rutas/transacciones son comprobaciones estáticas del código fuente.
+Estas pruebas son mucho más fuertes que las comprobaciones estáticas, pero **no** simulan matar el proceso Godot en cada instrucción ni prueban el teléfono LG K51, el diálogo de aprobación/rechazo, la captura completa de pantalla o la entrada global del editor Android.
 
 ## Arquitectura necesaria
 
@@ -42,7 +42,7 @@ La documentación de Godot 4.7 dice que `DirAccess.is_link()` está implementado
 
 ### 3. Transacciones de archivos
 
-El diario y los archivos temporales/rollback reducen el riesgo de perder el original, y las revalidaciones SHA-256 detectan cambios concurrentes en ventanas conocidas. No eliminan por completo las carreras TOCTOU. Deben añadirse pruebas que hagan operaciones reales sobre archivos temporales con Godot 4.7.2, simulen fallos entre cada paso y comprueben que la recuperación conserva o restaura el contenido correcto.
+El diario y los archivos temporales/rollback reducen el riesgo de perder el original, y las revalidaciones SHA-256 detectan cambios concurrentes en ventanas conocidas. El harness ya comprueba operaciones reales y dos estados de recuperación (antes de instalar y después de instalar el reemplazo). No elimina por completo las carreras TOCTOU ni sustituye una terminación abrupta del proceso en cada punto de la transacción; esa simulación sigue pendiente.
 
 ### 4. Seguridad del relay
 
@@ -64,10 +64,11 @@ El diario y los archivos temporales/rollback reducen el riesgo de perder el orig
 - [ ] Revisión final de estados de error y respuesta clara cuando el proyecto objetivo no coincide.
 
 ### P1 — pruebas reales del receptor
-- [ ] Crear un harness de pruebas que ejercite las operaciones de archivos reales en Godot 4.7.2, no solo aserciones de texto.
-- [ ] Probar crear, actualizar, renombrar, eliminar, conflicto SHA-256, destino existente y archivo vacío.
-- [ ] Simular interrupción tras escribir el temporal, tras escribir el diario, tras mover el original y tras instalar el temporal.
-- [ ] Verificar restauración desde rollback/copia de seguridad y que el escaneo del sistema de archivos no se invoque antes de una operación exitosa.
+- [x] Crear un harness que ejercite operaciones reales sobre el filesystem en Godot 4.7.2 headless.
+- [x] Probar creación normal, archivo vacío, actualización, conflicto por SHA-256 obsoleto, renombrado y eliminación.
+- [x] Comprobar recuperación tras mover el original a rollback y tras instalar el reemplazo antes de limpiar temporales.
+- [ ] Simular terminación abrupta del proceso tras cada paso del diario/transacción, incluida la restauración de respaldo cuando falle el rename.
+- [ ] Añadir pruebas de destino existente, enlaces simbólicos y modificaciones concurrentes reales; el escaneo se ejecuta tras operaciones exitosas.
 
 ### P2 — validación en el editor Android
 - [ ] Probar en LG K51/Android 11, resolución 720×1600.
