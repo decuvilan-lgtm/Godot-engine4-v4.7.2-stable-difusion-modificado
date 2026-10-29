@@ -23,6 +23,7 @@ var _role: OptionButton
 var _project_code_label: Label
 var _enable_button: Button
 var _connect_button: Button
+var _disconnect_button: Button
 var _connection_enabled := false
 var _code_copied := false
 var _connected := false
@@ -139,6 +140,11 @@ func _build_ui() -> void:
     _connect_button.disabled = true
     _connect_button.pressed.connect(_connect_clicked)
     _panel.add_child(_connect_button)
+    _disconnect_button = Button.new()
+    _disconnect_button.text = "Desconectar"
+    _disconnect_button.disabled = true
+    _disconnect_button.pressed.connect(_disconnect_clicked)
+    _panel.add_child(_disconnect_button)
     var baseline_button := Button.new()
     baseline_button.text = "Preparar línea base (solo si ambos proyectos son idénticos)"
     baseline_button.pressed.connect(_show_baseline_confirmation)
@@ -294,6 +300,24 @@ func _is_allowed_relay_url(url: String) -> bool:
     var secure_match = secure_regex.search(url)
     return secure_match != null and _is_valid_dns_host(secure_match.get_string(1)) and _valid_port(secure_match, 3)
 
+func _disconnect_clicked() -> void:
+    var had_pending_operation := not _sender_inflight.is_empty()
+    if _ws.get_ready_state() != WebSocketPeer.STATE_CLOSED:
+        _ws.close()
+    _connecting = false
+    _connected = false
+    _join.clear()
+    if had_pending_operation:
+        _status.text = "Desconectado durante una operación; su resultado es desconocido. Revisa Android antes de reintentar."
+        _sender_inflight.clear()
+        _sender_queue.clear()
+    else:
+        _status.text = "Desconectado."
+    _connect_button.disabled = not _connection_enabled
+    _disconnect_button.disabled = true
+    _target_project_id.editable = true
+
+
 func _connect_clicked() -> void:
     if not _connection_enabled:
         _status.text = "Primero muestra el ID y habilita la conexión."
@@ -342,10 +366,16 @@ func _connect_clicked() -> void:
     _ws = WebSocketPeer.new()
     _connected = false
     _connecting = true
+    _connect_button.disabled = true
+    _disconnect_button.disabled = false
+    _target_project_id.editable = selected_role == "agent"
     _join = {"type":"join", "room":room, "role":str(ProjectSettings.get_setting(SETTING_ROLE)), "token":token}
     var err := _ws.connect_to_url(url)
     if err != OK:
         _connecting = false
+        _connect_button.disabled = not _connection_enabled
+        _disconnect_button.disabled = true
+        _target_project_id.editable = true
         _join.clear()
         _status.text = "Error de conexión: " + error_string(err)
         return
@@ -357,6 +387,9 @@ func _process(_delta: float) -> void:
             _connecting = false
             _connected = false
             _join.clear()
+            _connect_button.disabled = not _connection_enabled
+            _disconnect_button.disabled = true
+            _target_project_id.editable = true
             if not _sender_inflight.is_empty():
                 _status.text = "Conexión perdida durante una operación; su resultado es desconocido. Revisa Android antes de reintentar."
                 _sender_inflight.clear()
@@ -385,6 +418,8 @@ func _message(data: Dictionary) -> void:
         "joined":
             _connecting = false
             _connected = true
+            _connect_button.disabled = true
+            _disconnect_button.disabled = false
             _status.text = "Conectado a sala " + str(data.get("room", ""))
         "peer_joined":
             _status.text = "Editor remoto conectado."
@@ -1103,7 +1138,7 @@ func _read_sender_file(relative_path: String) -> Dictionary:
         return {"ok": false}
     if file.get_length() > MAX_OPERATION_BYTES:
         file.close()
-        return {"ok": false}
+        return {"ok": false, "too_large": true}
     var bytes := file.get_buffer(file.get_length())
     file.close()
     return {"ok": true, "bytes": bytes}
