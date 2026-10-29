@@ -152,26 +152,24 @@ func _field(caption: String, control: Control) -> Control:
     return box
 
 func _reveal_project_code() -> void:
-    # Cada revelado crea un identificador nuevo. Así dos copias de un proyecto
-    # no conservan accidentalmente el mismo destino. El ID no es un secreto.
+    # Revealing the ID never starts a connection and never rotates the ID.
+    # It is a stable project label, not a secret or authentication credential.
+    var project_id := str(ProjectSettings.get_setting(SETTING_PROJECT_ID, ""))
+    if not project_id.is_valid_int() or project_id.length() != 4:
+        _ensure_project_id()
+        project_id = str(ProjectSettings.get_setting(SETTING_PROJECT_ID, ""))
     if _connected or _connecting:
-        _status.text = "Desconecta primero para generar un nuevo código."
-        return
-    var crypto := Crypto.new()
-    var project_id := crypto.generate_random_bytes(16).hex_encode()
-    ProjectSettings.set_setting(SETTING_PROJECT_ID, project_id)
-    if ProjectSettings.save() != OK:
-        _status.text = "No se pudo guardar el identificador del proyecto."
+        _status.text = "Desconecta primero para consultar el código del proyecto."
         return
     _connection_enabled = false
     _code_copied = false
     _connect_button.disabled = true
     _enable_button.disabled = true
-    _project_code_label.text = "Código de este proyecto: " + project_id
+    _project_code_label.text = "ID de este proyecto: " + project_id
     _project_code_label.visible = true
     for child in _panel.find_children("CopyProjectCodeButton", "Button", true, false):
         child.disabled = false
-    _status.text = "Código nuevo revelado. Cópialo y compártelo para identificar este destino."
+    _status.text = "ID mostrado. Cópialo para identificar el proyecto; todavía no hay conexión."
 
 
 
@@ -335,12 +333,15 @@ func _message(data: Dictionary) -> void:
 func _ensure_project_id() -> void:
     var current := str(ProjectSettings.get_setting(SETTING_PROJECT_ID, ""))
     var valid := RegEx.new()
-    valid.compile("^[a-fA-F0-9-]{16,64}$")
+    valid.compile("^[0-9]{4}$")
     if valid.search(current) == null:
-        var crypto := Crypto.new()
-        current = crypto.generate_random_bytes(16).hex_encode()
+        # The project ID is a public four-digit label, never an authorization token.
+        # Keep it stable across editor restarts; the project-list UI will display it.
+        current = str(randi_range(0, 9999)).pad_zeros(4)
         ProjectSettings.set_setting(SETTING_PROJECT_ID, current)
-        ProjectSettings.save()
+        var save_error := ProjectSettings.save()
+        if save_error != OK:
+            push_error("Live Link could not persist the four-digit project ID.")
 
 
 func _safe_relative_path(value: Variant) -> bool:
