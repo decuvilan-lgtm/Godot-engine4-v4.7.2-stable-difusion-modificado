@@ -11,6 +11,7 @@ on:
       - "docs/LIVE_LINK_*.md"
       - "README.md"
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: write
@@ -158,6 +159,7 @@ jobs:
           ls -lh dist/*
 
       - name: Upload source and Linux editor to the repository release
+        if: ${{ github.event_name != 'pull_request' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
