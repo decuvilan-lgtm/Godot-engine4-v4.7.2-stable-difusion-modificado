@@ -22,6 +22,13 @@ jobs:
           ref: 4.7.2-stable
           path: godot-source
 
+      - name: Checkout reviewed Android MCP addon source
+        uses: actions/checkout@v4
+        with:
+          repository: GeorgeMee/godot-mcp-android
+          ref: 5df91076250ece38ab182b2ca8b8a4a5d9a2d938
+          path: godot-mcp-android-source
+
       - name: Install Linux editor build dependencies
         run: |
           sudo apt-get update
@@ -44,6 +51,12 @@ jobs:
 
       - name: Install SCons
         run: python -m pip install --upgrade scons
+
+      - name: Package hardened MCP addon for Linux editor projects
+        run: |
+          python3 -m py_compile scripts/package_safe_mcp_android.py
+          python3 scripts/package_safe_mcp_android.py
+          test -s dist/godot-mcp-android-safe.zip
 
       - name: Validate Python source and protocol tests
         run: |
@@ -88,12 +101,13 @@ jobs:
           PROJECT="$RUNNER_TEMP/live-link-linux-smoke"
           mkdir -p "$PROJECT/addons"
           cp -R scripts/live_link_addon "$PROJECT/addons/live_link"
+          cp -R dist/addons/godot_mcp_android "$PROJECT/addons/godot_mcp_android"
           cat > "$PROJECT/project.godot" <<'EOF'
           config_version=5
           [application]
           config/name="Live Link Linux Emitter Smoke Test"
           [editor_plugins]
-          enabled=PackedStringArray("res://addons/live_link/plugin.cfg")
+          enabled=PackedStringArray("res://addons/live_link/plugin.cfg", "res://addons/godot_mcp_android/plugin.cfg")
           EOF
           set +e
           timeout 75 godot-source/bin/godot.linuxbsd.editor.x86_64 --headless --editor --path "$PROJECT" --quit --verbose 2>&1 | tee "$RUNNER_TEMP/live-link-linux.log"
@@ -163,4 +177,5 @@ jobs:
           gh release upload "$TAG" \
             dist/godot-linux-emitter-source.tar.gz \
             dist/Godot_v4.7.2-stable-custom_linux.x86_64 \
+            dist/godot-mcp-android-safe.zip \
             --repo "$GITHUB_REPOSITORY" --clobber
