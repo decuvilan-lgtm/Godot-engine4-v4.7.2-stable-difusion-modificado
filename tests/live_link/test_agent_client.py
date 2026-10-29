@@ -18,7 +18,7 @@ spec.loader.exec_module(relay)
 
 from relay.agent_client import LiveLinkAgentClient, LiveLinkError  # noqa: E402
 
-PROJECT_ID = "12345678-1234-1234-1234-123456789abc"
+PROJECT_ID = "4827"
 CONTENT = b"hello Godot"
 CONTENT_B64 = base64.b64encode(CONTENT).decode("ascii")
 CONTENT_SHA = hashlib.sha256(CONTENT).hexdigest()
