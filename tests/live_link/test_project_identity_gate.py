@@ -20,14 +20,16 @@ class ProjectIdentityGateTests(unittest.TestCase):
         self.assertIn("if not _code_copied:", SOURCE)
         self.assertIn("Primero copia el código y compártelo en el chat.", SOURCE)
 
-    def test_reveal_generates_fresh_random_project_id(self):
+    def test_reveal_shows_stable_four_digit_project_id(self):
         reveal = SOURCE.split("func _reveal_project_code() -> void:", 1)[1].split(
             "\nfunc ", 1
         )[0]
-        self.assertIn("Crypto.new()", reveal)
-        self.assertIn("generate_random_bytes(16).hex_encode()", reveal)
-        self.assertIn("ProjectSettings.set_setting(SETTING_PROJECT_ID, project_id)", reveal)
-        self.assertIn("ProjectSettings.save() != OK", reveal)
+        self.assertIn("ProjectSettings.get_setting(SETTING_PROJECT_ID", reveal)
+        self.assertIn("project_id.length() != 4", reveal)
+        self.assertNotIn("Crypto.new()", reveal)
+        self.assertNotIn("generate_random_bytes(16)", reveal)
+        self.assertIn("_ensure_project_id()", reveal)
+        self.assertIn("ID de este proyecto: ", reveal)
         self.assertIn("_connection_enabled = false", reveal)
         self.assertIn("_connect_button.disabled = true", reveal)
 
