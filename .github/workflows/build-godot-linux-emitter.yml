@@ -115,7 +115,7 @@ jobs:
           import hashlib, json, os, subprocess
           root = Path.cwd()
           patch_hashes = {}
-          for base in ("scripts", "relay", "docs"):
+          for base in ("scripts", "relay", "docs", "tests"):
               for path in sorted((root / base).rglob("*")):
                   if path.is_file():
                       patch_hashes[str(path.relative_to(root))] = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -142,7 +142,7 @@ jobs:
             --exclude='godot-source/platform/android/java/.gradle' \
             --exclude='godot-source/platform/android/java/build' \
             --exclude='godot-source/platform/android/java/editor/build' \
-            godot-source scripts relay docs .github/workflows/build-godot-linux-emitter.yml README.md godot-linux-emitter-manifest.json
+            godot-source scripts relay docs tests .github/workflows/build-godot-linux-emitter.yml .github/workflows/validate-live-link-relay.yml README.md godot-linux-emitter-manifest.json
           cp godot-source/bin/godot.linuxbsd.editor.x86_64 dist/Godot_v4.7.2-stable-custom_linux.x86_64
           sha256sum dist/*
           ls -lh dist/*
