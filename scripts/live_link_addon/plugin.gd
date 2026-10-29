@@ -520,6 +520,22 @@ func _backup_project_file(absolute_path: String, relative_path: String, operatio
     return backup_path
 
 
+func _valid_operation_id(value: Variant) -> bool:
+    if not value is String:
+        return false
+    var regex := RegEx.new()
+    regex.compile("^[A-Za-z0-9_.:-]{1,100}$")
+    return regex.search(value) != null
+
+
+func _is_sha256(value: Variant) -> bool:
+    if not value is String:
+        return false
+    var regex := RegEx.new()
+    regex.compile("^[a-fA-F0-9]{64}$")
+    return regex.search(value) != null
+
+
 func _apply_project_operation(data: Dictionary) -> void:
     var project_id := str(ProjectSettings.get_setting(SETTING_PROJECT_ID, ""))
     var op_id := str(data.get("operation_id", ""))
@@ -533,10 +549,16 @@ func _apply_project_operation(data: Dictionary) -> void:
         detail = "La operación no declara la política de compatibilidad Android requerida."
     elif str(data.get("project_id", "")) != project_id:
         detail = "El ID de proyecto no coincide con este proyecto Godot."
-    elif op_id.is_empty() or op_id.length() > 100 or not _safe_relative_path(relative_path):
+    elif not _valid_operation_id(data.get("operation_id", null)) or not _safe_relative_path(data.get("path", null)):
         detail = "ID de operación o ruta no válida."
     elif operation not in ["create", "update", "rename", "delete"]:
         detail = "Tipo de operación no permitido."
+    elif operation in ["update", "rename", "delete"] and not _is_sha256(data.get("base_sha256", null)):
+        detail = "Falta una huella SHA-256 válida para comprobar conflictos."
+    elif operation == "create" and not str(data.get("base_sha256", "")).is_empty():
+        detail = "La creación no debe declarar una huella base."
+    elif operation in ["create", "update"] and (not (data.get("content_base64", null) is String) or str(data.get("content_base64", "")).length() > int(MAX_OPERATION_BYTES * 4 / 3) + 8 or not _is_sha256(data.get("sha256", null))):
+        detail = "El contenido o su huella SHA-256 no son válidos."
     else:
         var absolute_path := _project_absolute_path(relative_path)
         if absolute_path.is_empty():
