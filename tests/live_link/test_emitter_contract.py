@@ -20,7 +20,7 @@ class LiveLinkEmitterContractTests(unittest.TestCase):
 
     def test_sender_uses_explicit_baseline_and_conflict_aware_operations(self):
         self.assertIn("_show_baseline_confirmation", SOURCE)
-        self.assertIn("both projects", SOURCE.lower())
+        self.assertIn("ambos proyectos", SOURCE.lower())
         self.assertIn('"base_sha256": old_digest', SOURCE)
         self.assertIn('"target_platform": "android_editor"', SOURCE)
         self.assertIn('"policy_version": 1', SOURCE)
