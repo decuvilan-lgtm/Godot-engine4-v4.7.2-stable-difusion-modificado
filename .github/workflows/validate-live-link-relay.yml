@@ -74,3 +74,11 @@ jobs:
             echo "Godot did not report successful Live Link filesystem integration tests."
             exit 1
           fi
+
+  linux-emitter:
+    name: Build modified Linux editor and verify sender-side baseline
+    needs: relay-protocol
+    uses: ./.github/workflows/build-godot-linux-emitter.yml
+    permissions:
+      contents: write
+    secrets: inherit
