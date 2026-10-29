@@ -14,7 +14,7 @@ Permitir que el editor Linux y el editor Android trabajen sobre el mismo proyect
 
 ## Protocolo inicial de archivos (propuesto)
 
-- Cada editor se registra con un ID de sesión aleatorio, versión de protocolo y capacidades.
+- Cada editor se registra con un ID de sesión aleatorio, versión de protocolo y capacidades. Por defecto, la sala de relay es `project-<ID de cuatro dígitos>` para que proyectos distintos no compartan la misma pareja de roles; una sala personalizada es una configuración explícita.
 - El proyecto se identifica en la interfaz y el protocolo mediante un ID decimal persistente de cuatro dígitos (0000–9999). Es una etiqueta pública, no un token ni una autorización. Como solo existen 10.000 IDs, el Project Manager debe detectar duplicados entre los proyectos locales conocidos y ofrecer reasignación; hasta que esa función exista, la colisión sigue siendo una limitación pendiente.
 - Cada cambio se representa como operación: `create`, `update`, `delete`, `rename`; contiene ruta relativa normalizada, hash SHA-256, tamaño, versión base y sesión de origen.
 - Solo se aceptan rutas relativas dentro del proyecto. Rechazar rutas absolutas, `..`, rutas con separadores ambiguos, enlaces simbólicos que escapen de la raíz y archivos que excedan límites configurados.
