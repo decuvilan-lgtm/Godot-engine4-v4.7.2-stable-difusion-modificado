@@ -7,10 +7,6 @@ on:
 permissions:
   contents: write
 
-concurrency:
-  group: godot-linux-emitter-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   build-linux-emitter:
     runs-on: ubuntu-24.04
