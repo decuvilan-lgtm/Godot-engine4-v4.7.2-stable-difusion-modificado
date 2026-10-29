@@ -16,7 +16,7 @@ class ProjectIdentityGateTests(unittest.TestCase):
             "\nfunc ", 1
         )[0]
         self.assertIn("if not _connection_enabled:", connect)
-        self.assertIn("Primero revela el código y habilita la conexión.", connect)
+        self.assertIn("Primero muestra el ID y habilita la conexión.", connect)
         self.assertIn("if not _code_copied:", SOURCE)
         self.assertIn("Primero copia el código y compártelo en el chat.", SOURCE)
 
@@ -32,6 +32,14 @@ class ProjectIdentityGateTests(unittest.TestCase):
         self.assertIn("ID de este proyecto: ", reveal)
         self.assertIn("_connection_enabled = false", reveal)
         self.assertIn("_connect_button.disabled = true", reveal)
+
+    def test_project_id_is_persistently_generated_as_four_decimal_digits(self):
+        ensure = SOURCE.split("func _ensure_project_id() -> void:", 1)[1].split("\nfunc ", 1)[0]
+        self.assertIn('valid.compile("^[0-9]{4}$")', ensure)
+        self.assertIn("randi_range(0, 9999)", ensure)
+        self.assertIn("pad_zeros(4)", ensure)
+        self.assertIn("ProjectSettings.set_setting(SETTING_PROJECT_ID, current)", ensure)
+        self.assertIn("ProjectSettings.save()", ensure)
 
     def test_default_relay_room_is_scoped_to_project_id(self):
         room = SOURCE.split("func _ensure_project_room() -> void:", 1)[1].split("\nfunc ", 1)[0]
