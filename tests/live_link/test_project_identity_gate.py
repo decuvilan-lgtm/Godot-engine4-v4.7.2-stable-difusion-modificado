@@ -208,9 +208,9 @@ class ProjectIdentityGateTests(unittest.TestCase):
         self.assertIn('DirAccess.rename_absolute(rollback, expected_original)', recovery)
         self.assertIn('temporary', recovery)
         self.assertIn('_safe_relative_path(relative_original)', recovery)
-        self.assertIn('rollback.begins_with(original + ".live_link_rollback_")', recovery)
-        self.assertIn('temporary.begins_with(original + ".live_link_tmp_")', recovery)
-        self.assertIn('backup.begins_with(backup_root)', recovery)
+        self.assertIn('_has_transaction_suffix(rollback, expected_original, ".live_link_rollback_")', recovery)
+        self.assertIn('_has_transaction_suffix(temporary, expected_original, ".live_link_tmp_")', recovery)
+        self.assertIn("_is_normalized_child(backup, backup_root)", recovery)
         apply = SOURCE.split("func _apply_validated_operation(", 1)[1].split(
             "\nfunc ", 1
         )[0]
