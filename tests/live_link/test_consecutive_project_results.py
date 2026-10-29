@@ -48,7 +48,7 @@ class ConsecutiveProjectResultTests(unittest.IsolatedAsyncioTestCase):
         agent = await self.join("agent")
         await target.receive_json(timeout=2)  # peer_joined
 
-        project_id = "12345678-1234-1234-1234-123456789abc"
+        project_id = "4827"
         for op_id in ("op-result-1", "op-result-2"):
             await agent.send_json({
                 "type": "project_operation",
