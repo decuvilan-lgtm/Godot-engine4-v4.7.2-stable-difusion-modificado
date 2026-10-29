@@ -16,14 +16,9 @@ func _run_after_editor_startup() -> void:
     # initializing enabled plugins during its first scan.
     await get_tree().process_frame
     ProjectSettings.set_setting("live_link/project_id", PROJECT_ID)
-    var receiver_script: Script = load("res://addons/live_link/plugin.gd")
-    if receiver_script == null:
-        _check(false, "Live Link receiver script loaded")
-        _finish()
-        return
-    var receiver: Variant = receiver_script.new()
+    var receiver: Variant = get_tree().get_first_node_in_group("live_link_receiver")
     if receiver == null:
-        _check(false, "Live Link receiver instance created")
+        _check(false, "active Live Link receiver found in editor tree")
         _finish()
         return
 
