@@ -74,7 +74,7 @@ func _build_ui() -> void:
     project_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     _panel.add_child(project_label)
     var reveal_button := Button.new()
-    reveal_button.text = "1. Revelar código identificador"
+    reveal_button.text = "1. Mostrar ID del proyecto (4 dígitos)"
     reveal_button.pressed.connect(_reveal_project_code)
     _panel.add_child(reveal_button)
     _project_code_label = Label.new()
@@ -83,7 +83,7 @@ func _build_ui() -> void:
     _project_code_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     _panel.add_child(_project_code_label)
     var copy_button := Button.new()
-    copy_button.text = "Copiar código"
+    copy_button.text = "Copiar ID"
     copy_button.pressed.connect(_copy_project_code)
     copy_button.disabled = true
     copy_button.name = "CopyProjectCodeButton"
@@ -132,7 +132,7 @@ func _build_ui() -> void:
     _screen.gui_input.connect(_screen_input)
     _panel.add_child(_screen)
     var note := Label.new()
-    note.text = "El código identifica este proyecto, pero no es una contraseña. Para evitar servicios externos, puedes alojar relay/server.py en un equipo de tu misma Wi-Fi y usar ws://IP_PRIVADA:8765/ws con el mismo token. WS de LAN no está cifrado: nunca lo expongas a Internet. Para conexiones remotas usa WSS. El cliente de ChatGPT aún requiere una integración externa."
+    note.text = "El ID de cuatro dígitos identifica este proyecto, pero no es una contraseña. Mostrar o copiar el ID no conecta. Para redes distintas, usa un relay WSS accesible desde ambos dispositivos. WS solo se permite para pruebas locales o una LAN de confianza; nunca lo expongas a Internet. ChatGPT aún requiere una integración externa compatible."
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     _panel.add_child(note)
 
@@ -160,7 +160,7 @@ func _reveal_project_code() -> void:
         _ensure_project_id()
         project_id = str(ProjectSettings.get_setting(SETTING_PROJECT_ID, ""))
     if _connected or _connecting:
-        _status.text = "Desconecta primero para consultar el código del proyecto."
+        _status.text = "Desconecta primero para consultar el ID del proyecto."
         return
     _connection_enabled = false
     _code_copied = false
@@ -181,12 +181,12 @@ func _copy_project_code() -> void:
         DisplayServer.clipboard_set(project_id)
         _code_copied = true
         _enable_button.disabled = false
-        _status.text = "Código copiado. Ahora puedes habilitar la conexión; todavía no está activa."
+        _status.text = "ID copiado. Ahora puedes habilitar la conexión; todavía no está activa."
 
 
 func _enable_connection() -> void:
     if not _code_copied:
-        _status.text = "Primero copia el código y compártelo en el chat."
+        _status.text = "Primero copia el ID y compártelo en el chat."
         return
     _connection_enabled = true
     _connect_button.disabled = false
@@ -251,7 +251,7 @@ func _is_allowed_relay_url(url: String) -> bool:
 
 func _connect_clicked() -> void:
     if not _connection_enabled:
-        _status.text = "Primero revela el código y habilita la conexión."
+        _status.text = "Primero muestra el ID y habilita la conexión."
         return
     var url := _url.text.strip_edges()
     var room := _room.text.strip_edges()
