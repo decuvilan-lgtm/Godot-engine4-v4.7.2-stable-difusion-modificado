@@ -12,6 +12,8 @@ on:
       - "scripts/apply_github_sync_patch.py"
       - "scripts/apply_android_startup_patch.py"
       - "scripts/validate_combined_patches.py"
+      - "scripts/validate_linux_mcp_embed.py"
+      - "scripts/package_safe_mcp_android.py"
       - ".github/workflows/validate-live-link-relay.yml"
       - ".github/workflows/build-godot-linux-emitter.yml"
   workflow_dispatch:
