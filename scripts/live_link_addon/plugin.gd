@@ -35,6 +35,7 @@ var _approval_dialog: ConfirmationDialog
 var _pending_project_operation: Dictionary = {}
 
 func _enter_tree() -> void:
+    add_to_group("live_link_receiver")
     _setting(SETTING_URL, "wss://your-relay.example/ws", TYPE_STRING)
     _setting(SETTING_ROOM, "godot-room-1", TYPE_STRING)
     _setting(SETTING_ROLE, "target", TYPE_STRING)
@@ -46,6 +47,7 @@ func _enter_tree() -> void:
     set_process_input(true)
 
 func _exit_tree() -> void:
+    remove_from_group("live_link_receiver")
     if _ws.get_ready_state() != WebSocketPeer.STATE_CLOSED:
         _ws.close()
     if is_instance_valid(_panel):
