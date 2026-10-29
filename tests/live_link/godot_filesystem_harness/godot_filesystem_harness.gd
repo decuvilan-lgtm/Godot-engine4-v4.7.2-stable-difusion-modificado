@@ -8,6 +8,13 @@ var _failed := false
 
 
 func _enter_tree() -> void:
+    call_deferred("_run_after_editor_startup")
+
+
+func _run_after_editor_startup() -> void:
+    # Avoid calling ResourceFilesystem.scan() while the editor is still
+    # initializing enabled plugins during its first scan.
+    await get_tree().process_frame
     ProjectSettings.set_setting("live_link/project_id", PROJECT_ID)
     var receiver_script: Script = load("res://addons/live_link/plugin.gd")
     if receiver_script == null:
@@ -113,7 +120,7 @@ func _test_recovery_after_original_moved(receiver: Variant) -> void:
 func _operation_data(receiver: Variant, operation_id: String, bytes: PackedByteArray, base_hash: String) -> Dictionary:
     return {
         "operation_id": operation_id,
-        "content_base64": Marshalls.raw_to_base64(bytes),
+        "content_base64": Marshalls.raw_to_base64(bytes) if not bytes.is_empty() else "",
         "sha256": receiver._sha256_bytes(bytes),
         "base_sha256": base_hash
     }
