@@ -39,6 +39,7 @@ func _enter_tree() -> void:
     _setting(SETTING_ROOM, "godot-room-1", TYPE_STRING)
     _setting(SETTING_ROLE, "target", TYPE_STRING)
     _ensure_project_id()
+    _recover_interrupted_file_transactions(ProjectSettings.globalize_path("res://"))
     _build_ui()
     add_control_to_dock(DOCK_SLOT_RIGHT_UL, _panel)
     set_process(true)
@@ -381,6 +382,36 @@ func _sha256_bytes(bytes: PackedByteArray) -> String:
     return context.finish().hex_encode()
 
 
+func _recover_interrupted_file_transactions(directory_path: String) -> void:
+    # Recover sibling rollback files left if Android/Godot stopped between renames.
+    # Never follow symbolic links while traversing the project tree.
+    var directory := DirAccess.open(directory_path)
+    if directory == null:
+        return
+    directory.list_dir_begin()
+    var entry := directory.get_next()
+    while not entry.is_empty():
+        if entry == "." or entry == "..":
+            entry = directory.get_next()
+            continue
+        var full_path := directory_path.path_join(entry)
+        if directory.current_is_dir():
+            if not directory.is_link(entry):
+                _recover_interrupted_file_transactions(full_path)
+        elif entry.contains(".live_link_rollback_"):
+            var marker := entry.find(".live_link_rollback_")
+            var original_path := directory_path.path_join(entry.substr(0, marker))
+            if not FileAccess.file_exists(original_path) and not DirAccess.dir_exists_absolute(original_path):
+                if DirAccess.rename_absolute(full_path, original_path) != OK:
+                    push_error("Live Link could not restore interrupted file transaction: " + full_path)
+            else:
+                DirAccess.remove_absolute(full_path)
+        elif entry.contains(".live_link_tmp_"):
+            DirAccess.remove_absolute(full_path)
+        entry = directory.get_next()
+    directory.list_dir_end()
+
+
 func _backup_project_file(absolute_path: String, relative_path: String, operation_id: String) -> String:
     var source := FileAccess.open(absolute_path, FileAccess.READ)
     if source == null:
@@ -525,14 +556,23 @@ func _apply_validated_operation(data: Dictionary, operation: String, relative_pa
     if write_error != OK or FileAccess.get_sha256(temp_absolute).to_lower() != str(data.get("sha256", "")).to_lower():
         DirAccess.remove_absolute(temp_absolute)
         return "failed"
-    if exists and DirAccess.remove_absolute(absolute_path) != OK:
-        DirAccess.remove_absolute(temp_absolute)
-        return "failed"
+    var rollback_absolute := absolute_path + ".live_link_rollback_" + str(data.get("operation_id", "")).sha256_text().substr(0, 8)
+    if exists:
+        if FileAccess.file_exists(rollback_absolute) or DirAccess.dir_exists_absolute(rollback_absolute):
+            DirAccess.remove_absolute(temp_absolute)
+            return "failed"
+        # Keep a recoverable sibling instead of deleting the original before install.
+        if DirAccess.rename_absolute(absolute_path, rollback_absolute) != OK:
+            DirAccess.remove_absolute(temp_absolute)
+            return "failed"
     if DirAccess.rename_absolute(temp_absolute, absolute_path) != OK:
-        if exists and not backup_path.is_empty():
-            DirAccess.copy_absolute(ProjectSettings.globalize_path(backup_path), absolute_path)
+        if exists and (FileAccess.file_exists(rollback_absolute) or DirAccess.dir_exists_absolute(rollback_absolute)):
+            if DirAccess.rename_absolute(rollback_absolute, absolute_path) != OK and not backup_path.is_empty():
+                DirAccess.copy_absolute(ProjectSettings.globalize_path(backup_path), absolute_path)
         DirAccess.remove_absolute(temp_absolute)
         return "failed"
+    if exists and FileAccess.file_exists(rollback_absolute):
+        DirAccess.remove_absolute(rollback_absolute)
     EditorInterface.get_resource_filesystem().scan()
     return "applied"
 
