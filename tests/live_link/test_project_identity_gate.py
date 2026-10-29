@@ -168,6 +168,23 @@ class ProjectIdentityGateTests(unittest.TestCase):
         self.assertIn('base_hash.is_empty()', apply)
         self.assertIn('FileAccess.get_sha256(absolute_path).to_lower() != base_hash.to_lower()', apply)
 
+    def test_mutations_recheck_hash_after_backup_to_detect_concurrent_edits(self):
+        apply = SOURCE.split("func _apply_validated_operation(", 1)[1].split(
+            "\nfunc ", 1
+        )[0]
+        delete = apply.split('if operation == "delete":', 1)[1].split(
+            'if operation == "rename":', 1
+        )[0]
+        rename = apply.split('if operation == "rename":', 1)[1].split(
+            'var content_text :=', 1
+        )[0]
+        self.assertIn('_backup_project_file(absolute_path, relative_path', delete)
+        self.assertIn('FileAccess.get_sha256(absolute_path).to_lower() != base_hash.to_lower()', delete)
+        self.assertIn('_backup_project_file(absolute_path, relative_path', rename)
+        self.assertIn('FileAccess.get_sha256(absolute_path).to_lower() != base_hash.to_lower()', rename)
+        self.assertIn('if operation == "update":', apply)
+        self.assertIn('elif operation == "create" and (FileAccess.file_exists(absolute_path) or DirAccess.dir_exists_absolute(absolute_path)):', apply)
+
     def test_delete_creates_backup_before_removing_source(self):
         apply = SOURCE.split("func _apply_validated_operation(", 1)[1].split(
             "\nfunc ", 1
