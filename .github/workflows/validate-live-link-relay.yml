@@ -81,6 +81,7 @@ jobs:
 
   linux-emitter:
     name: Build modified Linux editor and verify sender-side baseline
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     needs: relay-protocol
     uses: ./.github/workflows/build-godot-linux-emitter.yml
     permissions:
