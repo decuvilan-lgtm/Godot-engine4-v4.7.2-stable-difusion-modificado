@@ -30,6 +30,24 @@ Una integración MCP no necesita llamar a la API de modelos de OpenAI si ChatGPT
 
 Mientras ese puente no esté disponible, el flujo viable desde el ChatGPT actual es: editar el repositorio con la conexión GitHub, revisar los cambios y sincronizarlos desde el editor Android. Eso no es control en vivo de la UI.
 
+## Restricciones de arquitectura confirmadas por el usuario
+
+Estas restricciones son requisitos del proyecto, no sugerencias opcionales:
+
+1. **No depender de APIs de modelos/IA.** No integrar OpenAI API, API de Grok ni servicios de inferencia de pago como requisito para que una IA ya disponible pueda operar el editor. El objetivo es que la IA use herramientas autorizadas de conexión al proyecto; el protocolo de Live Link no debe llamar a una API de modelo.
+2. **No exigir la misma red local.** El teléfono Android y la IA/agente pueden estar en redes distintas. No basar la solución en IP local, Wi‑Fi compartido, descubrimiento LAN, conexión directa al mismo router ni en tener el PC al lado del teléfono.
+3. **No convertir las limitaciones actuales de Android en una renuncia.** Si una función necesaria no está expuesta por Android/Godot, investigar e implementar el punto de integración que falta en el código modificado de Godot (C++ del editor y/o capa nativa Android), y después validarlo. No reemplazar el editor real por otra app ni eliminar las herramientas nativas existentes.
+4. **Separar API de modelo de protocolo de transporte.** Un socket/WebSocket es un protocolo de comunicación, no una API de inferencia. No obstante, un relay público alojado en la nube sigue siendo infraestructura de red y no satisface por sí solo el objetivo de eliminar dependencias externas. Debe documentarse como opción provisional, no como solución final obligatoria.
+5. **Sin promesas mágicas de conexión.** Modificar Godot puede añadir captura, entrada, gestión de sesiones y un cliente de conexión remoto; no puede hacer que ChatGPT Free móvil descubra automáticamente un proceso arbitrario. La integración final debe usar un mecanismo de herramientas/conector que la interfaz de IA admita, sin API de modelo y sin requerir misma LAN. Hasta probarlo de extremo a extremo, se considera pendiente.
+
+### Dirección técnica a investigar
+
+- Añadir la integración en el **editor nativo de Godot** y la capa Android cuando el plugin GDScript no tenga acceso a la interfaz completa o a eventos de sistema.
+- Diseñar un transporte remoto saliente desde Android que funcione detrás de NAT/redes móviles y Wi‑Fi distintas. Evaluar primero opciones de conexión directa negociada y canales de retorno; si una opción exige un servidor de terceros, API de modelo, cuenta de pago o misma LAN, marcarla como no conforme o solo como herramienta de pruebas.
+- No asumir que “sin API” significa “sin comunicación”: el sistema necesita algún canal de transporte y un extremo compatible del lado de la IA. Investigar el mecanismo compatible más pequeño y documentar claramente qué componente inicia la conexión y dónde se ejecuta.
+- Conservar aprobación explícita en el editor, validación de proyecto/rutas, límites de operaciones y respuestas verificadas.
+- No generar APK hasta que la arquitectura esté elegida, el código integrado y las pruebas previas estén consolidadas.
+
 ## Hallazgos técnicos que afectan la fiabilidad
 
 ### 1. Compatibilidad de Android
@@ -79,12 +97,14 @@ El diario y los archivos temporales/rollback reducen el riesgo de perder el orig
 - [ ] Aprobar y rechazar operaciones desde el diálogo; verificar el resultado recibido por el agente.
 - [ ] Probar cierre/reinicio del editor y recuperación de transacciones.
 
-### P3 — puente con ChatGPT, sin API de modelos
-- [ ] Confirmar primero la disponibilidad de herramientas MCP de escritura en la cuenta/interfaz que se vaya a utilizar.
-- [ ] Diseñar un servidor MCP remoto con herramientas mínimas: estado de conexión, identidad del proyecto, análisis/diff, propuesta de una operación y espera de su resultado.
-- [ ] Hacer que el servidor MCP use el cliente agente existente y el relay; nunca exponer el token del relay a la conversación.
-- [ ] Mantener confirmación del lado de Godot y devolver un resultado inequívoco: aplicado, rechazado, conflicto o error.
-- [ ] Probar reconexión, timeout, operaciones repetidas y selección incorrecta de proyecto.
+### P3 — conexión con IA sin API de modelos ni misma LAN (diseño pendiente)
+- [ ] Elegir un mecanismo de herramientas/conector compatible con la interfaz de IA utilizada, sin llamar a una API de inferencia.
+- [ ] Diseñar el transporte remoto para teléfono y agente en redes distintas; no depender de IP local ni de Wi‑Fi compartido.
+- [ ] Investigar si puede evitarse un relay permanente de terceros mediante conexión saliente/negociada; cualquier dependencia de servidor externo debe quedar identificada y justificada.
+- [ ] Implementar en el editor nativo/C++ y capa Android las capacidades que el plugin no pueda ofrecer (captura/control de UI real, ciclo de vida y conexión remota), en lugar de dar esas limitaciones por definitivas.
+- [ ] Mantener aprobación del lado de Godot y resultados inequívocos: aplicado, rechazado, conflicto o error.
+- [ ] Probar redes diferentes, reconexión, timeout, repetición de operaciones y selección incorrecta de proyecto.
+- [ ] No afirmar que ChatGPT móvil puede conectarse automáticamente hasta completar una prueba real de extremo a extremo.
 
 ### P4 — build móvil
 - [ ] Consolidar cambios antes de iniciar la compilación larga.
