@@ -17,14 +17,14 @@ if not SOURCE.is_file():
     sys.exit("Godot project_list.cpp is missing; checkout the 4.7.2 source first.")
 
 replace_once(
-    '''\tif (cf_err == OK) {
+    """\tif (cf_err == OK) {
 \t\tcf_project_name = cf->get_value("application", "config/name", "");
 \t\tif (!cf_project_name.is_empty()) {
 \t\t\tproject_name = cf_project_name.xml_unescape();
 \t\t}
 \t\tconfig_version = (int)cf->get_value("", "config_version", 0);
-\t}''',
-    '''\tString live_link_project_id;
+\t}""",
+    """\tString live_link_project_id;
 \tif (cf_err == OK) {
 \t\tcf_project_name = cf->get_value("application", "config/name", "");
 \t\tif (!cf_project_name.is_empty()) {
@@ -32,18 +32,16 @@ replace_once(
 \t\t}
 \t\tconfig_version = (int)cf->get_value("", "config_version", 0);
 \t\tlive_link_project_id = cf->get_value("live_link", "project_id", "");
-		// The ID is a public label, not a credential. Keep it visible in the project list.
-		bool live_link_id_is_valid = live_link_project_id.length() == 4;
-		for (int i = 0; i < live_link_project_id.length(); i++) {
-			if (live_link_project_id[i] < '0' || live_link_project_id[i] > '9') {
-				live_link_id_is_valid = false;
-			}
-		}
-		if (live_link_id_is_valid) {
-			project_name += "  ·  Live Link ID: " + live_link_project_id;
-		}
+\t\t// The ID is a public label, not a credential. Keep it visible in the project list.
+\t\tbool live_link_id_is_valid = live_link_project_id.length() == 4;
+\t\tfor (int i = 0; i < live_link_project_id.length(); i++) {
+\t\t\tif (live_link_project_id[i] < '0' || live_link_project_id[i] > '9') {
+\t\t\t\tlive_link_id_is_valid = false;
+\t\t\t}
 \t\t}
-\t}'''
-)
+\t\tif (live_link_id_is_valid) {
+\t\t\tproject_name += "  ·  Live Link ID: " + live_link_project_id;
+\t\t}
+\t}""")
 
 print("PASS: Project Manager displays a valid four-digit Live Link ID beside the project name.")
