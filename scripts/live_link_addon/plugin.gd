@@ -569,6 +569,9 @@ func _apply_validated_operation(data: Dictionary, operation: String, relative_pa
     if operation == "delete":
         if _backup_project_file(absolute_path, relative_path, str(data.get("operation_id", ""))).is_empty():
             return "failed"
+        # Detect edits made after the initial conflict check and backup read.
+        if not FileAccess.file_exists(absolute_path) or FileAccess.get_sha256(absolute_path).to_lower() != base_hash.to_lower():
+            return "conflict"
         if DirAccess.remove_absolute(absolute_path) != OK:
             return "failed"
         EditorInterface.get_resource_filesystem().scan()
@@ -582,6 +585,12 @@ func _apply_validated_operation(data: Dictionary, operation: String, relative_pa
             return "conflict"
         if _backup_project_file(absolute_path, relative_path, str(data.get("operation_id", ""))).is_empty():
             return "failed"
+        # Recheck both sides after backup creation to avoid overwriting a concurrent change.
+        if not FileAccess.file_exists(absolute_path) or FileAccess.get_sha256(absolute_path).to_lower() != base_hash.to_lower():
+            return "conflict"
+        destination_absolute = _project_absolute_path(destination)
+        if destination_absolute.is_empty() or FileAccess.file_exists(destination_absolute) or DirAccess.dir_exists_absolute(destination_absolute):
+            return "conflict"
         if DirAccess.make_dir_recursive_absolute(destination_absolute.get_base_dir()) != OK:
             return "failed"
         if DirAccess.rename_absolute(absolute_path, destination_absolute) != OK:
@@ -612,6 +621,14 @@ func _apply_validated_operation(data: Dictionary, operation: String, relative_pa
     if write_error != OK or FileAccess.get_sha256(temp_absolute).to_lower() != str(data.get("sha256", "")).to_lower():
         DirAccess.remove_absolute(temp_absolute)
         return "failed"
+    # Revalidate the target immediately before the transaction to narrow the TOCTOU window.
+    if operation == "update":
+        if not FileAccess.file_exists(absolute_path) or FileAccess.get_sha256(absolute_path).to_lower() != base_hash.to_lower():
+            DirAccess.remove_absolute(temp_absolute)
+            return "conflict"
+    elif operation == "create" and (FileAccess.file_exists(absolute_path) or DirAccess.dir_exists_absolute(absolute_path)):
+        DirAccess.remove_absolute(temp_absolute)
+        return "conflict"
     var rollback_absolute := absolute_path + ".live_link_rollback_" + str(data.get("operation_id", "")).sha256_text().substr(0, 8)
     if not _write_transaction_journal(absolute_path, rollback_absolute, temp_absolute, backup_path):
         DirAccess.remove_absolute(temp_absolute)
