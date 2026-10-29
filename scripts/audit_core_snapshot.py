@@ -3,6 +3,7 @@
 from __future__ import annotations
 import argparse
 import hashlib
+import os
 import tarfile
 from pathlib import Path, PurePosixPath
 
@@ -60,18 +61,20 @@ def main() -> int:
                 identical += 1
             else:
                 modified.append((relative, snapshot_digest, upstream_digest))
-    for upstream_file in upstream.rglob("*"):
-        if not upstream_file.is_file():
-            continue
-        relative = upstream_file.relative_to(upstream).as_posix()
-        if is_source_file(relative) and relative not in snapshot_files:
-            missing.append(relative)
+    for current_dir, directory_names, file_names in os.walk(upstream):
+        directory_names[:] = [name for name in directory_names if name not in EXCLUDED_PARTS]
+        for file_name in file_names:
+            upstream_file = Path(current_dir) / file_name
+            relative = upstream_file.relative_to(upstream).as_posix()
+            if is_source_file(relative) and relative not in snapshot_files:
+                missing.append(relative)
+    root_display = prefix if prefix else "."
     lines = [
         "# Existing Godot core snapshot audit",
         "",
         f"- Archive: `{args.archive.name}`",
         f"- Pinned upstream commit: `{upstream_commit}`",
-        f"- Source root inside archive: `{prefix or "."}`",
+        f"- Source root inside archive: `{root_display}`",
         f"- Snapshot source files compared: **{len(snapshot_files)}**",
         f"- Identical to upstream: **{identical}**",
         f"- Modified source files: **{len(modified)}**",
