@@ -205,7 +205,7 @@ class ProjectIdentityGateTests(unittest.TestCase):
         )[0]
         self.assertIn('active_transaction.json', SOURCE)
         self.assertIn('JSON.parse_string(file.get_as_text())', recovery)
-        self.assertIn('DirAccess.rename_absolute(rollback, original)', recovery)
+        self.assertIn('DirAccess.rename_absolute(rollback, expected_original)', recovery)
         self.assertIn('temporary', recovery)
         self.assertIn('_safe_relative_path(relative_original)', recovery)
         self.assertIn('rollback.begins_with(original + ".live_link_rollback_")', recovery)
