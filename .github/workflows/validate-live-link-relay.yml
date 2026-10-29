@@ -53,19 +53,24 @@ jobs:
           test -n "$BIN"
           chmod +x "$BIN"
           cp -R scripts/live_link_addon "$PROJECT/addons/live_link"
+          cp -R tests/live_link/godot_filesystem_harness "$PROJECT/addons/live_link_test"
           cat > "$PROJECT/project.godot" <<'EOF'
           config_version=5
           [application]
           config/name="Live Link Receiver Validation"
           [editor_plugins]
-          enabled=PackedStringArray("res://addons/live_link/plugin.cfg")
+          enabled=PackedStringArray("res://addons/live_link/plugin.cfg", "res://addons/live_link_test/plugin.cfg")
           EOF
           set +e
           timeout 75 "$BIN" --headless --editor --path "$PROJECT" --quit --verbose 2>&1 | tee "$RUNNER_TEMP/live-link-godot.log"
           STATUS=${PIPESTATUS[0]}
           set -e
           if [ "$STATUS" -ne 0 ]; then exit "$STATUS"; fi
-          if grep -E 'SCRIPT ERROR:|Parse Error:|Failed to load script' "$RUNNER_TEMP/live-link-godot.log"; then
-            echo "Godot reported a Live Link parser/load error."
+          if grep -E 'SCRIPT ERROR:|Parse Error:|Failed to load script|LIVE_LINK_FS_TEST_FAIL|LIVE_LINK_FS_TESTS_FAILED' "$RUNNER_TEMP/live-link-godot.log"; then
+            echo "Godot reported a Live Link parser/load or filesystem integration test error."
+            exit 1
+          fi
+          if ! grep -F 'LIVE_LINK_FS_TESTS_PASSED' "$RUNNER_TEMP/live-link-godot.log"; then
+            echo "Godot did not report successful Live Link filesystem integration tests."
             exit 1
           fi
