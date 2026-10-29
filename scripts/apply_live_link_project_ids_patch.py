@@ -32,9 +32,16 @@ replace_once(
 \t\t}
 \t\tconfig_version = (int)cf->get_value("", "config_version", 0);
 \t\tlive_link_project_id = cf->get_value("live_link", "project_id", "");
-\t\t// The ID is a public label, not a credential. Keep it visible in the project list.
-\t\tif (live_link_project_id.length() == 4 && live_link_project_id.is_valid_int()) {
-\t\t\tproject_name += "  ·  Live Link ID: " + live_link_project_id;
+		// The ID is a public label, not a credential. Keep it visible in the project list.
+		bool live_link_id_is_valid = live_link_project_id.length() == 4;
+		for (int i = 0; i < live_link_project_id.length(); i++) {
+			if (live_link_project_id[i] < '0' || live_link_project_id[i] > '9') {
+				live_link_id_is_valid = false;
+			}
+		}
+		if (live_link_id_is_valid) {
+			project_name += "  ·  Live Link ID: " + live_link_project_id;
+		}
 \t\t}
 \t}'''
 )
