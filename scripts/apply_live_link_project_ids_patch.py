@@ -64,12 +64,24 @@ replace_once(
 \t\t\tcontinue;
 \t\t}
 \t\tString project_id = name.substr(marker_pos + id_marker.length());
+\t\tint own_suffix_pos = project_id.find(duplicate_suffix);
+\t\tif (own_suffix_pos >= 0) {
+\t\t\tproject_id = project_id.substr(0, own_suffix_pos);
+\t\t}
 \t\tint duplicate_count = 0;
 \t\tfor (int j = 0; j < _projects.size(); j++) {
 \t\t\tconst String &other_name = _projects[j].project_name;
 \t\t\tint other_marker_pos = other_name.find(id_marker);
-\t\t\tif (other_marker_pos >= 0 && other_name.substr(other_marker_pos + id_marker.length()) == project_id) {
-\t\t\t\tduplicate_count++;
+\t\t\tif (other_marker_pos >= 0) {
+\t\t\t\tString other_id = other_name.substr(other_marker_pos + id_marker.length());
+\t\t\t\tint other_suffix_pos = other_id.find(duplicate_suffix);
+\t\t\t\tif (other_suffix_pos >= 0) {
+\t\t\t\t\tother_id = other_id.substr(0, other_suffix_pos);
+\t\t\t\t}
+\t\t\t\tif (other_id == project_id) {
+\t\t\t\t\tduplicate_count++;
+\t\t\t\t}
+\t\t\t}
 \t\t\t}
 \t\t}
 \t\tif (duplicate_count > 1) {
