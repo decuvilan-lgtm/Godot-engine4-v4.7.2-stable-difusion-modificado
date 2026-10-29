@@ -79,6 +79,7 @@ jobs:
           python3 scripts/validate_debug_overlay_patch.py
           python3 scripts/validate_github_sync_source.py
           python3 scripts/apply_github_sync_patch.py
+          python3 scripts/validate_linux_mcp_embed.py
           python3 scripts/apply_android_startup_patch.py
           python3 scripts/validate_android_startup_patch.py
           python3 scripts/validate_terrain_3d_source.py
