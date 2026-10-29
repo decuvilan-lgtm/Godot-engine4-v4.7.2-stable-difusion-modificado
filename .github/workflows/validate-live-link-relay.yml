@@ -14,15 +14,6 @@ on:
       - "scripts/validate_combined_patches.py"
       - ".github/workflows/validate-live-link-relay.yml"
       - ".github/workflows/build-godot-linux-emitter.yml"
-  push:
-    branches:
-      - "feature/live-editor-link"
-    paths:
-      - "relay/**"
-      - "tests/live_link/**"
-      - "scripts/live_link_addon/**"
-      - ".github/workflows/validate-live-link-relay.yml"
-      - ".github/workflows/build-godot-linux-emitter.yml"
   workflow_dispatch:
 
 concurrency:
