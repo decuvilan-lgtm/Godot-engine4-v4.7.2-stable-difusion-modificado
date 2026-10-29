@@ -432,6 +432,13 @@ func _has_transaction_suffix(path: String, original: String, marker: String) -> 
     return true
 
 
+func _is_symlink_path(path: String) -> bool:
+    if path.is_empty():
+        return false
+    var parent := DirAccess.open(path.get_base_dir())
+    return parent != null and parent.is_link(path.get_file())
+
+
 func _recover_interrupted_file_transactions() -> void:
     # One journal per project avoids recursively scanning large mobile projects on startup.
     var journal := _transaction_journal_path()
@@ -467,7 +474,10 @@ func _recover_interrupted_file_transactions() -> void:
         push_error("Live Link recovery journal backup path failed validation; leaving it for manual inspection.")
         return
     # Do not act on journal paths that have become symlinks since the transaction started.
-    if not _project_absolute_path(relative_original).is_empty() and FileAccess.file_exists(rollback):
+    if _is_symlink_path(rollback) or _is_symlink_path(temporary) or _is_symlink_path(backup):
+        push_error("Live Link recovery journal references a symbolic link; leaving it for manual inspection.")
+        return
+    if FileAccess.file_exists(rollback):
         if not FileAccess.file_exists(expected_original) and not DirAccess.dir_exists_absolute(expected_original):
             if DirAccess.rename_absolute(rollback, expected_original) != OK:
                 if backup.is_empty() or not FileAccess.file_exists(backup) or DirAccess.copy_absolute(backup, expected_original) != OK:
