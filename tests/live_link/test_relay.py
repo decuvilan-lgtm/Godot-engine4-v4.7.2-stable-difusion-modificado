@@ -188,7 +188,7 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
             "type": "project_operation",
             "target_platform": "android_editor",
             "policy_version": 1,
-            "project_id": "12345678-1234-1234-1234-123456789abc",
+            "project_id": "4827",
             "operation_id": "op-1",
             "operation": "create",
             "path": "Scenes/room.tscn",
