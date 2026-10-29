@@ -10,6 +10,7 @@ MANAGER_SOURCE = ROOT / "editor/project_manager/project_manager.cpp"
 ADDON = REPO_ROOT / "scripts/github_sync_addon"
 TERRAIN_ADDON = REPO_ROOT / "scripts/terrain_3d_addon"
 LIVE_LINK_ADDON = REPO_ROOT / "scripts/live_link_addon"
+MCP_ADDON = REPO_ROOT / "dist/addons/godot_mcp_android"
 
 def replace_once(content: str, old: str, new: str, label: str) -> str:
     count = content.count(old)
@@ -36,12 +37,26 @@ terrain_data = terrain_data_path.read_text(encoding="utf-8")
 terrain_config = terrain_config_path.read_text(encoding="utf-8")
 live_link_plugin = live_link_plugin_path.read_text(encoding="utf-8")
 live_link_config = live_link_config_path.read_text(encoding="utf-8")
+# The hardened MCP addon is packaged by the Linux build workflow. Source-only
+# validation may omit it, in which case the generated file count remains zero.
+mcp_files = []
+if MCP_ADDON.is_dir():
+    for mcp_path in sorted(MCP_ADDON.rglob("*")):
+        if not mcp_path.is_file():
+            continue
+        try:
+            mcp_content = mcp_path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        mcp_files.append((mcp_path.relative_to(MCP_ADDON).as_posix(), mcp_content))
 # Delimiter is intentionally long and checked so addon source cannot terminate the C++ raw string.
 delimiter = "GHGODOTSYNC"
-for value in (plugin, config, terrain_plugin, terrain_data, terrain_config, live_link_plugin, live_link_config):
+for value in (plugin, config, terrain_plugin, terrain_data, terrain_config, live_link_plugin, live_link_config, *(relative_path for relative_path, _ in mcp_files), *(mcp_content for _, mcp_content in mcp_files)):
     if f"){delimiter}\"" in value:
         raise RuntimeError("Addon content collides with the generated C++ raw-string delimiter.")
 
+mcp_path_entries = ",\n".join(f'R"{delimiter}({relative_path}){delimiter}"' for relative_path, _ in mcp_files) or f'R"{delimiter}(){delimiter}"'
+mcp_content_entries = ",\n".join(f'R"{delimiter}({mcp_content}){delimiter}"' for _, mcp_content in mcp_files) or f'R"{delimiter}(){delimiter}"'
 generated_header = ROOT / "editor/github_sync_addon_data.h"
 generated_header.write_text(
     "#pragma once\n"
@@ -54,6 +69,9 @@ generated_header.write_text(
     f'static const char *TERRAIN_PLUGIN_CFG = R"{delimiter}({terrain_config}){delimiter}";\n'
     f'static const char *LIVE_LINK_PLUGIN_GD = R"{delimiter}({live_link_plugin}){delimiter}";\n'
     f'static const char *LIVE_LINK_PLUGIN_CFG = R"{delimiter}({live_link_config}){delimiter}";\n'
+    "static const char *MCP_FILE_PATHS[] = {\n" + mcp_path_entries + "\n};\n"
+    "static const char *MCP_FILE_CONTENTS[] = {\n" + mcp_content_entries + "\n};\n"
+    f"static const int MCP_FILE_COUNT = {len(mcp_files)};\n"
     "}\n",
     encoding="utf-8",
 )
