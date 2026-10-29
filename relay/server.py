@@ -113,6 +113,12 @@ async def websocket(request):
                 if role != "target" or not isinstance(data.get("project_id"), str) or not PROJECT_ID_RE.fullmatch(data["project_id"]) or not isinstance(data.get("operation_id"), str) or not OPERATION_ID_RE.fullmatch(data["operation_id"]) or data.get("status") not in ("applied", "rejected", "conflict", "failed"): continue
                 expected = PENDING.get(room, {}).get(data["operation_id"])
                 if expected is None or expected["project_id"] != data["project_id"]: continue
+                # Results are valid only for a live pending operation. Expire stale
+                # entries here too (not only when a new operation arrives), otherwise
+                # a delayed result could be accepted after the operation TTL elapsed.
+                if time.monotonic() - float(expected["created_at"]) > PENDING_TTL_SECONDS:
+                    PENDING.get(room, {}).pop(data["operation_id"], None)
+                    continue
             now = time.monotonic(); previous = LAST[ws].get(kind, 0.0)
             # Matching pending results are one-shot; do not lose a real file-change result to rate limiting.
             if kind != "project_result":
