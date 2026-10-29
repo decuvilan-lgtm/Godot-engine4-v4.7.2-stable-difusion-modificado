@@ -17,7 +17,7 @@ def require(condition: bool, message: str) -> None:
 require(HEADER.is_file() and DIALOG.is_file(), "generated addon header and ProjectDialog source exist")
 header = HEADER.read_text(encoding="utf-8")
 dialog = DIALOG.read_text(encoding="utf-8")
-match = re.search(r"MCP_FILE_COUNT = (\\d+);", header)
+match = re.search(r"MCP_FILE_COUNT = (\d+);", header)
 require(match is not None and int(match.group(1)) > 0, "safe MCP addon files are embedded in the Linux build")
 require("MCP_FILE_PATHS[]" in header and "MCP_FILE_CONTENTS[]" in header, "embedded file paths and contents are present")
 require("execute_script_tool.gd" not in header, "arbitrary execute-script tool is absent from the packaged addon")
