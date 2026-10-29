@@ -17,11 +17,10 @@ on:
       - ".github/workflows/validate-live-link-relay.yml"
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 jobs:
   relay-protocol:
+    permissions:
+      contents: read
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     steps:
