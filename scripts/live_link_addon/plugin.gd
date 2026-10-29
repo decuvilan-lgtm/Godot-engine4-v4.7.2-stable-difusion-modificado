@@ -1063,9 +1063,14 @@ func _collect_sender_files(directory: String, output: Array[String]) -> void:
 
 func _sender_path_is_excluded(relative_path: String) -> bool:
     var lower := relative_path.to_lower()
+    var filename := lower.get_file()
     if lower == "project.godot" or lower.begins_with(".git/") or lower.begins_with(".godot/"):
         return true
     if lower.begins_with("addons/live_link/") or lower.begins_with("addons/live_link_emitter/") or lower.begins_with("addons/godot_mcp_android/"):
+        return true
+    if filename == ".env" or filename.begins_with(".env.") or filename in ["credentials.json", "secrets.json", "id_rsa", "id_ed25519", ".npmrc"]:
+        return true
+    if filename.ends_with(".pem") or filename.ends_with(".key") or filename.ends_with(".p12") or filename.ends_with(".pfx"):
         return true
     if lower.contains(".live_link_tmp_") or lower.contains(".live_link_rollback_"):
         return true
