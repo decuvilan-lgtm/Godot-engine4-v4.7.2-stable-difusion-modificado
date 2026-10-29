@@ -33,6 +33,9 @@ class LiveLinkEmitterContractTests(unittest.TestCase):
         self.assertIn('lower.begins_with(".git/")', excluded)
         self.assertIn('lower.begins_with(".godot/")', excluded)
         self.assertIn('addons/live_link/', excluded)
+        self.assertIn('filename == ".env"', excluded)
+        self.assertIn('filename.ends_with(".pem")', excluded)
+        self.assertIn('filename in ["credentials.json", "secrets.json"', excluded)
 
     def test_disconnect_does_not_claim_an_unknown_operation_failed_or_retry_it(self):
         self.assertIn("su resultado es desconocido", SOURCE)
