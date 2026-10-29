@@ -44,6 +44,7 @@ var _baseline_confirm_dialog: ConfirmationDialog
 
 func _enter_tree() -> void:
     add_to_group("live_link_receiver")
+    add_to_group("live_link_emitter")
     _setting(SETTING_URL, "wss://your-relay.example/ws", TYPE_STRING)
     _setting(SETTING_ROOM, "godot-room-1", TYPE_STRING)
     _setting(SETTING_ROLE, "target", TYPE_STRING)
@@ -57,6 +58,7 @@ func _enter_tree() -> void:
 
 func _exit_tree() -> void:
     remove_from_group("live_link_receiver")
+    remove_from_group("live_link_emitter")
     if _ws.get_ready_state() != WebSocketPeer.STATE_CLOSED:
         _ws.close()
     if is_instance_valid(_panel):
@@ -1075,6 +1077,34 @@ func _sender_path_is_excluded(relative_path: String) -> bool:
     if lower.contains(".live_link_tmp_") or lower.contains(".live_link_rollback_"):
         return true
     return false
+
+
+func get_sender_status() -> Dictionary:
+    return {
+        "connected": _connected,
+        "role": str(ProjectSettings.get_setting(SETTING_ROLE, "target")),
+        "target_project_id": _target_project_id.text.strip_edges() if is_instance_valid(_target_project_id) else "",
+        "baseline_loaded": _sender_baseline_loaded and _sender_baseline_target_id == (_target_project_id.text.strip_edges() if is_instance_valid(_target_project_id) else ""),
+        "queued_operations": _sender_queue.size(),
+        "inflight_path": str(_sender_inflight.get("path", "")),
+        "status": _status.text if is_instance_valid(_status) else "",
+    }
+
+
+func send_changed_files_from_mcp() -> Dictionary:
+    if not _is_agent():
+        return {"ok": false, "message": "Live Link is not in desktop emitter mode."}
+    if not _connected:
+        return {"ok": false, "message": "Live Link emitter is not connected to the relay."}
+    if not _target_id_is_valid():
+        return {"ok": false, "message": "Android target ID must be exactly four digits."}
+    var before_count := _sender_queue.size()
+    _send_changed_files()
+    if _status.text.begins_with("Cambios preparados: "):
+        return {"ok": true, "queued_operations": _sender_queue.size(), "target_project_id": _target_project_id.text.strip_edges(), "message": _status.text}
+    if _sender_queue.size() > before_count:
+        return {"ok": true, "queued_operations": _sender_queue.size(), "target_project_id": _target_project_id.text.strip_edges(), "message": _status.text}
+    return {"ok": false, "queued_operations": _sender_queue.size(), "message": _status.text}
 
 
 func _send_changed_files() -> void:
