@@ -352,7 +352,10 @@ func _connect_clicked() -> void:
             _status.text = "Introduce el ID Android de exactamente cuatro dígitos."
             return
         var local_default_room := "project-" + str(ProjectSettings.get_setting(SETTING_PROJECT_ID, ""))
-        if room.is_empty() or room == "godot-room-1" or room == local_default_room:
+        var project_room_regex := RegEx.new()
+        project_room_regex.compile("^project-[0-9]{4}$")
+        var room_is_project_scoped := project_room_regex.search(room) != null
+        if room.is_empty() or room == "godot-room-1" or room == local_default_room or room_is_project_scoped:
             room = "project-" + target_id
             _room.text = room
         settings.set_setting("live_link_emitter/target_project_id", target_id)
