@@ -9,6 +9,21 @@ Live Link ya tiene tres piezas separadas: un complemento dentro del editor Godot
 
 Esto todavía **no equivale a una integración ChatGPT→Godot terminada**. Ya se añadió una prueba de integración de filesystem que ejecuta operaciones reales dentro de Godot 4.7.2 headless; faltan simulación de cierre abrupto del proceso, pruebas del diálogo de aprobación, entrada/captura en Android físico y el puente de herramientas compatible con ChatGPT.
 
+## Identificador de proyecto
+
+El requisito de producto es un ID decimal persistente de exactamente cuatro dígitos. No es un token y mostrar/copiarlo no conecta el editor. El protocolo, cliente Python y relay deben validar exactamente `^[0-9]{4}# Live Link — auditoría técnica y ruta hacia funcionamiento real
+
+Fecha de revisión: 2026-10-28/29  
+Rama revisada: `feature/live-editor-link`
+
+## Resumen ejecutivo
+
+Live Link ya tiene tres piezas separadas: un complemento dentro del editor Godot, un relay WebSocket autenticado y un cliente Python de agente. La ruta de operaciones admite `create`, `update`, `rename` y `delete`; el editor valida el proyecto destino, pide aprobación explícita, compara SHA-256 para detectar conflictos y mantiene copias de seguridad.
+
+Esto todavía **no equivale a una integración ChatGPT→Godot terminada**. Ya se añadió una prueba de integración de filesystem que ejecuta operaciones reales dentro de Godot 4.7.2 headless; faltan simulación de cierre abrupto del proceso, pruebas del diálogo de aprobación, entrada/captura en Android físico y el puente de herramientas compatible con ChatGPT.
+
+. El Project Manager todavía debe mostrar el ID en cada tarjeta de proyecto y detectar colisiones locales antes de considerar completa esta función.
+
 ## Estado verificado en CI
 
 La ejecución [40794825337](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40794825337) terminó en **success** en el commit `d42d847e119e1ea77372643437074ba62ff510a2`. Corrieron 47 pruebas Python y la carga de Godot 4.7.2 headless ejecutó además `LIVE_LINK_FS_TESTS_PASSED` sin errores, errores de parseo ni fugas ObjectDB.
