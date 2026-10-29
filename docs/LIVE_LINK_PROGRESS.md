@@ -307,3 +307,11 @@ Trabajar sobre el Godot Engine 4.7.2 Android real, no una app sustituta. Disposi
 109. Mostrar, copiar o compartir el ID no debe activar una conexión, conceder permisos ni implicar que ChatGPT ya tiene acceso. La conexión real y el puente de herramientas se resuelven por separado; el ID no es secreto ni token de autenticación.
 110. Actualizada `docs/LIVE_LINK_TECHNICAL_AUDIT.md` con esta distinción y el flujo de selección de destino. Se conserva la separación entre habilitar/mostrar ID y conectar.
 111. Pendiente: al recibir el Godot Linux modificado del otro chat, revisar su implementación y alinear el contrato de selección de proyecto con este significado del ID. No se ha demostrado todavía el flujo extremo a extremo. Sin APK y sin merge.
+
+
+### 2026-10-29 — Recuperación de la fuente y emisor Linux
+
+112. Se localizó en la publicación `godot-modified-core-slots` la fuente modificada persistente: `godot-core-posterior.tar.gz` (804,105,913 bytes) y `godot-core-anterior.tar.gz` (72,111,186 bytes). El manifiesto de cada archivo debe verificarse al extraerlo; el archivo posterior procede de la rama de integración Android anterior y no se asume que ya contenga la integración Live Link más reciente.
+113. Se añadió `.github/workflows/build-godot-linux-emitter.yml` en `feature/live-editor-link`. La pipeline toma Godot 4.7.2 upstream fijado en la etiqueta `4.7.2-stable`, aplica los mismos patchers/addons del proyecto, compila el editor Linux x86_64, ejecuta pruebas del protocolo y una prueba headless del addon y, solo si todo pasa, publica un archivo de fuente reproducible y el binario Linux en la misma publicación de GitHub.
+114. La fuente completa no se guarda como miles de archivos en el árbol Git: la rama conserva los patchers, el addon, las pruebas y la pipeline; la publicación conserva el snapshot completo y el ejecutable. Esto mantiene las modificaciones recuperables sin inflar el historial Git con el árbol completo del motor.
+115. Estado al documentar: la pipeline se acaba de añadir y corregir; todavía no hay resultado de compilación Linux de esta pipeline. No afirmar que el emisor está compilado ni que la conexión Linux→Android funciona hasta revisar el run y sus logs. No APK y no merge del PR #2.
