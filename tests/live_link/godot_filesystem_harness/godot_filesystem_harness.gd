@@ -14,7 +14,7 @@ func _enter_tree() -> void:
         _check(false, "Live Link receiver script loaded")
         _finish()
         return
-    var receiver: Object = receiver_script.new()
+    var receiver: Variant = receiver_script.new()
     if receiver == null:
         _check(false, "Live Link receiver instance created")
         _finish()
@@ -33,7 +33,7 @@ func _enter_tree() -> void:
     _finish()
 
 
-func _test_create_and_empty_file(receiver: Object) -> void:
+func _test_create_and_empty_file(receiver: Variant) -> void:
     var relative := TEST_ROOT + "/created.txt"
     var absolute := ProjectSettings.globalize_path("res://" + relative)
     var bytes := "created by Godot integration test".to_utf8_buffer()
@@ -53,7 +53,7 @@ func _test_create_and_empty_file(receiver: Object) -> void:
     _check(FileAccess.get_file_as_string(empty_absolute).is_empty(), "empty file remains empty")
 
 
-func _test_update_and_conflict(receiver: Object) -> void:
+func _test_update_and_conflict(receiver: Variant) -> void:
     var relative := TEST_ROOT + "/updated.txt"
     var absolute := ProjectSettings.globalize_path("res://" + relative)
     _write_text(absolute, "before")
@@ -71,7 +71,7 @@ func _test_update_and_conflict(receiver: Object) -> void:
     _check(FileAccess.get_file_as_string(absolute) == "after", "conflict leaves current content unchanged")
 
 
-func _test_rename_and_delete(receiver: Object) -> void:
+func _test_rename_and_delete(receiver: Variant) -> void:
     var source_relative := TEST_ROOT + "/rename-source.txt"
     var source_absolute := ProjectSettings.globalize_path("res://" + source_relative)
     _write_text(source_absolute, "rename me")
@@ -93,7 +93,7 @@ func _test_rename_and_delete(receiver: Object) -> void:
     _check(not FileAccess.file_exists(delete_absolute), "delete removes source file")
 
 
-func _test_recovery_after_original_moved(receiver: Object) -> void:
+func _test_recovery_after_original_moved(receiver: Variant) -> void:
     var relative := TEST_ROOT + "/recover-me.txt"
     var absolute := ProjectSettings.globalize_path("res://" + relative)
     var rollback := absolute + ".live_link_rollback_deadbeef"
@@ -110,7 +110,7 @@ func _test_recovery_after_original_moved(receiver: Object) -> void:
     _check(not FileAccess.file_exists(receiver._transaction_journal_path()), "recovery clears completed journal")
 
 
-func _operation_data(receiver: Object, operation_id: String, bytes: PackedByteArray, base_hash: String) -> Dictionary:
+func _operation_data(receiver: Variant, operation_id: String, bytes: PackedByteArray, base_hash: String) -> Dictionary:
     return {
         "operation_id": operation_id,
         "content_base64": Marshalls.raw_to_base64(bytes),
