@@ -176,6 +176,29 @@ class ProjectIdentityGateTests(unittest.TestCase):
         remove = apply.index('DirAccess.remove_absolute(absolute_path)')
         self.assertLess(backup, remove)
 
+    def test_file_replacement_uses_recovery_journal_and_rollback_rename(self):
+        recovery = SOURCE.split("func _recover_interrupted_file_transactions() -> void:", 1)[1].split(
+            "\nfunc ", 1
+        )[0]
+        self.assertIn('active_transaction.json', SOURCE)
+        self.assertIn('JSON.parse_string(file.get_as_text())', recovery)
+        self.assertIn('DirAccess.rename_absolute(rollback, original)', recovery)
+        self.assertIn('temporary', recovery)
+        apply = SOURCE.split("func _apply_validated_operation(", 1)[1].split(
+            "\nfunc ", 1
+        )[0]
+        self.assertIn('_write_transaction_journal(absolute_path, rollback_absolute, temp_absolute, backup_path)', apply)
+        self.assertIn('DirAccess.rename_absolute(absolute_path, rollback_absolute)', apply)
+        self.assertNotIn('DirAccess.remove_absolute(absolute_path) != OK', apply)
+
+    def test_rename_destination_is_validated_and_shown_before_approval(self):
+        apply = SOURCE.split("func _apply_project_operation(data: Dictionary) -> void:", 1)[1].split(
+            "\nfunc _approve_pending_project_operation", 1
+        )[0]
+        self.assertIn('var destination := str(data.get("destination_path", ""))', apply)
+        self.assertIn('_safe_relative_path(destination)', apply)
+        self.assertIn('approval_text += "\\nDestino: " + destination', apply)
+
 
 if __name__ == "__main__":
     unittest.main()
