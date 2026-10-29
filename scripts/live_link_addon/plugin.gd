@@ -368,7 +368,7 @@ func _connect_clicked() -> void:
     _connecting = true
     _connect_button.disabled = true
     _disconnect_button.disabled = false
-    _target_project_id.editable = selected_role == "agent"
+    _target_project_id.editable = selected_role != "agent"
     _join = {"type":"join", "room":room, "role":str(ProjectSettings.get_setting(SETTING_ROLE)), "token":token}
     var err := _ws.connect_to_url(url)
     if err != OK:
