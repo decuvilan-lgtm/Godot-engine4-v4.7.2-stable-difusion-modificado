@@ -10,15 +10,13 @@ Install the relay requirements in the agent environment and configure these
 values outside source control:
 
 - `LIVE_LINK_RELAY_URL`: the deployed `wss://...` WebSocket endpoint. The client rejects plain `ws://` for remote hosts; unencrypted WebSockets are allowed only for loopback integration tests.
-- `LIVE_LINK_ROOM`: the same room configured in the Godot add-on.
+- `LIVE_LINK_ROOM`: the same room configured in the Godot add-on. By default, the add-on derives it as `project-<four-digit-ID>` (for example, ID `4827` uses room `project-4827`); if you manually set a custom room, configure the agent with that exact value.
 - `LIVE_LINK_TOKEN`: the relay shared token.
 - `LIVE_LINK_PROJECT_ID`: the project ID displayed by the selected Godot project.
 
 Never commit the relay token or put it in a public issue, screenshot, or prompt.
 The project ID selects a project but is not a secret or an authorization token.
-Because the current relay uses a shared room token, use a private room and trusted
-clients only; per-project credentials and stronger room authorization remain future
-hardening work.
+The default room separates projects, but the relay token is currently shared across rooms. Use trusted clients only; per-project credentials and stronger room authorization remain future hardening work.
 
 ## Sin depender de una API ni de un relay de terceros
 
