@@ -66,7 +66,7 @@ jobs:
           STATUS=${PIPESTATUS[0]}
           set -e
           if [ "$STATUS" -ne 0 ]; then exit "$STATUS"; fi
-          if grep -E 'SCRIPT ERROR:|Parse Error:|Failed to load script|LIVE_LINK_FS_TEST_FAIL|LIVE_LINK_FS_TESTS_FAILED' "$RUNNER_TEMP/live-link-godot.log"; then
+          if grep -E 'ERROR:|SCRIPT ERROR:|Parse Error:|Failed to load script|ObjectDB instances were leaked|LIVE_LINK_FS_TEST_FAIL|LIVE_LINK_FS_TESTS_FAILED' "$RUNNER_TEMP/live-link-godot.log"; then
             echo "Godot reported a Live Link parser/load or filesystem integration test error."
             exit 1
           fi
