@@ -44,4 +44,37 @@ replace_once(
 \t\t}
 \t}""")
 
-print("PASS: Project Manager displays a valid four-digit Live Link ID beside the project name.")
+replace_once(
+    """\tfor (const String &path : sections) {
+\t\tbool favorite = _config.get_value(path, "favorite", false);
+\t\t_projects.push_back(load_project_data(path, favorite));
+\t}""",
+    """\tfor (const String &path : sections) {
+\t\tbool favorite = _config.get_value(path, "favorite", false);
+\t\t_projects.push_back(load_project_data(path, favorite));
+\t}
+
+\t// Four-digit IDs are labels, so detect local collisions instead of assuming uniqueness.
+\tconst String id_marker = "  ·  Live Link ID: ";
+\tconst String duplicate_suffix = "  ⚠ DUPLICATE ID";
+\tfor (int i = 0; i < _projects.size(); i++) {
+\t\tconst String &name = _projects[i].project_name;
+\t\tint marker_pos = name.find(id_marker);
+\t\tif (marker_pos < 0) {
+\t\t\tcontinue;
+\t\t}
+\t\tString project_id = name.substr(marker_pos + id_marker.length());
+\t\tint duplicate_count = 0;
+\t\tfor (int j = 0; j < _projects.size(); j++) {
+\t\t\tconst String &other_name = _projects[j].project_name;
+\t\t\tint other_marker_pos = other_name.find(id_marker);
+\t\t\tif (other_marker_pos >= 0 && other_name.substr(other_marker_pos + id_marker.length()) == project_id) {
+\t\t\t\tduplicate_count++;
+\t\t\t}
+\t\t}
+\t\tif (duplicate_count > 1) {
+\t\t\t_projects.write[i].project_name += duplicate_suffix;
+\t\t}
+\t}""")
+
+print("PASS: Project Manager displays valid four-digit IDs and flags local collisions.")
