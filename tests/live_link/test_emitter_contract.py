@@ -16,6 +16,7 @@ class LiveLinkEmitterContractTests(unittest.TestCase):
     def test_sender_requires_a_valid_android_project_id_and_project_scoped_room(self):
         self.assertIn('id_regex.compile("^[0-9]{4}$")', SOURCE)
         self.assertIn('room = "project-" + target_id', SOURCE)
+        self.assertIn('project_room_regex.compile("^project-[0-9]{4}$")', SOURCE)
         self.assertIn('"live_link_emitter/target_project_id"', SOURCE)
 
     def test_sender_uses_explicit_baseline_and_conflict_aware_operations(self):
