@@ -20,7 +20,7 @@ on:
 
 concurrency:
   group: live-link-validation-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   relay-protocol:
