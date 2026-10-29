@@ -14,7 +14,7 @@ from typing import Any
 
 from aiohttp import ClientSession, ClientWebSocketResponse, WSMsgType
 
-PROJECT_ID_RE = re.compile(r"^[a-fA-F0-9-]{16,64}$")
+PROJECT_ID_RE = re.compile(r"^[0-9]{4}$")
 OPERATION_ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,100}$")
 VALID_OPERATIONS = {"create", "update", "rename", "delete"}
 
