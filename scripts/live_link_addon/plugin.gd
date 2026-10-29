@@ -412,6 +412,26 @@ func _write_transaction_journal(original_path: String, rollback_path: String, te
     return write_error == OK
 
 
+func _is_normalized_child(path: String, root: String) -> bool:
+    var normalized_path := path.simplify_path()
+    var normalized_root := root.simplify_path().trim_suffix("/")
+    return normalized_path.begins_with(normalized_root + "/")
+
+
+func _has_transaction_suffix(path: String, original: String, marker: String) -> bool:
+    var prefix := original + marker
+    if not path.begins_with(prefix):
+        return false
+    var suffix := path.trim_prefix(prefix)
+    if suffix.length() != 8:
+        return false
+    for i in range(suffix.length()):
+        var code := suffix.unicode_at(i)
+        if not ((code >= 48 and code <= 57) or (code >= 97 and code <= 102)):
+            return false
+    return true
+
+
 func _recover_interrupted_file_transactions() -> void:
     # One journal per project avoids recursively scanning large mobile projects on startup.
     var journal := _transaction_journal_path()
@@ -426,28 +446,39 @@ func _recover_interrupted_file_transactions() -> void:
     if not parsed is Dictionary:
         push_error("Live Link recovery journal is invalid; leaving it for manual inspection.")
         return
-    var root := ProjectSettings.globalize_path("res://").simplify_path().trim_suffix("/") + "/"
+    var project_root := ProjectSettings.globalize_path("res://").simplify_path().trim_suffix("/")
+    var backup_root := ProjectSettings.globalize_path(BACKUP_ROOT.path_join(str(ProjectSettings.get_setting(SETTING_PROJECT_ID, "")))).simplify_path()
     var original := str(parsed.get("original", ""))
     var rollback := str(parsed.get("rollback", ""))
     var temporary := str(parsed.get("temporary", ""))
     var backup := str(parsed.get("backup", ""))
-    var relative_original := original.trim_prefix(root)
-    var backup_root := ProjectSettings.globalize_path(BACKUP_ROOT.path_join(str(ProjectSettings.get_setting(SETTING_PROJECT_ID, "")))).simplify_path().trim_suffix("/") + "/"
-    if not _safe_relative_path(relative_original) or not rollback.begins_with(original + ".live_link_rollback_") or not temporary.begins_with(original + ".live_link_tmp_") or (not backup.is_empty() and not backup.begins_with(backup_root)):
-        push_error("Live Link recovery journal paths failed validation; leaving it for manual inspection.")
+    if not _is_normalized_child(original, project_root):
+        push_error("Live Link recovery journal original path is outside the project; leaving it for manual inspection.")
         return
-    if FileAccess.file_exists(rollback):
-        if not FileAccess.file_exists(original) and not DirAccess.dir_exists_absolute(original):
-            if DirAccess.rename_absolute(rollback, original) != OK:
-                if backup.is_empty() or not FileAccess.file_exists(backup) or DirAccess.copy_absolute(backup, original) != OK:
-                    push_error("Live Link could not restore interrupted replacement: " + original)
+    var relative_original := original.simplify_path().trim_prefix(project_root + "/")
+    var expected_original := _project_absolute_path(relative_original)
+    if not _safe_relative_path(relative_original) or expected_original.is_empty() or original.simplify_path() != expected_original:
+        push_error("Live Link recovery journal original path failed validation; leaving it for manual inspection.")
+        return
+    if not _has_transaction_suffix(rollback, expected_original, ".live_link_rollback_") or not _has_transaction_suffix(temporary, expected_original, ".live_link_tmp_"):
+        push_error("Live Link recovery journal transaction paths failed validation; leaving it for manual inspection.")
+        return
+    if not backup.is_empty() and not _is_normalized_child(backup, backup_root):
+        push_error("Live Link recovery journal backup path failed validation; leaving it for manual inspection.")
+        return
+    # Do not act on journal paths that have become symlinks since the transaction started.
+    if not _project_absolute_path(relative_original).is_empty() and FileAccess.file_exists(rollback):
+        if not FileAccess.file_exists(expected_original) and not DirAccess.dir_exists_absolute(expected_original):
+            if DirAccess.rename_absolute(rollback, expected_original) != OK:
+                if backup.is_empty() or not FileAccess.file_exists(backup) or DirAccess.copy_absolute(backup, expected_original) != OK:
+                    push_error("Live Link could not restore interrupted replacement: " + expected_original)
                     return
                 DirAccess.remove_absolute(rollback)
         else:
             DirAccess.remove_absolute(rollback)
-    elif not FileAccess.file_exists(original) and not DirAccess.dir_exists_absolute(original) and not backup.is_empty() and FileAccess.file_exists(backup):
-        if DirAccess.copy_absolute(backup, original) != OK:
-            push_error("Live Link could not restore file from backup: " + original)
+    elif not FileAccess.file_exists(expected_original) and not DirAccess.dir_exists_absolute(expected_original) and not backup.is_empty() and FileAccess.file_exists(backup):
+        if DirAccess.copy_absolute(backup, expected_original) != OK:
+            push_error("Live Link could not restore file from backup: " + expected_original)
             return
     if FileAccess.file_exists(temporary):
         DirAccess.remove_absolute(temporary)
