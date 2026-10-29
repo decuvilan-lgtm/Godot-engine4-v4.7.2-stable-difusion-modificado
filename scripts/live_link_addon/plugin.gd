@@ -431,7 +431,9 @@ func _recover_interrupted_file_transactions() -> void:
     var rollback := str(parsed.get("rollback", ""))
     var temporary := str(parsed.get("temporary", ""))
     var backup := str(parsed.get("backup", ""))
-    if not original.begins_with(root) or not rollback.begins_with(root) or not temporary.begins_with(root) or not rollback.contains(".live_link_rollback_") or not temporary.contains(".live_link_tmp_"):
+    var relative_original := original.trim_prefix(root)
+    var backup_root := ProjectSettings.globalize_path(BACKUP_ROOT.path_join(str(ProjectSettings.get_setting(SETTING_PROJECT_ID, "")))).simplify_path().trim_suffix("/") + "/"
+    if not _safe_relative_path(relative_original) or not rollback.begins_with(original + ".live_link_rollback_") or not temporary.begins_with(original + ".live_link_tmp_") or (not backup.is_empty() and not backup.begins_with(backup_root)):
         push_error("Live Link recovery journal paths failed validation; leaving it for manual inspection.")
         return
     if FileAccess.file_exists(rollback):
