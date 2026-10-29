@@ -147,6 +147,30 @@ insertion = """\t\terr = cfg.save(project_godot);
 \t\t\t\taddon_err = write_sync_addon_file(terrain_addon_dir_path.path_join("plugin.cfg"), String::utf8(GitHubSyncAddonData::TERRAIN_PLUGIN_CFG));
 \t\t\t}
 \t\t\t}
+\t\t\t#ifndef ANDROID_ENABLED
+\t\t\tif (GitHubSyncAddonData::MCP_FILE_COUNT > 0) {
+\t\t\t\tconst String mcp_addon_dir_path = path.path_join("addons/godot_mcp_android");
+\t\t\t\tfor (int mcp_i = 0; mcp_i < GitHubSyncAddonData::MCP_FILE_COUNT; mcp_i++) {
+\t\t\t\t\tconst String relative_path = String::utf8(GitHubSyncAddonData::MCP_FILE_PATHS[mcp_i]);
+\t\t\t\t\tconst String target_path = mcp_addon_dir_path.path_join(relative_path);
+\t\t\t\t\tRef<DirAccess> mcp_parent = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
+\t\t\t\t\taddon_err = mcp_parent->make_dir_recursive(target_path.get_base_dir());
+\t\t\t\t\tif (addon_err != OK) {
+\t\t\t\t\t\tbreak;
+\t\t\t\t\t}
+\t\t\t\t\tRef<FileAccess> mcp_file = FileAccess::open(target_path, FileAccess::WRITE);
+\t\t\t\t\tif (mcp_file.is_null()) {
+\t\t\t\t\t\taddon_err = FileAccess::get_open_error();
+\t\t\t\t\t\tbreak;
+\t\t\t\t\t}
+\t\t\t\t\tmcp_file->store_string(String::utf8(GitHubSyncAddonData::MCP_FILE_CONTENTS[mcp_i]));
+\t\t\t\t\taddon_err = mcp_file->get_error();
+\t\t\t\t\tif (addon_err != OK) {
+\t\t\t\t\t\tbreak;
+\t\t\t\t\t}
+\t\t\t\t}
+\t\t\t}
+\t\t\t#endif
 \t\t\tif (addon_err != OK) {
 \t\t\t\tdialog_error->set_text(vformat(TTR("Couldn't install GitHub sync addon (error %d)."), addon_err));
 \t\t\t\tdialog_error->popup_centered();
@@ -156,6 +180,7 @@ insertion = """\t\terr = cfg.save(project_godot);
 \t\t\tconst String plugin_setting = "res://addons/github_sync/plugin.cfg";
 \t\t\tconst String terrain_plugin_setting = "res://addons/terrain_3d/plugin.cfg";
 \t\t\tconst String live_link_plugin_setting = "res://addons/live_link/plugin.cfg";
+\t\t\tconst String mcp_plugin_setting = "res://addons/godot_mcp_android/plugin.cfg";
 \t\t\tbool plugins_changed = false;
 \t\t\tif (!enabled_plugins.has(plugin_setting)) {
 \t\t\t\tenabled_plugins.push_back(plugin_setting);
@@ -169,6 +194,12 @@ insertion = """\t\terr = cfg.save(project_godot);
 \t\t\t\tenabled_plugins.push_back(live_link_plugin_setting);
 \t\t\t\tplugins_changed = true;
 \t\t\t}
+\t\t\t#ifndef ANDROID_ENABLED
+\t\t\tif (GitHubSyncAddonData::MCP_FILE_COUNT > 0 && !enabled_plugins.has(mcp_plugin_setting)) {
+\t\t\t\tenabled_plugins.push_back(mcp_plugin_setting);
+\t\t\t\tplugins_changed = true;
+\t\t\t}
+\t\t\t#endif
 \t\t\tif (plugins_changed) {
 \t\t\t\tcfg.set_value("editor_plugins", "enabled", enabled_plugins);
 \t\t\t\taddon_err = cfg.save(project_godot);
