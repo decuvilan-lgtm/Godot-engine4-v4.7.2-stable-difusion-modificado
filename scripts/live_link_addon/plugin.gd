@@ -122,6 +122,10 @@ func _build_ui() -> void:
     if OS.get_name() == "Android":
         _role.set_item_disabled(2, true)
     var current_role := str(ProjectSettings.get_setting(SETTING_ROLE, "target"))
+    if OS.get_name() == "Android" and current_role == "agent":
+        current_role = "target"
+        ProjectSettings.set_setting(SETTING_ROLE, current_role)
+        ProjectSettings.save()
     _role.select(2 if current_role == "agent" else (1 if current_role == "controller" else 0))
     _panel.add_child(_field("Modo", _role))
     _target_project_id = LineEdit.new()
@@ -188,7 +192,14 @@ func _reveal_project_code() -> void:
     # Revealing the ID never starts a connection and never rotates the ID.
     # It is a stable project label, not a secret or authentication credential.
     var project_id := str(ProjectSettings.get_setting(SETTING_PROJECT_ID, ""))
-    if not project_id.is_valid_int() or project_id.length() != 4:
+    if _role.selected == 2:
+        project_id = _target_project_id.text.strip_edges()
+        var target_regex := RegEx.new()
+        target_regex.compile("^[0-9]{4}$")
+        if target_regex.search(project_id) == null:
+            _status.text = "Introduce primero el ID Android de exactamente cuatro dígitos."
+            return
+    elif not project_id.is_valid_int() or project_id.length() != 4:
         _ensure_project_id()
         project_id = str(ProjectSettings.get_setting(SETTING_PROJECT_ID, ""))
     if _connected or _connecting:
@@ -198,7 +209,7 @@ func _reveal_project_code() -> void:
     _code_copied = false
     _connect_button.disabled = true
     _enable_button.disabled = true
-    _project_code_label.text = "ID de este proyecto: " + project_id
+    _project_code_label.text = ("ID del proyecto Android destino: " if _role.selected == 2 else "ID de este proyecto: ") + project_id
     _project_code_label.visible = true
     for child in _panel.find_children("CopyProjectCodeButton", "Button", true, false):
         child.disabled = false
@@ -209,6 +220,8 @@ func _reveal_project_code() -> void:
 
 func _copy_project_code() -> void:
     var project_id := str(ProjectSettings.get_setting(SETTING_PROJECT_ID, ""))
+    if _role.selected == 2:
+        project_id = _target_project_id.text.strip_edges()
     if not project_id.is_empty():
         DisplayServer.clipboard_set(project_id)
         _code_copied = true
