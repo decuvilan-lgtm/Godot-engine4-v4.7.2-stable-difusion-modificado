@@ -377,7 +377,9 @@ func _sha256_bytes(bytes: PackedByteArray) -> String:
     var context := HashingContext.new()
     if context.start(HashingContext.HASH_SHA256) != OK:
         return ""
-    if context.update(bytes) != OK:
+    # Godot's HashingContext rejects update() with an empty buffer. SHA-256
+    # of an empty file is valid, so finish the initialized context directly.
+    if not bytes.is_empty() and context.update(bytes) != OK:
         return ""
     return context.finish().hex_encode()
 
