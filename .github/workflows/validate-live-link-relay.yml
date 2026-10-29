@@ -6,6 +6,12 @@ on:
       - "relay/**"
       - "tests/live_link/**"
       - "scripts/live_link_addon/**"
+      - "scripts/apply_live_link_project_ids_patch.py"
+      - "scripts/validate_live_link_project_ids_patch.py"
+      - "scripts/apply_github_import_patch.py"
+      - "scripts/apply_github_sync_patch.py"
+      - "scripts/apply_android_startup_patch.py"
+      - "scripts/validate_combined_patches.py"
       - ".github/workflows/validate-live-link-relay.yml"
   push:
     branches:
