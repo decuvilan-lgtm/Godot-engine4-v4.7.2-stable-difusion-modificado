@@ -279,3 +279,12 @@ Trabajar sobre el Godot Engine 4.7.2 Android real, no una app sustituta. Disposi
 
 94. La ejecución [40794936417](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40794936417) terminó en **success** sobre el commit `87ac82d342fec604ec8f23f4447c1e27a21733f7`. Pasaron la aplicación del parche a un upstream limpio, integración de GitHub Sync, validación de Terrain 3D, parche de arranque Android, regresiones combinadas, 47 pruebas Live Link y carga de los tres complementos con Godot 4.7.2 y escenas anidadas. El generador/compatibilidad combinada ya no es un bloqueante de CI de fuentes para este commit.
 95. La ejecución de fuentes no compila ni valida todavía el APK Android para `armeabi-v7a` y `arm64-v8a`, ni prueba el editor en el LG K51. Sigue prohibido considerar el build móvil terminado hasta consolidar, compilar ambas arquitecturas y probar en el dispositivo.
+
+
+### 2026-10-29 — Restricciones de conexión reafirmadas
+
+96. El usuario confirmó como requisito que Live Link evite depender de APIs de modelos/IA y que no exija que el teléfono Android y el agente/IA estén conectados a la misma red local.
+97. También confirmó que las carencias de Android no deben tratarse automáticamente como límites definitivos: cuando el plugin no tenga acceso suficiente, hay que investigar e implementar el soporte que falte en el editor nativo de Godot y/o la capa Android, preservando el editor real y sus herramientas.
+98. Actualizada la auditoría técnica para distinguir API de inferencia de un protocolo de transporte, y para no presentar un relay externo como solución final obligatoria. Un WebSocket no es una API de modelo, pero sigue siendo transporte de red; un relay alojado por terceros es una dependencia que debe justificarse y no satisface por sí solo el objetivo de minimizar dependencias externas.
+99. La arquitectura final sigue pendiente de demostrar un mecanismo compatible con la interfaz de IA que permita operar herramientas sin API de modelo y desde redes distintas. No se afirma que ChatGPT móvil pueda descubrir o conectar automáticamente a Godot sin un conector compatible.
+100. No se generó APK ni se fusionó el PR. Próximo trabajo: investigar el punto de integración nativo Android/C++, comparar transportes que no requieran misma LAN ni API de inferencia y validar cada opción antes de comprometer la arquitectura.
