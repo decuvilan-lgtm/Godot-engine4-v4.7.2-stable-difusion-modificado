@@ -14,7 +14,7 @@ PENDING_TTL_SECONDS = 300.0
 MAX_MESSAGE = 8 * 1024 * 1024
 LIMITS = {"screen_frame": 3.0, "remote_input": 120.0, "project_operation": 20.0, "project_result": 60.0}
 MAX_PROJECT_CONTENT = 5 * 1024 * 1024
-PROJECT_ID_RE = re.compile(r"^[a-fA-F0-9-]{16,64}$")
+PROJECT_ID_RE = re.compile(r"^[0-9]{4}$")
 OPERATION_ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,100}$")
 
 def safe_relative_path(path):
