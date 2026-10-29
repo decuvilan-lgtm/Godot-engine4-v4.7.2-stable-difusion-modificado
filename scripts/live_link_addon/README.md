@@ -18,3 +18,12 @@ Complemento experimental opcional para enlazar dos editores Godot mediante un re
 Los ajustes de URL, sala y rol se guardan en el proyecto. El token se guarda en EditorSettings del usuario, no en project.godot, y puede leerse desde LIVE_LINK_TOKEN.
 
 El relay de desarrollo asociado está separado de este complemento y debe desplegarse/configurarse por separado. No hay un servidor desplegado automáticamente por este addon.
+
+
+## Architecture constraints
+
+- Do not require an AI/model inference API. Live Link must not call OpenAI/Grok model APIs as a prerequisite.
+- Do not require the Android phone and the AI/agent to share a Wi‑Fi/LAN or router. The final design must support different networks.
+- If Android/Godot does not expose a needed capability to a project plugin, investigate adding it in the modified native Godot editor and/or Android layer; do not treat the limitation as a permanent reason to abandon the feature.
+- A socket/WebSocket is a transport protocol, not a model API, but a third-party cloud relay is still an external infrastructure dependency and is not automatically the final solution.
+- These are acceptance requirements. A compatible AI tool/connector mechanism and a real end-to-end test are still required; do not claim automatic ChatGPT mobile connectivity before that works.
