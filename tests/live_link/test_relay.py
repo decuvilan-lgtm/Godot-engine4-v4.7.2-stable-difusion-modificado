@@ -27,6 +27,7 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         relay.ROLES.clear()
         relay.LAST.clear()
         relay.PENDING.clear()
+        relay.SEEN_OPERATIONS.clear()
         test_app = web.Application(client_max_size=relay.MAX_MESSAGE)
         test_app.router.add_get("/health", relay.health)
         test_app.router.add_get("/ws", relay.websocket)
@@ -39,6 +40,7 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         relay.ROLES.clear()
         relay.LAST.clear()
         relay.PENDING.clear()
+        relay.SEEN_OPERATIONS.clear()
 
     async def join(self, role, token="test-token-live-link", room="test_room"):
         ws = await self.client.ws_connect("/ws")
@@ -281,6 +283,49 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
             await agent.receive(timeout=0.15)
         await agent.close()
         await target.close()
+
+
+    async def test_rejects_result_after_pending_operation_ttl(self):
+        target = await self.join("target", room="expired_result_room")
+        self.assertEqual((await target.receive_json(timeout=2))["type"], "joined")
+        agent = await self.join("agent", room="expired_result_room")
+        self.assertEqual((await agent.receive_json(timeout=2))["type"], "joined")
+        self.assertEqual((await target.receive_json(timeout=2))["type"], "peer_joined")
+
+        operation = {
+            "type": "project_operation",
+            "target_platform": "android_editor",
+            "policy_version": 1,
+            "project_id": "12345678-1234-1234-1234-123456789abc",
+            "operation_id": "expired-op-1",
+            "operation": "create",
+            "path": "Scenes/expired.txt",
+            "content_base64": "YQ==",
+            "sha256": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+            "base_sha256": "",
+        }
+        await agent.send_json(operation)
+        forwarded = await target.receive_json(timeout=2)
+        self.assertEqual(forwarded["operation_id"], "expired-op-1")
+
+        old_ttl = relay.PENDING_TTL_SECONDS
+        try:
+            relay.PENDING_TTL_SECONDS = 0.01
+            await asyncio.sleep(0.03)
+            await target.send_json({
+                "type": "project_result",
+                "project_id": operation["project_id"],
+                "operation_id": operation["operation_id"],
+                "status": "applied",
+                "message": "late result must be discarded",
+            })
+            with self.assertRaises(asyncio.TimeoutError):
+                await agent.receive(timeout=0.2)
+            self.assertNotIn("expired-op-1", relay.PENDING.get("expired_result_room", {}))
+        finally:
+            relay.PENDING_TTL_SECONDS = old_ttl
+            await agent.close()
+            await target.close()
 
 
 if __name__ == "__main__":
