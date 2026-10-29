@@ -9,7 +9,7 @@ permissions:
 
 concurrency:
   group: godot-linux-emitter-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build-linux-emitter:
