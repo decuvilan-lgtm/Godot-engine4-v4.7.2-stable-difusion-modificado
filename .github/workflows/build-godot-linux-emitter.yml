@@ -1,15 +1,6 @@
 name: Build Godot Linux emitter from the modified Android source baseline
 
 on:
-  push:
-    branches:
-      - feature/live-editor-link
-    paths:
-      - ".github/workflows/build-godot-linux-emitter.yml"
-      - "scripts/**"
-      - "relay/**"
-      - "docs/LIVE_LINK_*.md"
-      - "README.md"
   workflow_dispatch:
   workflow_call:
 
@@ -74,6 +65,8 @@ jobs:
       - name: Apply the same editor integrations used by Android
         run: |
           python3 scripts/apply_github_import_patch.py
+          python3 scripts/apply_live_link_project_ids_patch.py
+          python3 scripts/validate_live_link_project_ids_patch.py
           python3 scripts/validate_debug_overlay_patch.py
           python3 scripts/validate_github_sync_source.py
           python3 scripts/apply_github_sync_patch.py
