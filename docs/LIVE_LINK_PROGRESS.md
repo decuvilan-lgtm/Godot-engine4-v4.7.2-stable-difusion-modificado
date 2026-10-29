@@ -298,3 +298,12 @@ Trabajar sobre el Godot Engine 4.7.2 Android real, no una app sustituta. Disposi
 104. Un ID identifica el proyecto/destino dentro del protocolo, pero no proporciona conectividad por sí solo, no es una credencial de autenticación y no habilita automáticamente a ChatGPT a conectarse a un proceso. La interfaz de IA debe disponer de una herramienta/conector autorizado compatible; no se usará API de inferencia como requisito.
 105. Actualizada docs/LIVE_LINK_TECHNICAL_AUDIT.md para reflejar el flujo Linux→Android, la sincronización del proyecto como fuente de verdad, los requisitos de redes distintas, seguridad, conflicto y aceptación extremo a extremo.
 106. Pendiente: coordinar el contrato de herramientas con el Godot Linux que se desarrolla en el otro chat; decidir/probar el transporte entre redes diferentes sin API de modelos; ejecutar la secuencia completa con una escena 3D real y el Android físico. Sin APK y sin fusión del PR.
+
+
+### 2026-10-29 — Semántica exacta del ID por proyecto aclarada por el usuario
+
+107. El usuario corrigió el significado del ID: **no es un código para iniciar o autenticar una conexión**. Al habilitar la función de conexión sin conectarla, deben aparecer números identificadores en los proyectos.
+108. El usuario copia el número correspondiente al proyecto deseado y lo comparte en este chat. ChatGPT debe usarlo para distinguir exactamente cuál proyecto quiere modificar, especialmente si hay varios proyectos disponibles.
+109. Mostrar, copiar o compartir el ID no debe activar una conexión, conceder permisos ni implicar que ChatGPT ya tiene acceso. La conexión real y el puente de herramientas se resuelven por separado; el ID no es secreto ni token de autenticación.
+110. Actualizada `docs/LIVE_LINK_TECHNICAL_AUDIT.md` con esta distinción y el flujo de selección de destino. Se conserva la separación entre habilitar/mostrar ID y conectar.
+111. Pendiente: al recibir el Godot Linux modificado del otro chat, revisar su implementación y alinear el contrato de selección de proyecto con este significado del ID. No se ha demostrado todavía el flujo extremo a extremo. Sin APK y sin merge.
