@@ -1,0 +1,182 @@
+name: Build Godot Linux emitter from the modified Android source baseline
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux-emitter:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Checkout custom integration and tests
+        uses: actions/checkout@v4
+
+      - name: Checkout the exact Godot 4.7.2 upstream baseline
+        uses: actions/checkout@v4
+        with:
+          repository: godotengine/godot
+          ref: 4.7.2-stable
+          path: godot-source
+
+      - name: Checkout reviewed Android MCP addon source
+        uses: actions/checkout@v4
+        with:
+          repository: GeorgeMee/godot-mcp-android
+          ref: 5df91076250ece38ab182b2ca8b8a4a5d9a2d938
+          path: godot-mcp-android-source
+
+      - name: Install Linux editor build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential pkg-config python3-pip \
+            libx11-dev libxcursor-dev libxinerama-dev libxi-dev \
+            libxrandr-dev libxrender-dev libgl1-mesa-dev libglu1-mesa-dev \
+            libasound2-dev libpulse-dev libudev-dev libdbus-1-dev \
+            libfontconfig1-dev libfreetype6-dev libspeechd-dev \
+            libwayland-dev libxkbcommon-dev libvulkan-dev \
+            libzstd-dev libbrotli-dev libtheora-dev libvorbis-dev \
+            libopus-dev libogg-dev libwebp-dev libpng-dev libjpeg-dev \
+            libtiff-dev libenet-dev libminiupnpc-dev libssl-dev
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install SCons
+        run: python -m pip install --upgrade scons
+
+      - name: Package hardened MCP addon for Linux editor projects
+        run: |
+          python3 -m py_compile scripts/package_safe_mcp_android.py
+          python3 scripts/package_safe_mcp_android.py
+          test -s dist/godot-mcp-android-safe.zip
+
+      - name: Validate Python source and protocol tests
+        run: |
+          python3 - <<'PY'
+          import ast
+          from pathlib import Path
+          files = sorted(Path("scripts").rglob("*.py")) + sorted(Path("relay").glob("*.py")) + sorted(Path("tests/live_link").glob("*.py"))
+          for path in files:
+              ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+          print(f"Python syntax OK: {len(files)} files")
+          PY
+          python3 -m pip install -r relay/requirements.txt
+          python3 -m unittest discover -s tests/live_link -v
+
+      - name: Apply the same editor integrations used by Android
+        run: |
+          python3 scripts/apply_github_import_patch.py
+          python3 scripts/apply_live_link_project_ids_patch.py
+          python3 scripts/validate_live_link_project_ids_patch.py
+          python3 scripts/validate_debug_overlay_patch.py
+          python3 scripts/validate_github_sync_source.py
+          python3 scripts/apply_github_sync_patch.py
+          python3 scripts/validate_linux_mcp_embed.py
+          python3 scripts/apply_android_startup_patch.py
+          python3 scripts/validate_android_startup_patch.py
+          python3 scripts/validate_terrain_3d_source.py
+          python3 scripts/validate_combined_patches.py
+
+      - name: Compile the modified native Linux editor
+        working-directory: godot-source
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.local/bin:$PATH"
+          scons platform=linuxbsd target=editor arch=x86_64 dev_mode=yes module_text_server_fb_enabled=yes -j2
+          test -s bin/godot.linuxbsd.editor.x86_64
+          chmod +x bin/godot.linuxbsd.editor.x86_64
+          bin/godot.linuxbsd.editor.x86_64 --headless --version
+
+      - name: Smoke-test the Live Link addon with the compiled editor
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROJECT="$RUNNER_TEMP/live-link-linux-smoke"
+          mkdir -p "$PROJECT/addons"
+          cp -R scripts/live_link_addon "$PROJECT/addons/live_link"
+          cp -R dist/addons/godot_mcp_android "$PROJECT/addons/godot_mcp_android"
+          cat > "$PROJECT/project.godot" <<'EOF'
+          config_version=5
+          [application]
+          config/name="Live Link Linux Emitter Smoke Test"
+          [editor_plugins]
+          enabled=PackedStringArray("res://addons/live_link/plugin.cfg", "res://addons/godot_mcp_android/plugin.cfg")
+          EOF
+          set +e
+          timeout 75 godot-source/bin/godot.linuxbsd.editor.x86_64 --headless --editor --path "$PROJECT" --quit --verbose 2>&1 | tee "$RUNNER_TEMP/live-link-linux.log"
+          STATUS=${PIPESTATUS[0]}
+          set -e
+          if [ "$STATUS" -ne 0 ]; then exit "$STATUS"; fi
+          if grep -E 'ERROR:|SCRIPT ERROR:|Parse Error:|Failed to load script|ObjectDB instances were leaked' "$RUNNER_TEMP/live-link-linux.log"; then
+            echo "Linux editor reported a Live Link parser/load error."
+            exit 1
+          fi
+
+      - name: Create source manifest and archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from datetime import datetime, timezone
+          from pathlib import Path
+          import hashlib, json, os, subprocess
+          root = Path.cwd()
+          patch_hashes = {}
+          for base in ("scripts", "relay", "docs", "tests"):
+              for path in sorted((root / base).rglob("*")):
+                  if path.is_file():
+                      patch_hashes[str(path.relative_to(root))] = hashlib.sha256(path.read_bytes()).hexdigest()
+          manifest = {
+              "format_version": 1,
+              "artifact_type": "modified Godot Linux editor source and binary",
+              "upstream_repository": "godotengine/godot",
+              "upstream_ref": "4.7.2-stable",
+              "upstream_commit": subprocess.check_output(["git", "-C", "godot-source", "rev-parse", "HEAD"], text=True).strip(),
+              "custom_repository": os.environ["GITHUB_REPOSITORY"],
+              "custom_commit": os.environ["GITHUB_SHA"],
+              "created_at_utc": datetime.now(timezone.utc).isoformat(),
+              "validation": "Linux editor compiled; Live Link addon headless smoke test and Python protocol tests completed",
+              "integration_sha256": patch_hashes,
+          }
+          Path("godot-linux-emitter-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+          print(json.dumps({k: manifest[k] for k in ("upstream_commit", "custom_commit", "validation")}, indent=2))
+          PY
+          mkdir -p dist
+          tar -czf dist/godot-linux-emitter-source.tar.gz \
+            --exclude='godot-source/.git' \
+            --exclude='godot-source/bin' \
+            --exclude='godot-source/.scons_cache' \
+            --exclude='godot-source/platform/android/java/.gradle' \
+            --exclude='godot-source/platform/android/java/build' \
+            --exclude='godot-source/platform/android/java/editor/build' \
+            godot-source scripts relay docs tests .github/workflows/build-godot-linux-emitter.yml .github/workflows/validate-live-link-relay.yml README.md godot-linux-emitter-manifest.json
+          cp godot-source/bin/godot.linuxbsd.editor.x86_64 dist/Godot_v4.7.2-stable-custom_linux.x86_64
+          sha256sum dist/*
+          ls -lh dist/*
+
+      - name: Upload source and Linux editor to the repository release
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="godot-modified-core-slots"
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --title "Godot modified source — rotating core slots" \
+              --notes "Validated modified Godot source snapshots and platform builds." \
+              --prerelease --target "$GITHUB_SHA"
+          fi
+          gh release upload "$TAG" \
+            dist/godot-linux-emitter-source.tar.gz \
+            dist/Godot_v4.7.2-stable-custom_linux.x86_64 \
+            dist/godot-mcp-android-safe.zip \
+            --repo "$GITHUB_REPOSITORY" --clobber

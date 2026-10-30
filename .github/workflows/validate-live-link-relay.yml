@@ -1,0 +1,89 @@
+name: Validate Live Link project-operation relay
+
+on:
+  pull_request:
+    paths:
+      - "relay/**"
+      - "tests/live_link/**"
+      - "scripts/live_link_addon/**"
+      - "scripts/apply_live_link_project_ids_patch.py"
+      - "scripts/validate_live_link_project_ids_patch.py"
+      - "scripts/apply_github_import_patch.py"
+      - "scripts/apply_github_sync_patch.py"
+      - "scripts/apply_android_startup_patch.py"
+      - "scripts/validate_combined_patches.py"
+      - "scripts/validate_linux_mcp_embed.py"
+      - "scripts/package_safe_mcp_android.py"
+      - ".github/workflows/validate-live-link-relay.yml"
+      - ".github/workflows/build-godot-linux-emitter.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: live-link-validation-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  relay-protocol:
+    permissions:
+      contents: read
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: relay/requirements.txt
+      - name: Install relay dependencies
+        run: python -m pip install -r relay/requirements.txt
+      - name: Check Python syntax
+        run: python -m py_compile relay/server.py relay/agent_client.py tests/live_link/test_relay.py
+      - name: Run relay and project-operation tests
+        run: python -m unittest discover -s tests/live_link -v
+      - name: Parse Live Link addon with Godot 4.7.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP="$RUNNER_TEMP/godot.zip"
+          DIR="$RUNNER_TEMP/godot"
+          PROJECT="$RUNNER_TEMP/live-link-project"
+          curl --fail --location --retry 3 --output "$ZIP" "https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip"
+          mkdir -p "$DIR" "$PROJECT/addons"
+          unzip -q "$ZIP" -d "$DIR"
+          BIN="$(find "$DIR" -maxdepth 1 -type f -name 'Godot_*_linux.x86_64' -print -quit)"
+          test -n "$BIN"
+          chmod +x "$BIN"
+          cp -R scripts/live_link_addon "$PROJECT/addons/live_link"
+          cp -R tests/live_link/godot_filesystem_harness "$PROJECT/addons/live_link_test"
+          cat > "$PROJECT/project.godot" <<'EOF'
+          config_version=5
+          [application]
+          config/name="Live Link Receiver Validation"
+          [editor_plugins]
+          enabled=PackedStringArray("res://addons/live_link/plugin.cfg", "res://addons/live_link_test/plugin.cfg")
+          EOF
+          set +e
+          timeout 75 "$BIN" --headless --editor --path "$PROJECT" --quit --verbose 2>&1 | tee "$RUNNER_TEMP/live-link-godot.log"
+          STATUS=${PIPESTATUS[0]}
+          set -e
+          if [ "$STATUS" -ne 0 ]; then exit "$STATUS"; fi
+          if grep -E 'ERROR:|SCRIPT ERROR:|Parse Error:|Failed to load script|ObjectDB instances were leaked|LIVE_LINK_FS_TEST_FAIL|LIVE_LINK_FS_TESTS_FAILED' "$RUNNER_TEMP/live-link-godot.log"; then
+            echo "Godot reported a Live Link parser/load or filesystem integration test error."
+            exit 1
+          fi
+          if ! grep -F 'LIVE_LINK_FS_TESTS_PASSED' "$RUNNER_TEMP/live-link-godot.log"; then
+            echo "Godot did not report successful Live Link filesystem integration tests."
+            exit 1
+          fi
+
+  linux-emitter:
+    name: Build modified Linux editor and verify sender-side baseline
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    needs: relay-protocol
+    uses: ./.github/workflows/build-godot-linux-emitter.yml
+    permissions:
+      contents: write
+    secrets: inherit

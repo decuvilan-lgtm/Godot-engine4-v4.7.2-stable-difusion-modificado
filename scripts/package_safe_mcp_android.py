@@ -1782,6 +1782,84 @@ func execute(arguments: Dictionary) -> Dictionary:
 		return tool_error("runtime bridge returned invalid JSON")
 	return parsed
 ''',
+        "scripts/tools/editor/get_live_link_status_tool.gd": r'''@tool
+extends MCPTool
+
+
+func get_name() -> String:
+	return "get_live_link_status"
+
+
+func get_description() -> String:
+	return "Read the Live Link desktop emitter connection, Android target ID, baseline state, and pending operation count."
+
+
+func get_input_schema() -> Dictionary:
+	return {
+		"type": "object",
+		"properties": {},
+		"additionalProperties": false,
+	}
+
+
+func execute(_arguments: Dictionary) -> Dictionary:
+	var emitter := _find_emitter()
+	if emitter == null:
+		return tool_error("Live Link emitter plugin is not enabled in this project")
+	var status: Variant = emitter.call("get_sender_status")
+	if not status is Dictionary:
+		return tool_error("Live Link emitter returned an invalid status")
+	return {"ok": true, "status": status}
+
+
+func _find_emitter() -> Node:
+	var base := editor_interface.get_base_control()
+	if base == null:
+		return null
+	for node in base.get_tree().get_nodes_in_group("live_link_emitter"):
+		if node.has_method("get_sender_status"):
+			return node
+	return null
+''',
+        "scripts/tools/editor/send_live_link_changes_tool.gd": r'''@tool
+extends MCPTool
+
+
+func get_name() -> String:
+	return "send_live_link_changes"
+
+
+func get_description() -> String:
+	return "Ask the connected Linux Live Link emitter to queue changed project files for the selected Android project. Android must approve each file operation; no changes are sent unless this tool is called."
+
+
+func get_input_schema() -> Dictionary:
+	return {
+		"type": "object",
+		"properties": {},
+		"additionalProperties": false,
+	}
+
+
+func execute(_arguments: Dictionary) -> Dictionary:
+	var emitter := _find_emitter()
+	if emitter == null:
+		return tool_error("Live Link emitter plugin is not enabled in this project")
+	var result: Variant = emitter.call("send_changed_files_from_mcp")
+	if not result is Dictionary:
+		return tool_error("Live Link emitter returned an invalid send result")
+	return result
+
+
+func _find_emitter() -> Node:
+	var base := editor_interface.get_base_control()
+	if base == null:
+		return null
+	for node in base.get_tree().get_nodes_in_group("live_link_emitter"):
+		if node.has_method("send_changed_files_from_mcp"):
+			return node
+	return null
+''',
     }
     for relative_path, source in extra_tools.items():
         target = ADDON_OUT / relative_path
@@ -1810,7 +1888,9 @@ func execute(arguments: Dictionary) -> Dictionary:
         'const GetNodePropertiesTool := preload("res://addons/godot_mcp_android/scripts/tools/scene/get_node_properties_tool.gd")\n'
         'const CreateResourceTool := preload("res://addons/godot_mcp_android/scripts/tools/resource/create_resource_tool.gd")\n'
         'const InstallRuntimeGameBridgeTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/install_runtime_game_bridge_tool.gd")\n'
-        'const ControlRuntimeGameTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/control_runtime_game_tool.gd")\n',
+        'const ControlRuntimeGameTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/control_runtime_game_tool.gd")\n'
+        'const GetLiveLinkStatusTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/get_live_link_status_tool.gd")\n'
+        'const SendLiveLinkChangesTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/send_live_link_changes_tool.gd")\n',
     )
     replace_once(
         registry,
@@ -1834,7 +1914,9 @@ func execute(arguments: Dictionary) -> Dictionary:
         '\tregister(GetNodePropertiesTool.new(editor_interface))\n'
         '\tregister(CreateResourceTool.new(editor_interface))\n'
         '\tregister(InstallRuntimeGameBridgeTool.new(editor_interface))\n'
-        '\tregister(ControlRuntimeGameTool.new(editor_interface))\n',
+        '\tregister(ControlRuntimeGameTool.new(editor_interface))\n'
+        '\tregister(GetLiveLinkStatusTool.new(editor_interface))\n'
+        '\tregister(SendLiveLinkChangesTool.new(editor_interface))\n',
     )
 
     # Before replacing an existing project file, preserve its prior UTF-8 contents.
@@ -2158,6 +2240,14 @@ func execute(arguments: Dictionary) -> Dictionary:
         raise RuntimeError("set_node_property is missing editor undo/redo integration")
     if "get_editor_undo_redo()" not in remove_node_tool or "queue_free()" in remove_node_tool:
         raise RuntimeError("remove_node is missing reversible removal safeguards")
+    for tool_name in ("get_live_link_status_tool.gd", "send_live_link_changes_tool.gd"):
+        tool_text = (ADDON_OUT / "scripts/tools/editor" / tool_name).read_text(encoding="utf-8")
+        if "live_link_emitter" not in tool_text:
+            raise RuntimeError(f"{tool_name}: Live Link emitter bridge is missing")
+    send_tool = (ADDON_OUT / "scripts/tools/editor/send_live_link_changes_tool.gd").read_text(encoding="utf-8")
+    if "Android must approve each file operation" not in send_tool or "send_changed_files_from_mcp" not in send_tool:
+        raise RuntimeError("Live Link MCP send tool is missing approval or dispatch safeguards")
+
     for rel in ("scripts/server/mcp_http_server.gd", "scripts/server/mcp_websocket_server.gd"):
         server_text = (ADDON_OUT / rel).read_text(encoding="utf-8")
         if 'bind_host = "127.0.0.1"' not in server_text:

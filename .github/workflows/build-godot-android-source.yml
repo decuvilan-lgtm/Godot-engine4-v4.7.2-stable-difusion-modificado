@@ -6,6 +6,16 @@ on:
   push:
     branches:
       - feature/github-sync-and-safe-mcp
+  pull_request:
+    branches:
+      - feature/github-sync-and-safe-mcp
+    paths:
+      - "scripts/live_link_addon/**"
+      - "scripts/apply_live_link_project_ids_patch.py"
+      - "scripts/validate_live_link_project_ids_patch.py"
+      - "scripts/apply_github_sync_patch.py"
+      - "scripts/validate_combined_patches.py"
+      - ".github/workflows/build-godot-android-source.yml"
   workflow_dispatch:
     inputs:
       run_type:
@@ -27,7 +37,7 @@ concurrency:
 
 jobs:
   preflight-integration:
-    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.run_type == 'validate-import-only') }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.run_type == 'validate-import-only') }}
     # GDScript/parser and integration validation must not run on a Linux host.
     runs-on: windows-latest
     timeout-minutes: 25
@@ -61,6 +71,10 @@ jobs:
           PY
       - name: Apply GitHub import integration
         run: python scripts/apply_github_import_patch.py
+      - name: Add four-digit project IDs to Project Manager
+        run: python scripts/apply_live_link_project_ids_patch.py
+      - name: Validate four-digit project ID integration
+        run: python scripts/validate_live_link_project_ids_patch.py
       - name: Validate preview overlays and immersive mode
         run: python scripts/validate_debug_overlay_patch.py
       - name: Validate incremental GitHub sync safety
