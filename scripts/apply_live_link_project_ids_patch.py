@@ -83,7 +83,6 @@ replace_once(
 \t\t\t\t}
 \t\t\t}
 \t\t\t}
-\t\t}
 \t\tif (duplicate_count > 1) {
 \t\t\t_projects.write[i].project_name += duplicate_suffix;
 \t\t}
