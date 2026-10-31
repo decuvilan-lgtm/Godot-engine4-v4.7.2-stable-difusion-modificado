@@ -456,6 +456,12 @@ func _message(data: Dictionary) -> void:
         "project_result":
             if _is_agent() and str(data.get("from_role", "")) == "target":
                 _handle_sender_result(data)
+        "scene_operation":
+            if _is_target() and str(data.get("from_role", "")) == "agent":
+                _receive_scene_operation(data)
+        "scene_operation_result":
+            if _is_agent() and str(data.get("from_role", "")) == "target":
+                _handle_scene_operation_result(data)
 
 
 func _ensure_project_id() -> void:
