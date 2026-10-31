@@ -1930,7 +1930,7 @@ func _find_emitter() -> Node:
         'const InstallRuntimeGameBridgeTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/install_runtime_game_bridge_tool.gd")\n'
         'const ControlRuntimeGameTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/control_runtime_game_tool.gd")\n'
         'const GetLiveLinkStatusTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/get_live_link_status_tool.gd")\n'
-        'const SendLiveLinkChangesTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/send_live_link_changes_tool.gd")\n',
+        'const SendLiveLinkChangesTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/send_live_link_changes_tool.gd")\n'
         'const SendLiveSceneOperationTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/send_live_scene_operation_tool.gd")\n',
     )
     replace_once(
@@ -1957,7 +1957,7 @@ func _find_emitter() -> Node:
         '\tregister(InstallRuntimeGameBridgeTool.new(editor_interface))\n'
         '\tregister(ControlRuntimeGameTool.new(editor_interface))\n'
         '\tregister(GetLiveLinkStatusTool.new(editor_interface))\n'
-        '\tregister(SendLiveLinkChangesTool.new(editor_interface))\n',
+        '\tregister(SendLiveLinkChangesTool.new(editor_interface))\n'
         '\tregister(SendLiveSceneOperationTool.new(editor_interface))\n',
     )
 
