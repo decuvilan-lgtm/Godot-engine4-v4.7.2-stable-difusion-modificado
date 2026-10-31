@@ -387,6 +387,20 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         await target.close()
 
 
+    async def test_android_scene_state_is_forwarded_to_agent(self):
+        target = await self.join("target", room="scene_state_room")
+        await target.receive_json(timeout=2)
+        agent = await self.join("agent", room="scene_state_room")
+        await agent.receive_json(timeout=2)
+        await target.receive_json(timeout=2)
+        await target.send_json({"type":"scene_state", "project_id":"0427", "scene_path":"res://house.tscn", "scene_revision":3})
+        state = await agent.receive_json(timeout=2)
+        self.assertEqual(state["type"], "scene_state")
+        self.assertEqual(state["scene_path"], "res://house.tscn")
+        self.assertEqual(state["scene_revision"], 3)
+        await agent.close()
+        await target.close()
+
 
 if __name__ == "__main__":
     unittest.main()
