@@ -437,6 +437,10 @@ func _process(_delta: float) -> void:
     if _is_target() and Time.get_ticks_msec() - _last_frame >= FRAME_MS:
         _last_frame = Time.get_ticks_msec()
         _send_frame()
+    if _is_target():
+        var current_scene := EditorInterface.get_edited_scene_root()
+        if current_scene != null and current_scene.scene_file_path != _advertised_scene_path:
+            _send_scene_state()
     if _is_agent():
         _process_sender_queue()
 
