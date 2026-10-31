@@ -368,3 +368,11 @@ Trabajar sobre el Godot Engine 4.7.2 Android real, no una app sustituta. Disposi
 147. Se añadieron pruebas del relay para validación, enrutamiento de operaciones, ACK de una sola vez y handshake de escena, además de pruebas de contrato del motor de operaciones.
 148. **Pendiente de ejecución:** todavía no se ha corrido el conjunto de pruebas actualizado ni el smoke test Godot headless sobre estos últimos commits; tampoco la compilación Linux ni la prueba Android física. No presentar la primera implementación como funcional hasta que esas comprobaciones pasen.
 149. Limitación actual deliberada: el emisor solo permite una operación semántica en vuelo; el usuario aprueba cada operación en Android. La herramienta necesita conexión MCP remota accesible desde ChatGPT, que sigue siendo una dependencia externa no resuelta.
+
+### 2026-10-31 — Validación real del motor de escena en Godot 4.7.2
+
+150. La primera ejecución del nuevo harness detectó dos errores de inferencia de tipos en las variables UndoRedo; se corrigieron declarando `EditorUndoRedoManager` y `UndoRedo` explícitamente.
+151. La ejecución posterior pasó en GitHub Actions (run `41233993987`): `py_compile` de relay y empaquetadores MCP; 58 pruebas Python aprobadas; carga del addon en Godot 4.7.2 headless sin errores de parser; y `LIVE_LINK_FS_TESTS_PASSED`.
+152. El harness de Godot ahora opera sobre una escena real del editor headless: añade un `CSGBox3D`, modifica posición/rotación/escala y tamaño, lo elimina y verifica que Undo lo restaura. Esto demuestra que el motor de operaciones modifica el árbol de la escena y se integra con el historial del editor, no solo que serializa mensajes.
+153. La prueba todavía no conecta dos editores reales ni muestra el viewport Android del teléfono. El relay sí valida y enruta mensajes entre peers en sus pruebas automatizadas. La compilación nativa Linux con MCP empaquetado se omite en eventos PR por configuración del workflow y requiere ejecución manual; la preflight Android sigue siendo source-only y no genera APK.
+154. El workflow de validación añadió además `py_compile` para `scripts/package_safe_mcp_android.py` y `scripts/validate_linux_mcp_embed.py`, evitando que un error de sintaxis del generador MCP quede oculto hasta el build Linux.
