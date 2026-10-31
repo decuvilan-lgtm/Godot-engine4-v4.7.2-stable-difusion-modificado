@@ -48,6 +48,8 @@ var _scene_operation_inflight: Dictionary = {}
 var _scene_revision := 0
 var _scene_state_sent := false
 var _remote_scene_path := ""
+var _advertised_scene_path := ""
+var _applying_scene_operation := false
 
 func _enter_tree() -> void:
     add_to_group("live_link_receiver")
@@ -59,6 +61,8 @@ func _enter_tree() -> void:
     _ensure_project_room()
     _recover_interrupted_file_transactions()
     _build_ui()
+    get_undo_redo().history_changed.connect(_on_editor_scene_history_changed)
+    get_undo_redo().version_changed.connect(_on_editor_scene_history_changed)
     add_control_to_dock(DOCK_SLOT_RIGHT_UL, _panel)
     set_process(true)
     set_process_input(true)
@@ -1124,6 +1128,9 @@ func get_sender_status() -> Dictionary:
         "baseline_loaded": _sender_baseline_loaded and _sender_baseline_target_id == (_target_project_id.text.strip_edges() if is_instance_valid(_target_project_id) else ""),
         "queued_operations": _sender_queue.size(),
         "inflight_path": str(_sender_inflight.get("path", "")),
+        "remote_scene_path": _remote_scene_path,
+        "scene_revision": _scene_revision,
+        "scene_operation_pending": not _scene_operation_inflight.is_empty(),
         "status": _status.text if is_instance_valid(_status) else "",
     }
 
@@ -1261,11 +1268,19 @@ func send_scene_operation_from_mcp(request: Dictionary) -> Dictionary:
     _send(envelope)
     return {"ok":true, "operation_id":envelope.operation_id, "message":"Solicitud enviada; espera confirmación Android."}
 
+func _on_editor_scene_history_changed() -> void:
+    if not _is_target() or _applying_scene_operation:
+        return
+    _scene_revision += 1
+    if _connected:
+        _send_scene_state()
+
 func _send_scene_state() -> void:
     var root := EditorInterface.get_edited_scene_root()
     if root == null or root.scene_file_path.is_empty():
         _status.text = "Abre y guarda una escena antes de habilitar la edición en vivo."
         return
+    _advertised_scene_path = root.scene_file_path
     _send({"type":"scene_state", "project_id":str(ProjectSettings.get_setting(SETTING_PROJECT_ID, "")), "scene_path":root.scene_file_path, "scene_revision":_scene_revision})
 
 func _receive_scene_operation(data: Dictionary) -> void:
@@ -1292,9 +1307,12 @@ func _approve_scene_operation() -> void:
     if not bool(validation.get("ok", false)):
         _send_scene_operation_result(data, str(validation.get("status", "rejected")), str(validation.get("message", "La escena cambió.")))
         return
+    _applying_scene_operation = true
     var result := SceneOperationEngine.apply_request(self, data, root)
+    _applying_scene_operation = false
     if bool(result.get("ok", false)):
         _scene_revision += 1
+        _send_scene_state()
     _send_scene_operation_result(data, str(result.get("status", "failed")), str(result.get("message", "")))
     _status.text = str(result.get("message", "Operación finalizada."))
 
