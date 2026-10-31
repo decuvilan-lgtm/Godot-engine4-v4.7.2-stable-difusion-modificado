@@ -103,7 +103,7 @@ static func apply_request(plugin: EditorPlugin, data: Dictionary, scene_root: No
         undo_redo.add_do_method(parent, "remove_child", target)
         undo_redo.add_undo_method(parent, "add_child", target)
         undo_redo.add_undo_method(target, "set_owner", scene_root)
-        undo_redo.add_do_reference(target)
+        undo_redo.add_undo_reference(target)
         undo_redo.commit_action()
         return {"ok": true, "status": "applied", "message": "Nodo eliminado."}
     return {"ok": false, "status": "rejected", "message": "Operación no implementada."}
