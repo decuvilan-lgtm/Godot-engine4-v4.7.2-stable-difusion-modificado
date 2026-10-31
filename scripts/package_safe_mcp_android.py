@@ -1878,7 +1878,7 @@ func get_input_schema() -> Dictionary:
 			"target_node_path": {"type": "string"},
 			"arguments": {"type": "object"},
 		},
-		"required": ["scene_path", "operation", "arguments"],
+		"required": ["operation", "arguments"],
 		"additionalProperties": false,
 	}
 
