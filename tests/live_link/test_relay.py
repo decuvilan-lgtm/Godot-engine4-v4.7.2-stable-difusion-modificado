@@ -332,5 +332,61 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
             await target.close()
 
 
+    def test_scene_operation_validation_is_bounded_and_allowlisted(self):
+        base = {
+            "type": "scene_operation", "protocol_version": 1, "approval": "required",
+            "project_id": "0427", "operation_id": "scene-1",
+            "scene_path": "res://main.tscn", "expected_scene_revision": 0,
+            "target_node_path": "",
+            "operation": "create_node",
+            "arguments": {"parent_path": "", "name": "WallNorth", "class": "CSGBox3D"},
+        }
+        self.assertTrue(relay.valid_scene_operation(base))
+        self.assertFalse(relay.valid_scene_operation(dict(base, project_id="bad")))
+        self.assertFalse(relay.valid_scene_operation(dict(base, scene_path="res://../outside.tscn")))
+        self.assertFalse(relay.valid_scene_operation(dict(base, expected_scene_revision=True)))
+        self.assertFalse(relay.valid_scene_operation(dict(base, operation="execute_script")))
+        self.assertFalse(relay.valid_scene_operation(dict(base, approval="automatic")))
+        self.assertFalse(relay.valid_scene_operation(dict(base, arguments={"parent_path": "", "name": "../escape", "class": "CSGBox3D"})))
+        transform = dict(base, operation="set_transform", target_node_path="WallNorth", arguments={"position": [0, 1, -4]})
+        self.assertTrue(relay.valid_scene_operation(transform))
+        self.assertFalse(relay.valid_scene_operation(dict(transform, arguments={"position": [float("inf"), 0, 0]})))
+
+    async def test_agent_scene_operation_routes_to_target_and_ack_returns_once(self):
+        target = await self.join("target", room="scene_ops_room")
+        self.assertEqual((await target.receive_json(timeout=2))["type"], "joined")
+        agent = await self.join("agent", room="scene_ops_room")
+        self.assertEqual((await agent.receive_json(timeout=2))["type"], "joined")
+        self.assertEqual((await target.receive_json(timeout=2))["type"], "peer_joined")
+        operation = {
+            "type": "scene_operation", "protocol_version": 1, "approval": "required",
+            "project_id": "0427", "operation_id": "scene-op-1",
+            "scene_path": "res://main.tscn", "expected_scene_revision": 0,
+            "target_node_path": "",
+            "operation": "create_node",
+            "arguments": {"parent_path": "", "name": "Floor", "class": "CSGBox3D"},
+        }
+        await agent.send_json(operation)
+        received = await target.receive_json(timeout=2)
+        self.assertEqual(received["type"], "scene_operation")
+        self.assertEqual(received["from_role"], "agent")
+        self.assertEqual(received["operation_id"], "scene-op-1")
+        result = {
+            "type": "scene_operation_result", "project_id": "0427",
+            "operation_id": "scene-op-1", "status": "applied",
+            "scene_revision": 1, "message": "applied in editor memory",
+        }
+        await target.send_json(result)
+        forwarded = await agent.receive_json(timeout=2)
+        self.assertEqual(forwarded["type"], "scene_operation_result")
+        self.assertEqual(forwarded["status"], "applied")
+        await target.send_json(result)
+        with self.assertRaises(asyncio.TimeoutError):
+            await agent.receive(timeout=0.15)
+        await agent.close()
+        await target.close()
+
+
+
 if __name__ == "__main__":
     unittest.main()
