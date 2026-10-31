@@ -58,8 +58,33 @@ def valid_project_operation(data):
     return True
 
 def valid_scene_operation(data):
-    if data.get('protocol_version') != 1 or data.get('approval') != 'required': return False
-    return isinstance(data.get('arguments'), dict) and data.get('operation') in ('create_node', 'set_transform', 'set_property', 'delete_node')
+    """Validate bounded editor operations; Android validates again before applying."""
+    if data.get("protocol_version") != 1 or data.get("approval") != "required": return False
+    project_id, op_id = data.get("project_id"), data.get("operation_id")
+    scene_path, revision = data.get("scene_path"), data.get("expected_scene_revision")
+    operation, args = data.get("operation"), data.get("arguments")
+    if not isinstance(project_id, str) or not PROJECT_ID_RE.fullmatch(project_id): return False
+    if not isinstance(op_id, str) or not OPERATION_ID_RE.fullmatch(op_id): return False
+    if not isinstance(scene_path, str) or not scene_path.startswith("res://") or ".." in scene_path.split("/"): return False
+    if type(revision) is not int or revision < 0: return False
+    if operation not in ("create_node", "set_transform", "set_property", "delete_node"): return False
+    if not isinstance(args, dict) or len(json.dumps(args)) > 4096: return False
+    node_path = data.get("target_node_path", "")
+    if not isinstance(node_path, str) or len(node_path) > 512 or node_path.startswith("/") or ".." in node_path.split("/"): return False
+    if operation == "create_node":
+        parent, name, node_class = args.get("parent_path", ""), args.get("name"), args.get("class")
+        if not isinstance(parent, str) or len(parent) > 512 or ".." in parent.split("/"): return False
+        if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,63}", name): return False
+        if node_class not in ("Node3D", "MeshInstance3D", "CSGBox3D", "DirectionalLight3D", "Camera3D"): return False
+    elif operation == "set_transform":
+        position = args.get("position")
+        if not isinstance(position, list) or len(position) != 3: return False
+        if any(type(v) not in (int, float) or not (-1000000 <= v <= 1000000) for v in position): return False
+    elif operation == "set_property":
+        if args.get("property") != "visible" or type(args.get("value")) is not bool: return False
+    elif operation == "delete_node":
+        if not node_path or "/" not in node_path: return False
+    return True
 
 
 async def health(_request):
