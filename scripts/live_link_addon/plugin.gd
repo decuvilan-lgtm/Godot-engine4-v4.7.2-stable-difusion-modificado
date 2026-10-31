@@ -1224,6 +1224,26 @@ func _handle_sender_result(data: Dictionary) -> void:
     _sender_inflight.clear()
 
 
+func _receive_scene_operation(data: Dictionary) -> void:
+    _send_scene_operation_result(data, "rejected", "El motor de operaciones aún está en integración; no se modificó la escena.")
+
+func _approve_scene_operation() -> void:
+    pass
+
+func _reject_scene_operation() -> void:
+    pass
+
+func _send_scene_operation_result(data: Dictionary, result_status: String, detail: String) -> void:
+    _send({"type":"scene_operation_result", "project_id":str(ProjectSettings.get_setting(SETTING_PROJECT_ID, "")), "operation_id":str(data.get("operation_id", "")), "status":result_status, "scene_revision":_scene_revision, "message":detail})
+
+func _handle_scene_operation_result(data: Dictionary) -> void:
+    if _scene_operation_inflight.is_empty():
+        return
+    if str(data.get("operation_id", "")) != str(_scene_operation_inflight.get("operation_id", "")):
+        return
+    _scene_revision = int(data.get("scene_revision", _scene_revision))
+    _scene_operation_inflight.clear()
+
 func _send(data: Dictionary) -> void:
     if _ws.get_ready_state() == WebSocketPeer.STATE_OPEN:
         _ws.send_text(JSON.stringify(data))
