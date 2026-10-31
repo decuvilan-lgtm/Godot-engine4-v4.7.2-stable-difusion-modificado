@@ -68,6 +68,45 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         await target.close()
         await duplicate.close()
 
+    def test_mobile_capture_validation_is_bounded(self):
+        import base64
+        valid = {
+            "type": "mobile_capture", "project_id": "4827",
+            "capture_id": "capture-1", "width": 720, "height": 1280,
+            "data": base64.b64encode(b"\\xff\\xd8\\xff\\xd9").decode("ascii"),
+        }
+        self.assertTrue(relay.valid_mobile_capture(valid))
+        self.assertFalse(relay.valid_mobile_capture(dict(valid, project_id="bad")))
+        self.assertFalse(relay.valid_mobile_capture(dict(valid, width=721)))
+        self.assertFalse(relay.valid_mobile_capture(dict(valid, data="bm90LWEtanBlZw==")))
+        self.assertFalse(relay.valid_mobile_capture(dict(valid, data="!" * 100)))
+
+    async def test_mobile_capture_routes_only_to_agent(self):
+        target = await self.join("target", room="mobile_capture_room")
+        self.assertEqual((await target.receive_json(timeout=2))["type"], "joined")
+        agent = await self.join("agent", room="mobile_capture_room")
+        self.assertEqual((await agent.receive_json(timeout=2))["type"], "joined")
+        self.assertEqual((await target.receive_json(timeout=2))["type"], "peer_joined")
+        controller = await self.join("controller", room="mobile_capture_room")
+        self.assertEqual((await controller.receive_json(timeout=2))["type"], "joined")
+        self.assertEqual((await target.receive_json(timeout=2))["type"], "peer_joined")
+        import base64
+        capture = {
+            "type": "mobile_capture", "project_id": "4827",
+            "capture_id": "capture-route-1", "width": 320, "height": 240,
+            "data": base64.b64encode(b"\\xff\\xd8\\xff\\xd9").decode("ascii"),
+        }
+        await target.send_json(capture)
+        received = await agent.receive_json(timeout=2)
+        self.assertEqual(received["type"], "mobile_capture")
+        self.assertEqual(received["from_role"], "target")
+        self.assertEqual(received["project_id"], "4827")
+        with self.assertRaises(asyncio.TimeoutError):
+            await controller.receive(timeout=0.2)
+        await controller.close()
+        await agent.close()
+        await target.close()
+
     async def test_routes_screen_only_to_controller(self):
         target = await self.join("target", room="route_room")
         self.assertEqual((await target.receive_json(timeout=2))["type"], "joined")
