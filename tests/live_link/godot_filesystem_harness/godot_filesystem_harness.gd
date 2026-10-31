@@ -72,8 +72,8 @@ func _test_live_scene_operations(receiver: Variant) -> void:
     var delete := {"project_id":PROJECT_ID, "scene_path":scene_path, "expected_scene_revision":revision, "operation_id":"harness-scene-delete", "operation":"delete_node", "target_node_path":"Floor", "arguments":{}}
     result = SceneEngine.apply_request(receiver, delete, edited_root)
     _check(bool(result.get("ok", false)) and edited_root.get_node_or_null("Floor") == null, "delete-node operation removes the live scene node")
-    var undo_manager := receiver.get_undo_redo()
-    var history := undo_manager.get_history_undo_redo(undo_manager.get_object_history_id(edited_root))
+    var undo_manager: EditorUndoRedoManager = receiver.get_undo_redo()
+    var history: UndoRedo = undo_manager.get_history_undo_redo(undo_manager.get_object_history_id(edited_root))
     history.undo()
     _check(edited_root.get_node_or_null("Floor") != null, "editor Undo restores the deleted scene node")
 
