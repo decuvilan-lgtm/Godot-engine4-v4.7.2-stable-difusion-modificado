@@ -54,24 +54,45 @@ static func apply_request(plugin: EditorPlugin, data: Dictionary, scene_root: No
     if operation == "set_transform":
         if not target is Node3D:
             return {"ok": false, "status": "invalid", "message": "El destino no es un Node3D."}
-        var raw: Variant = args.get("position", null)
-        if not raw is Array or raw.size() != 3:
-            return {"ok": false, "status": "invalid", "message": "La posición debe tener tres componentes."}
-        for value in raw:
-            if typeof(value) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(value)) or absf(float(value)) > 1000000.0:
-                return {"ok": false, "status": "invalid", "message": "La posición contiene un valor no permitido."}
-        var next_position := Vector3(float(raw[0]), float(raw[1]), float(raw[2]))
-        undo_redo.create_action("Live Link: mover " + target.name)
-        undo_redo.add_do_property(target, "position", next_position)
-        undo_redo.add_undo_property(target, "position", target.position)
+        var fields := ["position", "rotation_degrees", "scale"]
+        var next_values: Dictionary = {}
+        var old_values: Dictionary = {}
+        for field in fields:
+            if not args.has(field):
+                continue
+            var raw: Variant = args[field]
+            if not raw is Array or raw.size() != 3:
+                return {"ok": false, "status": "invalid", "message": "Cada componente de transformación debe tener tres valores."}
+            for value in raw:
+                if typeof(value) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(value)) or absf(float(value)) > 1000000.0:
+                    return {"ok": false, "status": "invalid", "message": "Transformación con valores no permitidos."}
+            next_values[field] = Vector3(float(raw[0]), float(raw[1]), float(raw[2]))
+            old_values[field] = target.get(field)
+        if next_values.is_empty():
+            return {"ok": false, "status": "invalid", "message": "No se indicó ningún componente de transformación."}
+        undo_redo.create_action("Live Link: transformar " + target.name)
+        for field in next_values:
+            undo_redo.add_do_property(target, field, next_values[field])
+            undo_redo.add_undo_property(target, field, old_values[field])
         undo_redo.commit_action()
         return {"ok": true, "status": "applied", "message": "Transformación actualizada."}
     if operation == "set_property":
-        if str(args.get("property", "")) != "visible" or typeof(args.get("value", null)) != TYPE_BOOL or not (target is VisualInstance3D):
-            return {"ok": false, "status": "invalid", "message": "Propiedad no permitida."}
-        undo_redo.create_action("Live Link: cambiar visibilidad")
-        undo_redo.add_do_property(target, "visible", args.value)
-        undo_redo.add_undo_property(target, "visible", target.visible)
+        var property_name := str(args.get("property", ""))
+        var value: Variant = args.get("value", null)
+        if property_name == "visible" and value is bool and target is VisualInstance3D:
+            undo_redo.create_action("Live Link: cambiar visibilidad")
+            undo_redo.add_do_property(target, "visible", value)
+            undo_redo.add_undo_property(target, "visible", target.visible)
+        elif property_name == "size" and value is Array and value.size() == 3 and target is CSGBox3D:
+            for component in value:
+                if typeof(component) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(component)) or float(component) <= 0.0 or float(component) > 10000.0:
+                    return {"ok": false, "status": "invalid", "message": "Tamaño de CSGBox3D no válido."}
+            var next_size := Vector3(float(value[0]), float(value[1]), float(value[2]))
+            undo_redo.create_action("Live Link: cambiar tamaño")
+            undo_redo.add_do_property(target, "size", next_size)
+            undo_redo.add_undo_property(target, "size", target.size)
+        else:
+            return {"ok": false, "status": "invalid", "message": "Propiedad no permitida para este nodo."}
         undo_redo.commit_action()
         return {"ok": true, "status": "applied", "message": "Propiedad actualizada."}
     if operation == "delete_node":
