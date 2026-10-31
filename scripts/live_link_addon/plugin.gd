@@ -170,6 +170,11 @@ func _build_ui() -> void:
     _status.text = "Desconectado"
     _status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     _panel.add_child(_status)
+    var capture_button := Button.new()
+    capture_button.text = "Capturar interfaz del editor Linux (sin Xvfb)"
+    capture_button.disabled = OS.get_name() != "Linux"
+    capture_button.pressed.connect(_capture_editor_interface)
+    _panel.add_child(capture_button)
     _screen = TextureRect.new()
     _screen.custom_minimum_size = Vector2(300, 430)
     _screen.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -892,6 +897,38 @@ func _apply_validated_operation(data: Dictionary, operation: String, relative_pa
     _clear_transaction_journal()
     EditorInterface.get_resource_filesystem().scan()
     return "applied"
+
+func _capture_editor_interface() -> void:
+    if OS.get_name() != "Linux":
+        _status.text = "La captura de interfaz completa está disponible en Godot Linux."
+        return
+    var image: Image = null
+    var capture_mode := "pantalla completa"
+    # Native desktop capture: works without Xvfb when the editor is running in
+    # a real supported display session. Godot documents this on Linux X11,
+    # excluding XWayland; unsupported backends return null.
+    if DisplayServer.has_feature(DisplayServer.FEATURE_SCREEN_CAPTURE):
+        image = DisplayServer.screen_get_image(DisplayServer.SCREEN_OF_MAIN_WINDOW)
+    # Never label a viewport-only image as a full editor screenshot.
+    if image == null or image.is_empty():
+        image = get_tree().root.get_texture().get_image()
+        capture_mode = "viewport (alternativa; no incluye todos los paneles)"
+    if image == null or image.is_empty():
+        _status.text = "No se pudo capturar la interfaz. Comprueba el backend gráfico/permisos de pantalla."
+        return
+    var directory := "user://live_link_captures"
+    var absolute_directory := ProjectSettings.globalize_path(directory)
+    if DirAccess.make_dir_recursive_absolute(absolute_directory) != OK:
+        _status.text = "No se pudo crear la carpeta de capturas."
+        return
+    var stamp := Time.get_datetime_string_from_system().replace(":", "-").replace("T", "_")
+    var path := directory.path_join("godot_editor_" + stamp + ".png")
+    var error := image.save_png(path)
+    if error != OK:
+        _status.text = "Falló el guardado de la captura: " + error_string(error)
+        return
+    _status.text = "Captura guardada (" + capture_mode + "): " + ProjectSettings.globalize_path(path)
+
 
 func _send_frame() -> void:
     var image := get_tree().root.get_texture().get_image()
