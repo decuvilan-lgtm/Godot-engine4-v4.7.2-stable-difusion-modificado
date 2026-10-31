@@ -12,7 +12,7 @@ SEEN_OPERATIONS: dict[str, dict[str, float]] = {}
 MAX_PENDING_PER_ROOM = 1000
 PENDING_TTL_SECONDS = 300.0
 MAX_MESSAGE = 8 * 1024 * 1024
-LIMITS = {"screen_frame": 3.0, "remote_input": 120.0, "project_operation": 20.0, "project_result": 60.0}
+LIMITS = {"screen_frame": 3.0, "remote_input": 120.0, "project_operation": 20.0, "project_result": 60.0, "scene_operation": 30.0, "scene_operation_result": 60.0}
 MAX_PROJECT_CONTENT = 5 * 1024 * 1024
 PROJECT_ID_RE = re.compile(r"^[0-9]{4}$")
 OPERATION_ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,100}$")
@@ -114,8 +114,10 @@ async def websocket(request):
                     if not (0 <= x <= 1 and 0 <= y <= 1): continue
             elif kind == "project_operation":
                 if role != "agent" or not valid_project_operation(data): continue
-            elif kind == "project_result":
-                if role != "target" or not isinstance(data.get("project_id"), str) or not PROJECT_ID_RE.fullmatch(data["project_id"]) or not isinstance(data.get("operation_id"), str) or not OPERATION_ID_RE.fullmatch(data["operation_id"]) or data.get("status") not in ("applied", "rejected", "conflict", "failed"): continue
+            elif kind == "scene_operation":
+                if role != "agent" or not valid_scene_operation(data): continue
+            elif kind in ("project_result", "scene_operation_result"):
+                if role != "target" or not isinstance(data.get("project_id"), str) or not PROJECT_ID_RE.fullmatch(data["project_id"]) or not isinstance(data.get("operation_id"), str) or not OPERATION_ID_RE.fullmatch(data["operation_id"]) or data.get("status") not in ("applied", "rejected", "conflict", "failed", "invalid", "unknown"): continue
                 expected = PENDING.get(room, {}).get(data["operation_id"])
                 if expected is None or expected["project_id"] != data["project_id"]: continue
                 # Results are valid only for a live pending operation. Expire stale
@@ -129,7 +131,7 @@ async def websocket(request):
             if kind != "project_result":
                 if previous and now - previous < 1.0 / LIMITS[kind]: continue
                 LAST[ws][kind] = now
-            if kind == "project_operation":
+            if kind in ("project_operation", "scene_operation"):
                 pending = PENDING.setdefault(room, {})
                 seen = SEEN_OPERATIONS.setdefault(room, {})
                 for old_id, created_at in tuple(seen.items()):
@@ -144,7 +146,7 @@ async def websocket(request):
                     continue
                 pending[op_id] = {"project_id": data["project_id"], "created_at": now}
                 seen[op_id] = now
-            elif kind == "project_result":
+            elif kind in ("project_result", "scene_operation_result"):
                 PENDING.get(room, {}).pop(data["operation_id"], None)
             data["from_role"] = role
             encoded = json.dumps(data, separators=(",", ":"))
@@ -152,8 +154,8 @@ async def websocket(request):
                 if peer is ws or peer.closed: continue
                 if kind == "screen_frame" and ROLES.get(peer) == "controller": await peer.send_str(encoded)
                 elif kind == "remote_input" and ROLES.get(peer) == "target": await peer.send_str(encoded)
-                elif kind == "project_operation" and ROLES.get(peer) == "target": await peer.send_str(encoded)
-                elif kind == "project_result" and ROLES.get(peer) == "agent": await peer.send_str(encoded)
+                elif kind in ("project_operation", "scene_operation") and ROLES.get(peer) == "target": await peer.send_str(encoded)
+                elif kind in ("project_result", "scene_operation_result") and ROLES.get(peer) == "agent": await peer.send_str(encoded)
     except (TimeoutError, ConnectionResetError): pass
     finally:
         ROLES.pop(ws, None); LAST.pop(ws, None)
