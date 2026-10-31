@@ -173,7 +173,9 @@ async def websocket(request):
                 if role != "agent" or not valid_project_operation(data): continue
             elif kind == "scene_operation":
                 if role != "agent" or not valid_scene_operation(data): continue
-            elif kind == "mobile_capture":\n                if role != "target" or not valid_mobile_capture(data): continue\n            elif kind == "scene_state":
+            elif kind == "mobile_capture":
+                if role != "target" or not valid_mobile_capture(data): continue
+            elif kind == "scene_state":
                 if role != "target" or not isinstance(data.get("project_id"), str) or not PROJECT_ID_RE.fullmatch(data["project_id"]): continue
                 if not isinstance(data.get("scene_path"), str) or not data["scene_path"].startswith("res://") or type(data.get("scene_revision")) is not int or data["scene_revision"] < 0: continue
             elif kind in ("project_result", "scene_operation_result"):
