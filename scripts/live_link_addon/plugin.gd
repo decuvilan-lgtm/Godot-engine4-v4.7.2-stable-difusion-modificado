@@ -1245,13 +1245,41 @@ func send_scene_operation_from_mcp(request: Dictionary) -> Dictionary:
     return {"ok":true, "operation_id":envelope.operation_id, "message":"Solicitud enviada; espera confirmación Android."}
 
 func _receive_scene_operation(data: Dictionary) -> void:
-    _send_scene_operation_result(data, "rejected", "El motor de operaciones aún está en integración; no se modificó la escena.")
+    var root := EditorInterface.get_edited_scene_root()
+    var validation := SceneOperationEngine.validate_request(data, str(ProjectSettings.get_setting(SETTING_PROJECT_ID, "")), root, _scene_revision)
+    if not bool(validation.get("ok", false)):
+        _send_scene_operation_result(data, str(validation.get("status", "rejected")), str(validation.get("message", "Solicitud rechazada.")))
+        return
+    if not _pending_scene_operation.is_empty():
+        _send_scene_operation_result(data, "rejected", "Ya hay otra operación esperando aprobación.")
+        return
+    _pending_scene_operation = data.duplicate(true)
+    _scene_approval_dialog.dialog_text = "Proyecto: " + str(data.project_id) + "\\nEscena: " + str(data.scene_path) + "\\nOperación: " + str(data.operation)
+    _scene_approval_dialog.popup_centered()
+    _status.text = "Esperando aprobación para editar la escena."
 
 func _approve_scene_operation() -> void:
-    pass
+    if _pending_scene_operation.is_empty():
+        return
+    var data := _pending_scene_operation
+    _pending_scene_operation = {}
+    var root := EditorInterface.get_edited_scene_root()
+    var validation := SceneOperationEngine.validate_request(data, str(ProjectSettings.get_setting(SETTING_PROJECT_ID, "")), root, _scene_revision)
+    if not bool(validation.get("ok", false)):
+        _send_scene_operation_result(data, str(validation.get("status", "rejected")), str(validation.get("message", "La escena cambió.")))
+        return
+    var result := SceneOperationEngine.apply_request(self, data, root)
+    if bool(result.get("ok", false)):
+        _scene_revision += 1
+    _send_scene_operation_result(data, str(result.get("status", "failed")), str(result.get("message", "")))
+    _status.text = str(result.get("message", "Operación finalizada."))
 
 func _reject_scene_operation() -> void:
-    pass
+    if _pending_scene_operation.is_empty():
+        return
+    var data := _pending_scene_operation
+    _pending_scene_operation = {}
+    _send_scene_operation_result(data, "rejected", "Edición rechazada por el usuario Android.")
 
 func _send_scene_operation_result(data: Dictionary, result_status: String, detail: String) -> void:
     _send({"type":"scene_operation_result", "project_id":str(ProjectSettings.get_setting(SETTING_PROJECT_ID, "")), "operation_id":str(data.get("operation_id", "")), "status":result_status, "scene_revision":_scene_revision, "message":detail})
