@@ -67,7 +67,7 @@ static func apply_request(plugin: EditorPlugin, data: Dictionary, scene_root: No
         undo_redo.commit_action()
         return {"ok": true, "status": "applied", "message": "Transformación actualizada."}
     if operation == "set_property":
-        if str(args.get("property", "")) != "visible" or typeof(args.get("value", null)) != TYPE_BOOL or not target is VisualInstance3D:
+        if str(args.get("property", "")) != "visible" or typeof(args.get("value", null)) != TYPE_BOOL or not (target is VisualInstance3D):
             return {"ok": false, "status": "invalid", "message": "Propiedad no permitida."}
         undo_redo.create_action("Live Link: cambiar visibilidad")
         undo_redo.add_do_property(target, "visible", args.value)
