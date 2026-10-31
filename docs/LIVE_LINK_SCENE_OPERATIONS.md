@@ -40,7 +40,7 @@ Cada solicitud incluye, como mínimo:
 }
 ```
 
-El ejemplo ilustra el contrato, no es todavía un mensaje aceptado por el código actual. Las revisiones de escena detectan solicitudes obsoletas; los IDs de nodo deben mantenerse estables durante la sesión y no depender solo del nombre visible.
+El ejemplo ilustra el contrato, no es todavía un mensaje aceptado por el código actual. Las revisiones de escena detectan solicitudes obsoletas. En el primer MVP, `target_node_path` y `parent_path` son rutas relativas dentro del árbol; todavía no son UUID persistentes, por lo que renombrar o reparentar un nodo puede invalidar una solicitud en vuelo. Una fase posterior debe añadir IDs estables por nodo.
 
 Respuesta correlacionada:
 
@@ -105,7 +105,7 @@ La prueba no se considera aprobada por transmitir JSON, pasar pruebas estáticas
 
 ## 8. Diferencia frente al código existente
 
-El código actual de Live Link implementa operaciones de **archivos** (`create/update/rename/delete`) y su aprobación/validación. Eso es útil para transportar recursos, pero no ejecuta cambios semánticos en la escena abierta. El tipo `project_operation` sigue reservado a archivos. Se añadió un canal separado `scene_operation` / `scene_operation_result`, con validación de allowlist, correlación de ACK, control de duplicados/TTL y una notificación `scene_state` para informar escena abierta y revisión. El emisor MCP expone `send_live_scene_operation`; el receptor Android muestra una confirmación y aplica las operaciones mediante `EditorPlugin.get_undo_redo()`.
+El código actual de Live Link implementa operaciones de **archivos** (`create/update/rename/delete`) y su aprobación/validación. Eso es útil para transportar recursos, pero no ejecuta cambios semánticos en la escena abierta. El tipo `project_operation` sigue reservado a archivos. Se añadió un canal separado `scene_operation` / `scene_operation_result`, con validación de allowlist, correlación de ACK, control de duplicados/TTL y una notificación `scene_state` para informar escena abierta y revisión. Los destinos actuales se resuelven mediante NodePaths relativos; UUID de nodo persistente queda pendiente. El emisor MCP expone `send_live_scene_operation`; el receptor Android muestra una confirmación y aplica las operaciones mediante `EditorPlugin.get_undo_redo()`.
 
 No se debe afirmar que la edición semántica en vivo funciona hasta implementar y probar el contrato descrito. No generar APK ni fusionar PR #2 sin autorización explícita.
 
