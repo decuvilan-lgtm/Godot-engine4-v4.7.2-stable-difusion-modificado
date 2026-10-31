@@ -394,3 +394,8 @@ Trabajar sobre el Godot Engine 4.7.2 Android real, no una app sustituta. Disposi
 157. Añadidas pruebas automatizadas para validación de captura y enrutamiento exclusivo al agente. Commits: relay `4aada8e`, addon `b1a3114`, tests `0443936`.
 158. **Pendiente de CI y prueba real:** los tests recién añadidos aún deben ejecutarse en Actions; falta probar captura en el Godot Android físico y recepción en el Godot Linux real. La imagen se muestra en el dock Linux, pero todavía no se expone como contenido de imagen al MCP/ChatGPT. Por tanto, esta función permite que el usuario vea la captura en Linux; no afirmar aún que ChatGPT ya puede inspeccionarla directamente.
 159. La siguiente etapa de conexión sigue siendo el canal agente Linux ↔ receptor Android y, por separado, el adaptador MCP remoto accesible desde esta sesión. El relay no crea por sí solo acceso desde ChatGPT Cloud a un MCP que escucha en localhost.
+
+
+160. La primera ejecución de validación de la captura (41253248984) falló en py_compile por saltos de línea literales insertados en el relay. Tras corregirlos, una segunda ejecución (41253334190) detectó el mismo problema en la rama de enrutamiento; se corrigió también. La prueba no llegó a ejecutar tests ni a cargar GDScript en ninguna de esas dos ejecuciones.
+161. Corregidos ambos bloques de formato, los marcadores de bytes JPEG en relay y fixture de pruebas, y el mensaje de Android para que no prometa confirmación de recepción cuando aún no hay ACK de entrega. Commits correctivos: 831800f, b65e35e, 39e6a1d, bd55c2c, 4b1be6b.
+162. Estado de validación: todavía no hay una ejecución CI posterior que confirme estos últimos arreglos. No declarar el canal aprobado hasta que py_compile, suite relay y parser Godot 4.7.2 terminen en success.
