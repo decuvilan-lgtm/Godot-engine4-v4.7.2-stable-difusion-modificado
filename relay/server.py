@@ -75,7 +75,7 @@ def valid_mobile_capture(data):
         raw = base64.b64decode(encoded, validate=True)
     except (binascii.Error, ValueError):
         return False
-    return len(raw) <= 4 * 1024 * 1024 and len(raw) >= 4 and raw[:2] == b"\\xff\\xd8" and raw[-2:] == b"\\xff\\xd9"
+    return len(raw) <= 4 * 1024 * 1024 and len(raw) >= 4 and raw[:2] == b"\xff\xd8" and raw[-2:] == b"\xff\xd9"
 
 
 def valid_scene_operation(data):
