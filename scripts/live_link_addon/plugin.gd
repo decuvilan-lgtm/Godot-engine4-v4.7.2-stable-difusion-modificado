@@ -11,6 +11,7 @@ const MAX_OPERATION_BYTES := 5 * 1024 * 1024
 const FRAME_MS := 400
 const MAX_W := 720
 const MAX_H := 1280
+const SceneOperationEngine = preload("res://addons/live_link/scene_operation_engine.gd")
 
 var _ws := WebSocketPeer.new()
 var _panel: VBoxContainer
@@ -41,6 +42,11 @@ var _sender_baseline: Dictionary = {}
 var _sender_baseline_loaded := false
 var _sender_baseline_target_id := ""
 var _baseline_confirm_dialog: ConfirmationDialog
+var _scene_approval_dialog: ConfirmationDialog
+var _pending_scene_operation: Dictionary = {}
+var _scene_operation_inflight: Dictionary = {}
+var _scene_revision := 0
+var _scene_state_sent := false
 
 func _enter_tree() -> void:
     add_to_group("live_link_receiver")
@@ -180,6 +186,14 @@ func _build_ui() -> void:
     _approval_dialog.confirmed.connect(_approve_pending_project_operation)
     _approval_dialog.canceled.connect(_reject_pending_project_operation)
     add_child(_approval_dialog)
+
+    _scene_approval_dialog = ConfirmationDialog.new()
+    _scene_approval_dialog.title = "Aprobar edición de escena en vivo"
+    _scene_approval_dialog.ok_button_text = "Aplicar en esta escena"
+    _scene_approval_dialog.cancel_button_text = "Rechazar"
+    _scene_approval_dialog.confirmed.connect(_approve_scene_operation)
+    _scene_approval_dialog.canceled.connect(_reject_scene_operation)
+    add_child(_scene_approval_dialog)
 
     _baseline_confirm_dialog = ConfirmationDialog.new()
     _baseline_confirm_dialog.title = "Preparar línea base Live Link"
