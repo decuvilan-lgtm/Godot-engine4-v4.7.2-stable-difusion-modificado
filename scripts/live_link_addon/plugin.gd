@@ -47,6 +47,7 @@ var _pending_scene_operation: Dictionary = {}
 var _scene_operation_inflight: Dictionary = {}
 var _scene_revision := 0
 var _scene_state_sent := false
+var _remote_scene_path := ""
 
 func _enter_tree() -> void:
     add_to_group("live_link_receiver")
@@ -440,8 +441,12 @@ func _message(data: Dictionary) -> void:
             _connect_button.disabled = true
             _disconnect_button.disabled = false
             _status.text = "Conectado a sala " + str(data.get("room", ""))
+            if _is_target():
+                _send_scene_state()
         "peer_joined":
             _status.text = "Editor remoto conectado."
+            if _is_target():
+                _send_scene_state()
         "peer_left":
             _status.text = "Editor remoto desconectado."
         "screen_frame":
@@ -462,6 +467,12 @@ func _message(data: Dictionary) -> void:
         "scene_operation_result":
             if _is_agent() and str(data.get("from_role", "")) == "target":
                 _handle_scene_operation_result(data)
+        "scene_state":
+            if _is_agent() and str(data.get("from_role", "")) == "target":
+                if str(data.get("project_id", "")) == _target_project_id.text.strip_edges():
+                    _remote_scene_path = str(data.get("scene_path", ""))
+                    _scene_revision = int(data.get("scene_revision", 0))
+                    _status.text = "Escena Android lista: " + _remote_scene_path
 
 
 func _ensure_project_id() -> void:
@@ -1239,10 +1250,20 @@ func send_scene_operation_from_mcp(request: Dictionary) -> Dictionary:
     var args: Variant = request.get("arguments", {})
     if op not in ["create_node", "set_transform", "set_property", "delete_node"] or not args is Dictionary:
         return {"ok":false, "message":"Operación no permitida."}
-    var envelope := {"type":"scene_operation", "protocol_version":1, "approval":"required", "project_id":_target_project_id.text.strip_edges(), "operation_id":str(Time.get_ticks_usec()), "scene_path":str(request.get("scene_path", "")), "expected_scene_revision":_scene_revision, "target_node_path":str(request.get("target_node_path", "")), "operation":op, "arguments":args}
+    var scene_path := str(request.get("scene_path", _remote_scene_path))
+    if scene_path.is_empty() or not scene_path.begins_with("res://"):
+        return {"ok":false, "message":"Android todavía no informó qué escena tiene abierta."}
+    var envelope := {"type":"scene_operation", "protocol_version":1, "approval":"required", "project_id":_target_project_id.text.strip_edges(), "operation_id":str(Time.get_ticks_usec()), "scene_path":scene_path, "expected_scene_revision":_scene_revision, "target_node_path":str(request.get("target_node_path", "")), "operation":op, "arguments":args}
     _scene_operation_inflight = envelope
     _send(envelope)
     return {"ok":true, "operation_id":envelope.operation_id, "message":"Solicitud enviada; espera confirmación Android."}
+
+func _send_scene_state() -> void:
+    var root := EditorInterface.get_edited_scene_root()
+    if root == null or root.scene_file_path.is_empty():
+        _status.text = "Abre y guarda una escena antes de habilitar la edición en vivo."
+        return
+    _send({"type":"scene_state", "project_id":str(ProjectSettings.get_setting(SETTING_PROJECT_ID, "")), "scene_path":root.scene_file_path, "scene_revision":_scene_revision})
 
 func _receive_scene_operation(data: Dictionary) -> void:
     var root := EditorInterface.get_edited_scene_root()
@@ -1287,7 +1308,7 @@ func _send_scene_operation_result(data: Dictionary, result_status: String, detai
 func _handle_scene_operation_result(data: Dictionary) -> void:
     if _scene_operation_inflight.is_empty():
         return
-    if str(data.get("operation_id", "")) != str(_scene_operation_inflight.get("operation_id", "")):
+    if str(data.get("project_id", "")) != str(_scene_operation_inflight.get("project_id", "")) or str(data.get("operation_id", "")) != str(_scene_operation_inflight.get("operation_id", "")):
         return
     _scene_revision = int(data.get("scene_revision", _scene_revision))
     _scene_operation_inflight.clear()
