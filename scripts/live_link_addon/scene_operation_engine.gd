@@ -67,7 +67,7 @@ static func apply_request(plugin: EditorPlugin, data: Dictionary, scene_root: No
         undo_redo.commit_action()
         return {"ok": true, "status": "applied", "message": "Transformación actualizada."}
     if operation == "set_property":
-        if str(args.get("property", "")) != "visible" or typeof(args.get("value", null)) != TYPE_BOOL or not "visible" in target:
+        if str(args.get("property", "")) != "visible" or typeof(args.get("value", null)) != TYPE_BOOL or not target is VisualInstance3D:
             return {"ok": false, "status": "invalid", "message": "Propiedad no permitida."}
         undo_redo.create_action("Live Link: cambiar visibilidad")
         undo_redo.add_do_property(target, "visible", args.value)
@@ -91,7 +91,6 @@ static func apply_request(plugin: EditorPlugin, data: Dictionary, scene_root: No
 static func _valid_id(value: String) -> bool:
     if value.is_empty() or value.length() > 100:
         return false
-    for c in value:
-        if not (c.is_ascii_alphanumeric() or c in ["_", ".", ":", "-"]):
-            return false
-    return true
+    var regex := RegEx.new()
+    regex.compile("^[A-Za-z0-9_.:-]{1,100}$")
+    return regex.search(value) != null
