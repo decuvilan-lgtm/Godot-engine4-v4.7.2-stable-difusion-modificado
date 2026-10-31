@@ -1,6 +1,6 @@
 # Live Link — protocolo de edición semántica en vivo
 
-**Estado:** diseño inicial; no implementado ni validado.  
+**Estado:** primera implementación en la rama; pendiente de validación en Godot headless y en Android físico.  
 **Rama:** `feature/live-editor-link`  
 **Objetivo:** ejecutar cambios sobre la escena abierta del editor Godot Android, en vez de usar la transferencia de archivos como mecanismo principal.
 
@@ -60,13 +60,12 @@ Estados mínimos: `applied`, `rejected`, `conflict`, `invalid`, `failed`, `unkno
 
 ## 4. Operaciones iniciales (MVP)
 
-1. `create_node`: crear un tipo de nodo permitido bajo un padre de la escena actual, con nombre validado e ID estable.
-2. `set_transform`: cambiar posición, rotación y escala de un nodo 3D válido.
-3. `set_property`: cambiar una propiedad permitida después de comprobar tipo y rango.
-4. `delete_node`: eliminar un nodo de usuario existente, con confirmación y opción de deshacer.
-5. `save_scene`: guardar la escena después de las operaciones aprobadas, informando la ruta y el resultado.
+1. `create_node`: crear `Node3D`, `MeshInstance3D`, `CSGBox3D`, `DirectionalLight3D` o `Camera3D` bajo un padre validado.
+2. `set_transform`: cambiar posición, rotación y escala de un `Node3D`.
+3. `set_property`: cambiar visibilidad o tamaño de un `CSGBox3D`, con validación de tipo y rango.
+4. `delete_node`: eliminar un nodo descendiente, con confirmación y registro Undo/Redo.
 
-La segunda fase puede incluir asignación de materiales/recursos, creación de MeshInstance3D/CSG, luces, cámaras y primitivas. Los recursos que requieran bytes externos pueden usar el canal auxiliar de recursos, con verificación de hash y límites de tamaño.
+Guardar la escena sigue siendo una acción separada del editor y no se ejecuta automáticamente. Materiales, recursos externos y creación de geometría más avanzada quedan para fases posteriores.
 
 ## 5. Ejecución dentro de Godot
 
@@ -106,6 +105,16 @@ La prueba no se considera aprobada por transmitir JSON, pasar pruebas estáticas
 
 ## 8. Diferencia frente al código existente
 
-El código actual de Live Link implementa operaciones de **archivos** (`create/update/rename/delete`) y su aprobación/validación. Eso es útil para transportar recursos, pero no ejecuta cambios semánticos en la escena abierta. El tipo `project_operation` existente no debe reutilizarse ambiguamente; se añadirá `scene_operation` o una versión diferenciada del protocolo.
+El código actual de Live Link implementa operaciones de **archivos** (`create/update/rename/delete`) y su aprobación/validación. Eso es útil para transportar recursos, pero no ejecuta cambios semánticos en la escena abierta. El tipo `project_operation` sigue reservado a archivos. Se añadió un canal separado `scene_operation` / `scene_operation_result`, con validación de allowlist, correlación de ACK, control de duplicados/TTL y una notificación `scene_state` para informar escena abierta y revisión. El emisor MCP expone `send_live_scene_operation`; el receptor Android muestra una confirmación y aplica las operaciones mediante `EditorPlugin.get_undo_redo()`.
 
 No se debe afirmar que la edición semántica en vivo funciona hasta implementar y probar el contrato descrito. No generar APK ni fusionar PR #2 sin autorización explícita.
+
+
+## 9. Estado de la primera implementación (2026-10-31)
+
+- Relay: valida y enruta `scene_operation`, `scene_operation_result` y `scene_state` entre los roles agent/target; los ACK se vinculan al tipo de operación pendiente para evitar respuestas cruzadas.
+- Linux/MCP: se añadió la herramienta tipada `send_live_scene_operation`, sin habilitar ejecución arbitraria de GDScript.
+- Android: el addon incluye motor de operaciones, confirmación explícita y uso del historial Undo/Redo del editor. La revisión se incrementa también ante cambios locales registrados en el historial.
+- Operaciones de geometría inicial: nodos CSGBox3D, posición/rotación/escala y tamaño, suficientes para prototipar suelo y paredes.
+- No implementado: sincronización bidireccional de cada edición desde Android hacia Linux, asignación de materiales/texturas, guardado remoto automático y transporte seguro accesible desde ChatGPT cloud.
+- No validado todavía: parseo/ejecución de GDScript con el Godot 4.7.2 modificado, compilación Linux posterior a estos cambios, ni mutación de viewport en el dispositivo Android. No se debe afirmar que el enlace ya funciona end-to-end.
