@@ -175,6 +175,11 @@ func _build_ui() -> void:
     capture_button.disabled = OS.get_name() != "Linux"
     capture_button.pressed.connect(_capture_editor_interface)
     _panel.add_child(capture_button)
+    var mobile_capture_button := Button.new()
+    mobile_capture_button.text = "Enviar captura de este editor Android a Linux"
+    mobile_capture_button.visible = OS.get_name() == "Android"
+    mobile_capture_button.pressed.connect(_send_mobile_capture)
+    _panel.add_child(mobile_capture_button)
     _screen = TextureRect.new()
     _screen.custom_minimum_size = Vector2(300, 430)
     _screen.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -468,6 +473,10 @@ func _message(data: Dictionary) -> void:
         "screen_frame":
             if _is_controller():
                 _show_frame(data)
+        "mobile_capture":
+            if _is_agent() and str(data.get("project_id", "")) == _target_project_id.text.strip_edges():
+                _show_frame(data)
+                _status.text = "Captura recibida desde Godot Android (" + str(data.get("width", "?")) + "×" + str(data.get("height", "?")) + ")."
         "remote_input":
             if _is_target() and str(data.get("from_role", "")) == "controller":
                 _dispatch(data.get("event", {}))
@@ -929,6 +938,35 @@ func _capture_editor_interface() -> void:
         return
     _status.text = "Captura guardada (" + capture_mode + "): " + ProjectSettings.globalize_path(path)
 
+
+func _send_mobile_capture() -> void:
+    if OS.get_name() != "Android" or not _is_target():
+        _status.text = "Esta acción solo está disponible en el editor Android."
+        return
+    if not _connected or _ws.get_ready_state() != WebSocketPeer.STATE_OPEN:
+        _status.text = "Conecta primero el editor Android con el agente Linux."
+        return
+    var image := get_tree().root.get_texture().get_image()
+    if image == null or image.is_empty():
+        _status.text = "No se pudo capturar el viewport del editor Android."
+        return
+    if image.get_width() > MAX_W or image.get_height() > MAX_H:
+        var scale := minf(float(MAX_W) / image.get_width(), float(MAX_H) / image.get_height())
+        image.resize(maxi(1, int(image.get_width() * scale)), maxi(1, int(image.get_height() * scale)))
+    var jpg := image.save_jpg_to_buffer(0.60)
+    if jpg.is_empty() or jpg.size() > 4 * 1024 * 1024:
+        _status.text = "La captura supera el límite permitido o no pudo comprimirse."
+        return
+    var capture_id := str(Time.get_unix_time_from_system()) + "-" + str(randi())
+    _send({
+        "type": "mobile_capture",
+        "project_id": str(ProjectSettings.get_setting(SETTING_PROJECT_ID, "")),
+        "capture_id": capture_id,
+        "width": image.get_width(),
+        "height": image.get_height(),
+        "data": Marshalls.raw_to_base64(jpg)
+    })
+    _status.text = "Captura enviada a Linux; esperando recepción."
 
 func _send_frame() -> void:
     var image := get_tree().root.get_texture().get_image()
