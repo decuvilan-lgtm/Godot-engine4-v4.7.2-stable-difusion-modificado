@@ -43,5 +43,21 @@ class LiveLinkEmitterContractTests(unittest.TestCase):
         self.assertIn("_sender_inflight.clear()", SOURCE)
         self.assertIn("_sender_queue.clear()", SOURCE)
 
+
+    def test_live_scene_operations_are_typed_approved_and_undoable(self):
+        engine = (ROOT / "scripts/live_link_addon/scene_operation_engine.gd").read_text(encoding="utf-8")
+        self.assertIn("create_node", engine)
+        self.assertIn("set_transform", engine)
+        self.assertIn("set_property", engine)
+        self.assertIn("delete_node", engine)
+        self.assertIn("plugin.get_undo_redo()", engine)
+        self.assertIn("ALLOWED_CLASSES", engine)
+        self.assertIn("expected_scene_revision", engine)
+        self.assertIn("_scene_approval_dialog.confirmed.connect(_approve_scene_operation)", SOURCE)
+        self.assertIn("func send_scene_operation_from_mcp", SOURCE)
+        self.assertIn('"type":"scene_operation"', SOURCE)
+        self.assertIn('"type":"scene_operation_result"', SOURCE)
+
+
 if __name__ == "__main__":
     unittest.main()
