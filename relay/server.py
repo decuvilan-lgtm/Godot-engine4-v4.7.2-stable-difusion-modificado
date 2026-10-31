@@ -12,7 +12,7 @@ SEEN_OPERATIONS: dict[str, dict[str, float]] = {}
 MAX_PENDING_PER_ROOM = 1000
 PENDING_TTL_SECONDS = 300.0
 MAX_MESSAGE = 8 * 1024 * 1024
-LIMITS = {"screen_frame": 3.0, "remote_input": 120.0, "project_operation": 20.0, "project_result": 60.0, "scene_operation": 30.0, "scene_operation_result": 60.0, "scene_state": 5.0}
+LIMITS = {"screen_frame": 3.0, "remote_input": 120.0, "project_operation": 20.0, "project_result": 60.0, "scene_operation": 30.0, "scene_operation_result": 60.0, "scene_state": 5.0, "mobile_capture": 0.2}
 MAX_PROJECT_CONTENT = 5 * 1024 * 1024
 PROJECT_ID_RE = re.compile(r"^[0-9]{4}$")
 OPERATION_ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,100}$")
@@ -56,6 +56,27 @@ def valid_project_operation(data):
     if operation == "rename" and not safe_relative_path(data.get("destination_path")):
         return False
     return True
+
+def valid_mobile_capture(data):
+    """Validate a one-shot Android editor screenshot before forwarding it to Linux."""
+    project_id = data.get("project_id")
+    capture_id = data.get("capture_id")
+    width, height = data.get("width"), data.get("height")
+    encoded = data.get("data")
+    if not isinstance(project_id, str) or not PROJECT_ID_RE.fullmatch(project_id):
+        return False
+    if not isinstance(capture_id, str) or not OPERATION_ID_RE.fullmatch(capture_id):
+        return False
+    if type(width) is not int or type(height) is not int or not (1 <= width <= 720 and 1 <= height <= 1280):
+        return False
+    if not isinstance(encoded, str) or len(encoded) > 6 * 1024 * 1024:
+        return False
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+    except (binascii.Error, ValueError):
+        return False
+    return len(raw) <= 4 * 1024 * 1024 and len(raw) >= 4 and raw[:2] == b"\\xff\\xd8" and raw[-2:] == b"\\xff\\xd9"
+
 
 def valid_scene_operation(data):
     """Validate bounded editor operations; Android validates again before applying."""
@@ -152,7 +173,7 @@ async def websocket(request):
                 if role != "agent" or not valid_project_operation(data): continue
             elif kind == "scene_operation":
                 if role != "agent" or not valid_scene_operation(data): continue
-            elif kind == "scene_state":
+            elif kind == "mobile_capture":\n                if role != "target" or not valid_mobile_capture(data): continue\n            elif kind == "scene_state":
                 if role != "target" or not isinstance(data.get("project_id"), str) or not PROJECT_ID_RE.fullmatch(data["project_id"]): continue
                 if not isinstance(data.get("scene_path"), str) or not data["scene_path"].startswith("res://") or type(data.get("scene_revision")) is not int or data["scene_revision"] < 0: continue
             elif kind in ("project_result", "scene_operation_result"):
@@ -196,7 +217,7 @@ async def websocket(request):
                 if kind == "screen_frame" and ROLES.get(peer) == "controller": await peer.send_str(encoded)
                 elif kind == "remote_input" and ROLES.get(peer) == "target": await peer.send_str(encoded)
                 elif kind in ("project_operation", "scene_operation") and ROLES.get(peer) == "target": await peer.send_str(encoded)
-                elif kind == "scene_state" and ROLES.get(peer) == "agent": await peer.send_str(encoded)
+                elif kind == "scene_state" and ROLES.get(peer) == "agent": await peer.send_str(encoded)\n                elif kind == "mobile_capture" and ROLES.get(peer) == "agent": await peer.send_str(encoded)
                 elif kind in ("project_result", "scene_operation_result") and ROLES.get(peer) == "agent": await peer.send_str(encoded)
     except (TimeoutError, ConnectionResetError): pass
     finally:
