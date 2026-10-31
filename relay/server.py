@@ -83,7 +83,7 @@ def valid_scene_operation(data):
     elif operation == "set_property":
         if args.get("property") != "visible" or type(args.get("value")) is not bool: return False
     elif operation == "delete_node":
-        if not node_path or "/" not in node_path: return False
+        if not node_path: return False
     return True
 
 
