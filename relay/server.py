@@ -145,6 +145,8 @@ async def websocket(request):
                 if role != "target" or not isinstance(data.get("project_id"), str) or not PROJECT_ID_RE.fullmatch(data["project_id"]) or not isinstance(data.get("operation_id"), str) or not OPERATION_ID_RE.fullmatch(data["operation_id"]) or data.get("status") not in ("applied", "rejected", "conflict", "failed", "invalid", "unknown"): continue
                 expected = PENDING.get(room, {}).get(data["operation_id"])
                 if expected is None or expected["project_id"] != data["project_id"]: continue
+                expected_kind = "scene_operation" if kind == "scene_operation_result" else "project_operation"
+                if expected.get("kind") != expected_kind: continue
                 # Results are valid only for a live pending operation. Expire stale
                 # entries here too (not only when a new operation arrives), otherwise
                 # a delayed result could be accepted after the operation TTL elapsed.
@@ -169,7 +171,7 @@ async def websocket(request):
                 # Operation IDs are single-use for the TTL window, even after a result.
                 if op_id in seen or len(pending) >= MAX_PENDING_PER_ROOM:
                     continue
-                pending[op_id] = {"project_id": data["project_id"], "created_at": now}
+                pending[op_id] = {"project_id": data["project_id"], "created_at": now, "kind": kind}
                 seen[op_id] = now
             elif kind in ("project_result", "scene_operation_result"):
                 PENDING.get(room, {}).pop(data["operation_id"], None)
