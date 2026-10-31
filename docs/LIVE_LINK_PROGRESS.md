@@ -385,3 +385,12 @@ Trabajar sobre el Godot Engine 4.7.2 Android real, no una app sustituta. Disposi
 - Si el backend no permite captura completa o devuelve una imagen vacía, usa la textura de la raíz como alternativa y lo indica expresamente como **viewport**, sin presentarla como captura de toda la interfaz.
 - No requiere Xvfb cuando Godot está abierto en una sesión gráfica real compatible. La documentación de Godot limita esta API en Linux a X11 (excluyendo XWayland); en sesiones no compatibles la alternativa puede ser solo el viewport.
 - Estado: código añadido a `scripts/live_link_addon/plugin.gd`; pendiente de parseo y prueba real en Linux X11 y Wayland. No se declara todavía validado en runtime.
+
+
+### 2026-10-31 — Captura puntual Android → Linux
+
+155. Añadido el mensaje separado `mobile_capture`: el editor Android captura el viewport solo cuando se pulsa **«Enviar captura de este editor Android a Linux»**. Se reduce a un máximo de 720×1280, JPEG calidad 0.60 y 4 MiB; no se activa un streaming continuo.
+156. El relay acepta ese mensaje únicamente desde el rol `target`, valida ID de proyecto, ID de captura, dimensiones, Base64 y marcadores JPEG, aplica límite de frecuencia y lo reenvía solo al rol `agent`. El agente Linux lo muestra en el panel Live Link solo si coincide con el ID Android que tiene seleccionado.
+157. Añadidas pruebas automatizadas para validación de captura y enrutamiento exclusivo al agente. Commits: relay `4aada8e`, addon `b1a3114`, tests `0443936`.
+158. **Pendiente de CI y prueba real:** los tests recién añadidos aún deben ejecutarse en Actions; falta probar captura en el Godot Android físico y recepción en el Godot Linux real. La imagen se muestra en el dock Linux, pero todavía no se expone como contenido de imagen al MCP/ChatGPT. Por tanto, esta función permite que el usuario vea la captura en Linux; no afirmar aún que ChatGPT ya puede inspeccionarla directamente.
+159. La siguiente etapa de conexión sigue siendo el canal agente Linux ↔ receptor Android y, por separado, el adaptador MCP remoto accesible desde esta sesión. El relay no crea por sí solo acceso desde ChatGPT Cloud a un MCP que escucha en localhost.
