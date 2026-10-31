@@ -1,7 +1,7 @@
 @tool
 extends EditorPlugin
 
-const PROJECT_ID := "12345678abcdef9012345678abcdef90"
+const PROJECT_ID := "4827"
 const TEST_ROOT := "LiveLinkHarness"
 
 var _failed := false
@@ -32,8 +32,51 @@ func _run_after_editor_startup() -> void:
     _test_update_and_conflict(receiver)
     _test_rename_and_delete(receiver)
     _test_recovery_after_original_moved(receiver)
+    await _test_live_scene_operations(receiver)
     _finish()
 
+
+
+func _test_live_scene_operations(receiver: Variant) -> void:
+    const SceneEngine = preload("res://addons/live_link/scene_operation_engine.gd")
+    var scene_root := Node3D.new()
+    scene_root.name = "LiveSceneHarness"
+    var packed := PackedScene.new()
+    _check(packed.pack(scene_root) == OK, "live scene test packs a real Node3D scene")
+    var scene_path := "res://LiveLinkHarnessScene.tscn"
+    _check(ResourceSaver.save(packed, scene_path) == OK, "live scene test scene saved")
+    EditorInterface.open_scene(scene_path)
+    await get_tree().process_frame
+    var edited_root := EditorInterface.get_edited_scene_root()
+    _check(edited_root != null and edited_root.scene_file_path == scene_path, "editor opens the live scene test scene")
+    if edited_root == null:
+        return
+    var revision := 0
+    var create := {"project_id":PROJECT_ID, "scene_path":scene_path, "expected_scene_revision":revision, "operation_id":"harness-scene-create", "operation":"create_node", "arguments":{"parent_path":"", "name":"Floor", "class":"CSGBox3D"}}
+    var validation := SceneEngine.validate_request(create, PROJECT_ID, edited_root, revision)
+    _check(bool(validation.get("ok", false)), "create-node operation validates against active editor scene")
+    var result := SceneEngine.apply_request(receiver, create, edited_root)
+    _check(bool(result.get("ok", false)), "create-node operation applies through EditorUndoRedoManager")
+    revision += 1
+    var floor := edited_root.get_node_or_null("Floor") as CSGBox3D
+    _check(floor != null, "new CSGBox3D appears in the active scene tree")
+    if floor == null:
+        return
+    var transform := {"project_id":PROJECT_ID, "scene_path":scene_path, "expected_scene_revision":revision, "operation_id":"harness-scene-transform", "operation":"set_transform", "target_node_path":"Floor", "arguments":{"position":[0,1.5,-4], "rotation_degrees":[0,45,0], "scale":[2,1,2]}}
+    result = SceneEngine.apply_request(receiver, transform, edited_root)
+    _check(bool(result.get("ok", false)) and floor.position == Vector3(0,1.5,-4) and floor.rotation_degrees.y == 45.0 and floor.scale == Vector3(2,1,2), "position rotation and scale update on the active node")
+    revision += 1
+    var size_change := {"project_id":PROJECT_ID, "scene_path":scene_path, "expected_scene_revision":revision, "operation_id":"harness-scene-size", "operation":"set_property", "target_node_path":"Floor", "arguments":{"property":"size", "value":[10,1,10]}}
+    result = SceneEngine.apply_request(receiver, size_change, edited_root)
+    _check(bool(result.get("ok", false)) and floor.size == Vector3(10,1,10), "CSGBox3D size updates live in the scene")
+    revision += 1
+    var delete := {"project_id":PROJECT_ID, "scene_path":scene_path, "expected_scene_revision":revision, "operation_id":"harness-scene-delete", "operation":"delete_node", "target_node_path":"Floor", "arguments":{}}
+    result = SceneEngine.apply_request(receiver, delete, edited_root)
+    _check(bool(result.get("ok", false)) and edited_root.get_node_or_null("Floor") == null, "delete-node operation removes the live scene node")
+    var undo_manager := receiver.get_undo_redo()
+    var history := undo_manager.get_history_undo_redo(undo_manager.get_object_history_id(edited_root))
+    history.undo()
+    _check(edited_root.get_node_or_null("Floor") != null, "editor Undo restores the deleted scene node")
 
 func _test_create_and_empty_file(receiver: Variant) -> void:
     var relative := TEST_ROOT + "/created.txt"
