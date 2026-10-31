@@ -1860,6 +1860,46 @@ func _find_emitter() -> Node:
 			return node
 	return null
 ''',
+        "scripts/tools/editor/send_live_scene_operation_tool.gd": r'''@tool
+extends MCPTool
+
+func get_name() -> String:
+	return "send_live_scene_operation"
+
+func get_description() -> String:
+	return "Send one typed, allowlisted scene operation through Live Link to the connected Android editor. Android must approve it before the live scene changes."
+
+func get_input_schema() -> Dictionary:
+	return {
+		"type": "object",
+		"properties": {
+			"scene_path": {"type": "string"},
+			"operation": {"type": "string", "enum": ["create_node", "set_transform", "set_property", "delete_node"]},
+			"target_node_path": {"type": "string"},
+			"arguments": {"type": "object"},
+		},
+		"required": ["scene_path", "operation", "arguments"],
+		"additionalProperties": false,
+	}
+
+func execute(arguments: Dictionary) -> Dictionary:
+	var emitter := _find_emitter()
+	if emitter == null:
+		return tool_error("Live Link emitter plugin is not enabled")
+	var result: Variant = emitter.call("send_scene_operation_from_mcp", arguments)
+	if not result is Dictionary:
+		return tool_error("Live Link emitter returned an invalid result")
+	return result
+
+func _find_emitter() -> Node:
+	var base := editor_interface.get_base_control()
+	if base == null:
+		return null
+	for node in base.get_tree().get_nodes_in_group("live_link_emitter"):
+		if node.has_method("send_scene_operation_from_mcp"):
+			return node
+	return null
+''',
     }
     for relative_path, source in extra_tools.items():
         target = ADDON_OUT / relative_path
@@ -1891,6 +1931,7 @@ func _find_emitter() -> Node:
         'const ControlRuntimeGameTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/control_runtime_game_tool.gd")\n'
         'const GetLiveLinkStatusTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/get_live_link_status_tool.gd")\n'
         'const SendLiveLinkChangesTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/send_live_link_changes_tool.gd")\n',
+        'const SendLiveSceneOperationTool := preload("res://addons/godot_mcp_android/scripts/tools/editor/send_live_scene_operation_tool.gd")\n',
     )
     replace_once(
         registry,
@@ -1917,6 +1958,7 @@ func _find_emitter() -> Node:
         '\tregister(ControlRuntimeGameTool.new(editor_interface))\n'
         '\tregister(GetLiveLinkStatusTool.new(editor_interface))\n'
         '\tregister(SendLiveLinkChangesTool.new(editor_interface))\n',
+        '\tregister(SendLiveSceneOperationTool.new(editor_interface))\n',
     )
 
     # Before replacing an existing project file, preserve its prior UTF-8 contents.
