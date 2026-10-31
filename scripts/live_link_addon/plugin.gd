@@ -1282,6 +1282,7 @@ func _on_editor_scene_history_changed() -> void:
 func _send_scene_state() -> void:
     var root := EditorInterface.get_edited_scene_root()
     if root == null or root.scene_file_path.is_empty():
+        _advertised_scene_path = ""
         _status.text = "Abre y guarda una escena antes de habilitar la edición en vivo."
         return
     _advertised_scene_path = root.scene_file_path
