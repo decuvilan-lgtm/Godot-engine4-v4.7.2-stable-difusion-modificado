@@ -77,11 +77,22 @@ def valid_scene_operation(data):
         if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,63}", name): return False
         if node_class not in ("Node3D", "MeshInstance3D", "CSGBox3D", "DirectionalLight3D", "Camera3D"): return False
     elif operation == "set_transform":
-        position = args.get("position")
-        if not isinstance(position, list) or len(position) != 3: return False
-        if any(type(v) not in (int, float) or not (-1000000 <= v <= 1000000) for v in position): return False
+        fields = ("position", "rotation_degrees", "scale")
+        if not any(field in args for field in fields): return False
+        for field in fields:
+            if field not in args: continue
+            vector = args[field]
+            if not isinstance(vector, list) or len(vector) != 3: return False
+            if any(type(v) not in (int, float) or not (-1000000 <= v <= 1000000) for v in vector): return False
     elif operation == "set_property":
-        if args.get("property") != "visible" or type(args.get("value")) is not bool: return False
+        if args.get("property") == "visible":
+            if type(args.get("value")) is not bool: return False
+        elif args.get("property") == "size":
+            size = args.get("value")
+            if not isinstance(size, list) or len(size) != 3: return False
+            if any(type(v) not in (int, float) or not (0 < v <= 10000) for v in size): return False
+        else:
+            return False
     elif operation == "delete_node":
         if not node_path: return False
     return True
