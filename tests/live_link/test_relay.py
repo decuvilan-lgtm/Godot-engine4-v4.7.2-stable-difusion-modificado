@@ -73,7 +73,7 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         valid = {
             "type": "mobile_capture", "project_id": "4827",
             "capture_id": "capture-1", "width": 720, "height": 1280,
-            "data": base64.b64encode(b"\\xff\\xd8\\xff\\xd9").decode("ascii"),
+            "data": base64.b64encode(b"\xff\xd8\xff\xd9").decode("ascii"),
         }
         self.assertTrue(relay.valid_mobile_capture(valid))
         self.assertFalse(relay.valid_mobile_capture(dict(valid, project_id="bad")))
@@ -94,7 +94,7 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         capture = {
             "type": "mobile_capture", "project_id": "4827",
             "capture_id": "capture-route-1", "width": 320, "height": 240,
-            "data": base64.b64encode(b"\\xff\\xd8\\xff\\xd9").decode("ascii"),
+            "data": base64.b64encode(b"\xff\xd8\xff\xd9").decode("ascii"),
         }
         await target.send_json(capture)
         received = await agent.receive_json(timeout=2)
