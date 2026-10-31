@@ -153,7 +153,7 @@ async def websocket(request):
                     continue
             now = time.monotonic(); previous = LAST[ws].get(kind, 0.0)
             # Matching pending results are one-shot; do not lose a real file-change result to rate limiting.
-            if kind != "project_result":
+            if kind not in ("project_result", "scene_operation_result"):
                 if previous and now - previous < 1.0 / LIMITS[kind]: continue
                 LAST[ws][kind] = now
             if kind in ("project_operation", "scene_operation"):
