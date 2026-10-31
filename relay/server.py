@@ -12,7 +12,7 @@ SEEN_OPERATIONS: dict[str, dict[str, float]] = {}
 MAX_PENDING_PER_ROOM = 1000
 PENDING_TTL_SECONDS = 300.0
 MAX_MESSAGE = 8 * 1024 * 1024
-LIMITS = {"screen_frame": 3.0, "remote_input": 120.0, "project_operation": 20.0, "project_result": 60.0, "scene_operation": 30.0, "scene_operation_result": 60.0}
+LIMITS = {"screen_frame": 3.0, "remote_input": 120.0, "project_operation": 20.0, "project_result": 60.0, "scene_operation": 30.0, "scene_operation_result": 60.0, "scene_state": 5.0}
 MAX_PROJECT_CONTENT = 5 * 1024 * 1024
 PROJECT_ID_RE = re.compile(r"^[0-9]{4}$")
 OPERATION_ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,100}$")
@@ -152,6 +152,9 @@ async def websocket(request):
                 if role != "agent" or not valid_project_operation(data): continue
             elif kind == "scene_operation":
                 if role != "agent" or not valid_scene_operation(data): continue
+            elif kind == "scene_state":
+                if role != "target" or not isinstance(data.get("project_id"), str) or not PROJECT_ID_RE.fullmatch(data["project_id"]): continue
+                if not isinstance(data.get("scene_path"), str) or not data["scene_path"].startswith("res://") or type(data.get("scene_revision")) is not int or data["scene_revision"] < 0: continue
             elif kind in ("project_result", "scene_operation_result"):
                 if role != "target" or not isinstance(data.get("project_id"), str) or not PROJECT_ID_RE.fullmatch(data["project_id"]) or not isinstance(data.get("operation_id"), str) or not OPERATION_ID_RE.fullmatch(data["operation_id"]) or data.get("status") not in ("applied", "rejected", "conflict", "failed", "invalid", "unknown"): continue
                 expected = PENDING.get(room, {}).get(data["operation_id"])
@@ -193,6 +196,7 @@ async def websocket(request):
                 if kind == "screen_frame" and ROLES.get(peer) == "controller": await peer.send_str(encoded)
                 elif kind == "remote_input" and ROLES.get(peer) == "target": await peer.send_str(encoded)
                 elif kind in ("project_operation", "scene_operation") and ROLES.get(peer) == "target": await peer.send_str(encoded)
+                elif kind == "scene_state" and ROLES.get(peer) == "agent": await peer.send_str(encoded)
                 elif kind in ("project_result", "scene_operation_result") and ROLES.get(peer) == "agent": await peer.send_str(encoded)
     except (TimeoutError, ConnectionResetError): pass
     finally:
