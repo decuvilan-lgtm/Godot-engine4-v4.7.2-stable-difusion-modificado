@@ -411,9 +411,12 @@ func _process(_delta: float) -> void:
             _disconnect_button.disabled = true
             _target_project_id.editable = true
             if not _sender_inflight.is_empty():
-                _status.text = "Conexión perdida durante una operación; su resultado es desconocido. Revisa Android antes de reintentar."
+                _status.text = "Conexión perdida durante una operación de archivo; su resultado es desconocido. Revisa Android antes de reintentar."
                 _sender_inflight.clear()
                 _sender_queue.clear()
+            elif not _scene_operation_inflight.is_empty():
+                _status.text = "Conexión perdida durante una edición de escena; su resultado es desconocido. Inspecciona Android antes de repetir."
+                _scene_operation_inflight.clear()
             else:
                 _status.text = "Conexión cerrada o rechazada por el relay. Revisa URL, token y sala; pulsa Conectar para reintentar."
         return
