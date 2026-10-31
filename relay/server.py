@@ -219,7 +219,8 @@ async def websocket(request):
                 if kind == "screen_frame" and ROLES.get(peer) == "controller": await peer.send_str(encoded)
                 elif kind == "remote_input" and ROLES.get(peer) == "target": await peer.send_str(encoded)
                 elif kind in ("project_operation", "scene_operation") and ROLES.get(peer) == "target": await peer.send_str(encoded)
-                elif kind == "scene_state" and ROLES.get(peer) == "agent": await peer.send_str(encoded)\n                elif kind == "mobile_capture" and ROLES.get(peer) == "agent": await peer.send_str(encoded)
+                elif kind == "scene_state" and ROLES.get(peer) == "agent": await peer.send_str(encoded)
+                elif kind == "mobile_capture" and ROLES.get(peer) == "agent": await peer.send_str(encoded)
                 elif kind in ("project_result", "scene_operation_result") and ROLES.get(peer) == "agent": await peer.send_str(encoded)
     except (TimeoutError, ConnectionResetError): pass
     finally:
