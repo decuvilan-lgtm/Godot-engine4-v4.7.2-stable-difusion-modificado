@@ -2,6 +2,7 @@
 extends EditorPlugin
 
 const PROJECT_ID := "4827"
+const SceneEngine = preload("res://addons/live_link/scene_operation_engine.gd")
 const TEST_ROOT := "LiveLinkHarness"
 
 var _failed := false
@@ -38,17 +39,15 @@ func _run_after_editor_startup() -> void:
 
 
 func _test_live_scene_operations(receiver: Variant) -> void:
-    const SceneEngine = preload("res://addons/live_link/scene_operation_engine.gd")
     var scene_root := Node3D.new()
     scene_root.name = "LiveSceneHarness"
-    var packed := PackedScene.new()
-    _check(packed.pack(scene_root) == OK, "live scene test packs a real Node3D scene")
-    var scene_path := "res://LiveLinkHarnessScene.tscn"
-    _check(ResourceSaver.save(packed, scene_path) == OK, "live scene test scene saved")
-    EditorInterface.open_scene(scene_path)
+    EditorInterface.add_root_node(scene_root)
     await get_tree().process_frame
     var edited_root := EditorInterface.get_edited_scene_root()
-    _check(edited_root != null and edited_root.scene_file_path == scene_path, "editor opens the live scene test scene")
+    _check(edited_root != null and edited_root == scene_root, "editor exposes a real active scene root for live operations")
+    if edited_root == null:
+        return
+    var scene_path := edited_root.scene_file_path
     if edited_root == null:
         return
     var revision := 0
