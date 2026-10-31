@@ -376,3 +376,12 @@ Trabajar sobre el Godot Engine 4.7.2 Android real, no una app sustituta. Disposi
 152. El harness de Godot ahora opera sobre una escena real del editor headless: añade un `CSGBox3D`, modifica posición/rotación/escala y tamaño, lo elimina y verifica que Undo lo restaura. Esto demuestra que el motor de operaciones modifica el árbol de la escena y se integra con el historial del editor, no solo que serializa mensajes.
 153. La prueba todavía no conecta dos editores reales ni muestra el viewport Android del teléfono. El relay sí valida y enruta mensajes entre peers en sus pruebas automatizadas. La compilación nativa Linux con MCP empaquetado se omite en eventos PR por configuración del workflow y requiere ejecución manual; la preflight Android sigue siendo source-only y no genera APK.
 154. El workflow de validación añadió además `py_compile` para `scripts/package_safe_mcp_android.py` y `scripts/validate_linux_mcp_embed.py`, evitando que un error de sintaxis del generador MCP quede oculto hasta el build Linux.
+
+
+### 2026-10-31 — Captura nativa de interfaz Linux sin Xvfb
+
+- Añadido al dock Live Link un botón **«Capturar interfaz del editor Linux (sin Xvfb)»**.
+- En Linux consulta `DisplayServer.FEATURE_SCREEN_CAPTURE` y usa `DisplayServer.screen_get_image(SCREEN_OF_MAIN_WINDOW)` para capturar la pantalla real del editor; guarda PNG en `user://live_link_captures`.
+- Si el backend no permite captura completa o devuelve una imagen vacía, usa la textura de la raíz como alternativa y lo indica expresamente como **viewport**, sin presentarla como captura de toda la interfaz.
+- No requiere Xvfb cuando Godot está abierto en una sesión gráfica real compatible. La documentación de Godot limita esta API en Linux a X11 (excluyendo XWayland); en sesiones no compatibles la alternativa puede ser solo el viewport.
+- Estado: código añadido a `scripts/live_link_addon/plugin.gd`; pendiente de parseo y prueba real en Linux X11 y Wayland. No se declara todavía validado en runtime.
