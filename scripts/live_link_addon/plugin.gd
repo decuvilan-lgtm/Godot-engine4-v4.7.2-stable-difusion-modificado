@@ -966,7 +966,7 @@ func _send_mobile_capture() -> void:
         "height": image.get_height(),
         "data": Marshalls.raw_to_base64(jpg)
     })
-    _status.text = "Captura enviada a Linux; esperando recepción."
+    _status.text = "Captura enviada al relay; recepción en Linux aún sin confirmar."
 
 func _send_frame() -> void:
     var image := get_tree().root.get_texture().get_image()
