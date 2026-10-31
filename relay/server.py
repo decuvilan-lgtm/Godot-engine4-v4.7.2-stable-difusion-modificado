@@ -57,6 +57,11 @@ def valid_project_operation(data):
         return False
     return True
 
+def valid_scene_operation(data):
+    if data.get('protocol_version') != 1 or data.get('approval') != 'required': return False
+    return isinstance(data.get('arguments'), dict) and data.get('operation') in ('create_node', 'set_transform', 'set_property', 'delete_node')
+
+
 async def health(_request):
     return web.json_response({"service":"godot-live-link-relay", "status":"ok"})
 
