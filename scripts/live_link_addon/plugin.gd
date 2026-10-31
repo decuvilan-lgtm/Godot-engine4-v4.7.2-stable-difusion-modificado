@@ -1230,6 +1230,20 @@ func _handle_sender_result(data: Dictionary) -> void:
     _sender_inflight.clear()
 
 
+func send_scene_operation_from_mcp(request: Dictionary) -> Dictionary:
+    if not _is_agent() or not _connected or not _target_id_is_valid():
+        return {"ok":false, "message":"Emisor Linux no conectado a Android."}
+    if not _scene_operation_inflight.is_empty():
+        return {"ok":false, "message":"Hay otra operación esperando respuesta."}
+    var op := str(request.get("operation", ""))
+    var args: Variant = request.get("arguments", {})
+    if op not in ["create_node", "set_transform", "set_property", "delete_node"] or not args is Dictionary:
+        return {"ok":false, "message":"Operación no permitida."}
+    var envelope := {"type":"scene_operation", "protocol_version":1, "approval":"required", "project_id":_target_project_id.text.strip_edges(), "operation_id":str(Time.get_ticks_usec()), "scene_path":str(request.get("scene_path", "")), "expected_scene_revision":_scene_revision, "target_node_path":str(request.get("target_node_path", "")), "operation":op, "arguments":args}
+    _scene_operation_inflight = envelope
+    _send(envelope)
+    return {"ok":true, "operation_id":envelope.operation_id, "message":"Solicitud enviada; espera confirmación Android."}
+
 func _receive_scene_operation(data: Dictionary) -> void:
     _send_scene_operation_result(data, "rejected", "El motor de operaciones aún está en integración; no se modificó la escena.")
 
