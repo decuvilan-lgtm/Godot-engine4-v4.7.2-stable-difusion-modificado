@@ -1,6 +1,11 @@
 name: Build Godot Linux emitter from the modified Android source baseline
 
 on:
+  push:
+    branches:
+      - feature/live-editor-link
+    paths:
+      - ".github/workflows/build-godot-linux-emitter.yml"
   workflow_dispatch:
   workflow_call:
 
