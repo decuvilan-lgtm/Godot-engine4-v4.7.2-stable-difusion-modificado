@@ -6,6 +6,10 @@ on:
       - feature/live-editor-link
     paths:
       - ".github/workflows/build-godot-linux-emitter.yml"
+      - "scripts/**"
+      - "relay/**"
+      - "tests/live_link/**"
+      - "docs/**"
   workflow_dispatch:
   workflow_call:
 
