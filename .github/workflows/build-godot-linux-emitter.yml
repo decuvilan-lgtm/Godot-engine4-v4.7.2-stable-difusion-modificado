@@ -159,8 +159,26 @@ jobs:
             --exclude='godot-source/platform/android/java/editor/build' \
             godot-source scripts relay docs tests .github/workflows/build-godot-linux-emitter.yml .github/workflows/validate-live-link-relay.yml README.md godot-linux-emitter-manifest.json
           cp godot-source/bin/godot.linuxbsd.editor.x86_64 dist/Godot_v4.7.2-stable-custom_linux.x86_64
+          tar -czf dist/Godot_v4.7.2-custom_linux_x86_64_WORKING_BUNDLE.tar.gz -C dist \
+            Godot_v4.7.2-stable-custom_linux.x86_64 \
+            godot-linux-emitter-source.tar.gz \
+            godot-mcp-android-safe.zip \
+            ../godot-linux-emitter-manifest.json
           sha256sum dist/*
           ls -lh dist/*
+
+      - name: Preserve the exact Linux working build as a workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Godot-v4.7.2-custom-Linux-WORKING-BUNDLE
+          path: |
+            dist/Godot_v4.7.2-custom_linux_x86_64_WORKING_BUNDLE.tar.gz
+            dist/Godot_v4.7.2-stable-custom_linux.x86_64
+            dist/godot-linux-emitter-source.tar.gz
+            dist/godot-mcp-android-safe.zip
+            godot-linux-emitter-manifest.json
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Upload source and Linux editor to the repository release
         if: ${{ github.event_name != 'pull_request' }}
@@ -179,4 +197,5 @@ jobs:
             dist/godot-linux-emitter-source.tar.gz \
             dist/Godot_v4.7.2-stable-custom_linux.x86_64 \
             dist/godot-mcp-android-safe.zip \
+            dist/Godot_v4.7.2-custom_linux_x86_64_WORKING_BUNDLE.tar.gz \
             --repo "$GITHUB_REPOSITORY" --clobber
