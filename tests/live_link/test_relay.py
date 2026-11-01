@@ -90,6 +90,7 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         controller = await self.join("controller", room="mobile_capture_room")
         self.assertEqual((await controller.receive_json(timeout=2))["type"], "joined")
         self.assertEqual((await target.receive_json(timeout=2))["type"], "peer_joined")
+        self.assertEqual((await agent.receive_json(timeout=2))["type"], "peer_joined")
         import base64
         capture = {
             "type": "mobile_capture", "project_id": "4827",
