@@ -67,9 +67,9 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status, 401)
 
     def test_device_secret_hashing_is_one_way_and_stable(self):
-        first = relay.digest_secret("device-secret-example")
-        self.assertEqual(first, relay.digest_secret("device-secret-example"))
-        self.assertNotEqual(first, relay.digest_secret("another-secret"))
+        first = account_api_module.digest_secret("device-secret-example")
+        self.assertEqual(first, account_api_module.digest_secret("device-secret-example"))
+        self.assertNotEqual(first, account_api_module.digest_secret("another-secret"))
         self.assertNotEqual(first.decode("latin1"), "device-secret-example")
     async def test_health_endpoint(self):
         response = await self.client.get("/health")
