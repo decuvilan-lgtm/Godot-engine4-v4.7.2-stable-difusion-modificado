@@ -4,8 +4,7 @@ The database is optional in local relay tests. If DATABASE_URL is absent, accoun
 endpoints fail closed with 503; legacy Live Link token auth remains separate.
 """
 from __future__ import annotations
-import hashlib, hmac, os, re, secrets, uuid
-from datetime import datetime, timezone
+import hashlib, os, secrets, uuid
 from aiohttp import web
 
 MAX_TICKET_LENGTH = 256
@@ -83,7 +82,7 @@ async def enroll(request: web.Request) -> web.Response:
             await conn.execute("UPDATE enrollment_tickets SET redeemed_at=now() WHERE id=$1", row["id"])
             device_id = await conn.fetchval(
                 """INSERT INTO devices(account_id, device_label, platform, credential_hash)
-                   " VALUES($1,$2,$3,$4) RETURNING id""",
+                   VALUES($1,$2,$3,$4) RETURNING id""",
                 row["account_id"], label.strip(), platform, digest_secret(credential))
     return web.json_response({"device_id": str(device_id), "device_credential": credential,
                               "token_type": "Bearer", "account_id": str(row["account_id"])}, status=201)
