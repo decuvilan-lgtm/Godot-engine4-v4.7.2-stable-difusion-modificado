@@ -31,6 +31,7 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         test_app = web.Application(client_max_size=relay.MAX_MESSAGE)
         test_app.router.add_get("/health", relay.health)
         test_app.router.add_get("/ws", relay.websocket)
+        relay.install_account_routes(test_app)
         self.client = TestClient(TestServer(test_app))
         await self.client.start_server()
 
@@ -47,6 +48,25 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         await ws.send_json({"type": "join", "room": room, "role": role, "token": token})
         return ws
 
+    async def test_account_api_fails_closed_without_neon(self):
+        response = await self.client.post("/v1/devices/enroll", json={
+            "ticket": "x" * 32, "device_label": "test", "platform": "android"
+        })
+        self.assertEqual(response.status, 503)
+        response = await self.client.get("/v1/account/devices")
+        self.assertEqual(response.status, 401)
+
+    async def test_account_api_rejects_invalid_enrollment_payload(self):
+        response = await self.client.post("/v1/devices/enroll", json={
+            "ticket": "short", "device_label": "test", "platform": "android"
+        })
+        self.assertEqual(response.status, 503)
+
+    def test_device_secret_hashing_is_one_way_and_stable(self):
+        first = relay.digest_secret("device-secret-example")
+        self.assertEqual(first, relay.digest_secret("device-secret-example"))
+        self.assertNotEqual(first, relay.digest_secret("another-secret"))
+        self.assertNotEqual(first.decode("latin1"), "device-secret-example")
     async def test_health_endpoint(self):
         response = await self.client.get("/health")
         self.assertEqual(response.status, 200)
