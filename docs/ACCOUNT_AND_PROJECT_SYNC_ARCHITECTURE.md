@@ -1,6 +1,6 @@
 # Account and project sync architecture
 
-**Status:** implementation specification; no cloud service is deployed and no account credential is embedded in a build yet.
+**Status:** initial relay account/device API and Neon schema are committed; database provisioning, cloud deployment, editor clients and end-to-end pairing remain unverified. No account credential is embedded in a build.
 
 ## Product decision
 
@@ -48,7 +48,8 @@ GitHub Sync remains an optional source-control/import feature, not a mandatory t
 ## API surface to implement
 
 - POST /v1/devices/enroll — redeem one-time Android ticket.
-- POST /v1/devices/pair and POST /v1/devices/pair/complete — pair Linux with an enrolled device using short-lived code and owner confirmation.
+- POST /v1/devices/pair — Android device creates a short-lived, one-use Linux pairing code.
+- POST /v1/devices/pair/complete — Linux redeems that code and receives its own revocable device credential.
 - GET /v1/account/devices, DELETE /v1/account/devices/{id}, POST /v1/devices/refresh, POST /v1/devices/revoke.
 - GET/POST /v1/projects, GET /v1/projects/{id}/manifest, POST /v1/projects/{id}/commits.
 - POST /v1/projects/{id}/blobs/check and signed upload/download URL issuance.
@@ -57,11 +58,12 @@ GitHub Sync remains an optional source-control/import feature, not a mandatory t
 
 ## Delivery sequence and acceptance gates
 
-1. Implement and test the account/device schema and enrollment/pairing API locally; no credentials in source.
-2. Implement Linux pairing/client storage and expose connection status in the desktop Godot integration.
-3. Implement Android ticket redemption and Keystore storage; build a private, account-provisioned APK only after the owner authorizes its creation.
-4. Implement manifests, blob storage, incremental transfer, resumability and conflict preservation.
-5. Add ChatGPT bridge authentication/authorization and prove an actual tool call reaches the selected Android project.
-6. Run automated security, offline, interruption, duplicate, conflict, large-asset and regression tests; then build and test Android ARM32/ARM64 and the LG K51.
+1. Initial implementation committed: Neon schema, one-time enrollment, Android-initiated Linux pairing, device listing/revocation, and account project listing. CI validation is pending; no credentials are in source.
+2. Provision Neon and apply the migration, then run authenticated integration tests against a disposable database.
+3. Implement Linux pairing/client storage and expose connection status in the desktop Godot integration.
+4. Implement Android ticket redemption and Keystore storage; build a private, account-provisioned APK only after the owner authorizes its creation.
+5. Implement manifests, blob storage, incremental transfer, resumability and conflict preservation.
+6. Add ChatGPT bridge authentication/authorization and prove an actual tool call reaches the selected Android project.
+7. Run automated security, offline, interruption, duplicate, conflict, large-asset and regression tests; then build and test Android ARM32/ARM64 and the LG K51.
 
 No service is deployed, no permanent token is embedded, and no end-to-end ChatGPT-to-Android connection is claimed until the relevant gates pass.
