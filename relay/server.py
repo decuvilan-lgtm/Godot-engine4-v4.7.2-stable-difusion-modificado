@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Authenticated relay for optional Godot Live Link. Deploy behind TLS/WSS."""
-import base64, binascii, hashlib, json, os, re, secrets, time
+import base64, binascii, hashlib, json, os, re, secrets, sys, time
 from aiohttp import WSMsgType, web
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from account_api import install_account_routes
 
 TOKEN = os.environ.get("LIVE_LINK_TOKEN", "")
 ROOMS: dict[str, set[web.WebSocketResponse]] = {}
@@ -240,4 +243,5 @@ async def websocket(request):
 app = web.Application(client_max_size=MAX_MESSAGE)
 app.router.add_get("/health", health)
 app.router.add_get("/ws", websocket)
+install_account_routes(app)
 if __name__ == "__main__": web.run_app(app, host=os.environ.get("HOST", "127.0.0.1"), port=int(os.environ.get("PORT", "8765")))
