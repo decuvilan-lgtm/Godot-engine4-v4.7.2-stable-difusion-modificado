@@ -87,6 +87,59 @@ async def enroll(request: web.Request) -> web.Response:
     return web.json_response({"device_id": str(device_id), "device_credential": credential,
                               "token_type": "Bearer", "account_id": str(row["account_id"])}, status=201)
 
+async def create_pair_code(request: web.Request) -> web.Response:
+    identity = await authenticated_device(request)
+    if identity["platform"] != "android":
+        raise web.HTTPForbidden(text="Pairing must be initiated from the enrolled Android editor.")
+    try:
+        body = await request.json()
+    except Exception:
+        raise web.HTTPBadRequest(text="Expected JSON body.")
+    label = body.get("device_label", "Godot Linux") if isinstance(body, dict) else None
+    if not isinstance(label, str) or not (1 <= len(label.strip()) <= 80):
+        raise web.HTTPBadRequest(text="Invalid Linux device label.")
+    code = secrets.token_urlsafe(18)
+    pool = database(request)
+    await pool.execute(
+        """INSERT INTO device_pair_codes(initiating_device_id, code_hash, intended_platform, device_label, expires_at)
+           VALUES($1,$2,'linux',$3,now() + interval '2 minutes')""",
+        identity["device_id"], digest_secret(code), label.strip())
+    return web.json_response({"pair_code": code, "expires_in_seconds": 120})
+
+async def complete_pairing(request: web.Request) -> web.Response:
+    pool = database(request)
+    try:
+        body = await request.json()
+    except Exception:
+        raise web.HTTPBadRequest(text="Expected JSON body.")
+    code = body.get("pair_code") if isinstance(body, dict) else None
+    label = body.get("device_label", "Godot Linux") if isinstance(body, dict) else None
+    if not isinstance(code, str) or not (16 <= len(code) <= 128):
+        raise web.HTTPBadRequest(text="Invalid pairing code.")
+    if not isinstance(label, str) or not (1 <= len(label.strip()) <= 80):
+        raise web.HTTPBadRequest(text="Invalid device label.")
+    credential = secrets.token_urlsafe(48)
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            row = await conn.fetchrow(
+                """SELECT p.id, p.initiating_device_id, d.account_id
+                   FROM device_pair_codes p
+                   JOIN devices d ON d.id=p.initiating_device_id
+                   JOIN accounts a ON a.id=d.account_id
+                   WHERE p.code_hash=$1 AND p.intended_platform='linux'
+                     AND p.approved_at IS NULL AND p.consumed_at IS NULL
+                     AND p.expires_at > now() AND d.revoked_at IS NULL AND a.status='active'
+                   FOR UPDATE OF p""", digest_secret(code))
+            if row is None:
+                raise web.HTTPUnauthorized(text="Pairing code expired, used or revoked.")
+            device_id = await conn.fetchval(
+                """INSERT INTO devices(account_id, device_label, platform, credential_hash)
+                   VALUES($1,$2,'linux',$3) RETURNING id""",
+                row["account_id"], label.strip(), digest_secret(credential))
+            await conn.execute("UPDATE device_pair_codes SET consumed_at=now(), approved_at=now() WHERE id=$1", row["id"])
+    return web.json_response({"device_id": str(device_id), "device_credential": credential,
+                              "token_type": "Bearer"}, status=201)
+
 async def list_devices(request: web.Request) -> web.Response:
     identity = await authenticated_device(request)
     pool = database(request)
@@ -121,6 +174,8 @@ async def list_projects(request: web.Request) -> web.Response:
 
 def install_account_routes(app: web.Application) -> None:
     app.router.add_post("/v1/devices/enroll", enroll)
+    app.router.add_post("/v1/devices/pair", create_pair_code)
+    app.router.add_post("/v1/devices/pair/complete", complete_pairing)
     app.router.add_get("/v1/account/devices", list_devices)
     app.router.add_delete("/v1/account/devices/{device_id}", revoke_device)
     app.router.add_get("/v1/projects", list_projects)
