@@ -19,6 +19,7 @@ spec = importlib.util.spec_from_file_location("live_link_relay", ROOT / "relay" 
 relay = importlib.util.module_from_spec(spec)
 assert spec and spec.loader
 spec.loader.exec_module(relay)
+import account_api as account_api_module
 
 
 class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
