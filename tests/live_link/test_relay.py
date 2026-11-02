@@ -56,11 +56,15 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         response = await self.client.get("/v1/account/devices")
         self.assertEqual(response.status, 401)
 
-    async def test_account_api_rejects_invalid_enrollment_payload(self):
-        response = await self.client.post("/v1/devices/enroll", json={
-            "ticket": "short", "device_label": "test", "platform": "android"
+    async def test_pairing_completion_fails_closed_without_neon(self):
+        response = await self.client.post("/v1/devices/pair/complete", json={
+            "pair_code": "x" * 24, "device_label": "Linux editor"
         })
         self.assertEqual(response.status, 503)
+
+    async def test_pair_code_creation_requires_authenticated_device(self):
+        response = await self.client.post("/v1/devices/pair", json={"device_label": "Linux editor"})
+        self.assertEqual(response.status, 401)
 
     def test_device_secret_hashing_is_one_way_and_stable(self):
         first = relay.digest_secret("device-secret-example")
