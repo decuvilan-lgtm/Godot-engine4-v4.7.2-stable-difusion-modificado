@@ -1,0 +1,57 @@
+name: Audit saved modified Godot core snapshot
+
+on:
+  push:
+    branches:
+      - feature/live-editor-link
+    paths:
+      - "scripts/audit_core_snapshot.py"
+      - ".github/workflows/audit-existing-core-snapshot.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-core-snapshot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Checkout integration repository
+        uses: actions/checkout@v4
+
+      - name: Checkout exact Godot 4.7.2 upstream source
+        uses: actions/checkout@v4
+        with:
+          repository: godotengine/godot
+          ref: ed1daf0bf001b61586d9930840f2f1394092c079
+          path: godot-source
+
+      - name: Download and verify the latest saved custom core snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCHIVE="$RUNNER_TEMP/godot-core-posterior.tar.gz"
+          curl --fail --location --retry 3 --retry-delay 2 --output "$ARCHIVE" \
+            "https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/releases/download/godot-modified-core-slots/godot-core-posterior.tar.gz"
+          echo "fe5eef88e092a39d9fe66ac1ec90764aca72371ee6df23f9f5d97d9a15fc7819  $ARCHIVE" | sha256sum --check
+          ls -lh "$ARCHIVE"
+
+      - name: Compare saved source files against pinned upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/audit_core_snapshot.py
+          python3 scripts/audit_core_snapshot.py \
+            --archive "$RUNNER_TEMP/godot-core-posterior.tar.gz" \
+            --upstream godot-source \
+            --output "$RUNNER_TEMP/godot-core-snapshot-audit.md"
+          cat "$RUNNER_TEMP/godot-core-snapshot-audit.md"
+          cat "$RUNNER_TEMP/godot-core-snapshot-audit.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload source comparison report
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-core-snapshot-audit
+          path: ${{ runner.temp }}/godot-core-snapshot-audit.md
+          if-no-files-found: error

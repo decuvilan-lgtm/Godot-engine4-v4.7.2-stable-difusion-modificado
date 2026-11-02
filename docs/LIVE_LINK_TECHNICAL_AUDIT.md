@@ -1,0 +1,144 @@
+# Live Link — auditoría técnica y ruta hacia funcionamiento real
+
+Fecha de revisión: 2026-10-28/29  
+Rama revisada: `feature/live-editor-link`
+
+## Resumen ejecutivo
+
+Live Link ya tiene tres piezas separadas: un complemento dentro del editor Godot, un relay WebSocket autenticado y un cliente Python de agente. La ruta de operaciones admite `create`, `update`, `rename` y `delete`; el editor valida el proyecto destino, pide aprobación explícita, compara SHA-256 para detectar conflictos y mantiene copias de seguridad.
+
+Esto todavía **no equivale a una integración ChatGPT→Godot terminada**. Ya se añadió una prueba de integración de filesystem que ejecuta operaciones reales dentro de Godot 4.7.2 headless; faltan simulación de cierre abrupto del proceso, pruebas del diálogo de aprobación, entrada/captura en Android físico y el puente de herramientas compatible con ChatGPT.
+
+## Identificador de proyecto
+
+El requisito de producto es un ID decimal persistente de exactamente cuatro dígitos. No es un token y mostrar/copiarlo no conecta el editor. El protocolo, cliente Python y relay deben validar exactamente `^[0-9]{4}# Live Link — auditoría técnica y ruta hacia funcionamiento real
+
+Fecha de revisión: 2026-10-28/29  
+Rama revisada: `feature/live-editor-link`
+
+## Resumen ejecutivo
+
+Live Link ya tiene tres piezas separadas: un complemento dentro del editor Godot, un relay WebSocket autenticado y un cliente Python de agente. La ruta de operaciones admite `create`, `update`, `rename` y `delete`; el editor valida el proyecto destino, pide aprobación explícita, compara SHA-256 para detectar conflictos y mantiene copias de seguridad.
+
+Esto todavía **no equivale a una integración ChatGPT→Godot terminada**. Ya se añadió una prueba de integración de filesystem que ejecuta operaciones reales dentro de Godot 4.7.2 headless; faltan simulación de cierre abrupto del proceso, pruebas del diálogo de aprobación, entrada/captura en Android físico y el puente de herramientas compatible con ChatGPT.
+
+. El Project Manager todavía debe mostrar el ID en cada tarjeta de proyecto y detectar colisiones locales antes de considerar completa esta función.
+
+## Estado verificado en CI
+
+La ejecución [40794825337](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40794825337) terminó en **success** en el commit `d42d847e119e1ea77372643437074ba62ff510a2`. Corrieron 47 pruebas Python y la carga de Godot 4.7.2 headless ejecutó además `LIVE_LINK_FS_TESTS_PASSED` sin errores, errores de parseo ni fugas ObjectDB.
+
+La validación combinada [40794936417](https://github.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/actions/runs/40794936417) terminó en **success** en el commit `87ac82d342fec604ec8f23f4447c1e27a21733f7`. Pasaron la aplicación del parche a un upstream limpio, la integración de GitHub Sync, Terrain 3D, el parche de arranque Android, las regresiones combinadas, la descarga del editor oficial Windows Godot 4.7.2, las 47 pruebas Live Link y la carga de los tres complementos con escenas anidadas. Esto valida el generador y la compatibilidad de fuentes en CI, pero no equivale a compilar el editor Android ARM32/ARM64 ni probar el teléfono.
+
+El harness `tests/live_link/godot_filesystem_harness/godot_filesystem_harness.gd` opera sobre archivos reales del proyecto temporal de Godot: creación normal, creación de archivo vacío, actualización, conflicto por SHA-256 obsoleto, renombrado, eliminación, recuperación tras mover el original a rollback y recuperación tras instalar el reemplazo pero antes de limpiar rollback/temporal. Durante la prueba se detectó y corrigió un defecto real: `HashingContext.update()` rechaza un buffer vacío; `_sha256_bytes()` ahora finaliza directamente el contexto inicializado para obtener el hash SHA-256 correcto del archivo vacío.
+
+Estas pruebas son mucho más fuertes que las comprobaciones estáticas, pero **no** simulan matar el proceso Godot en cada instrucción ni prueban el teléfono LG K51, el diálogo de aprobación/rechazo, la captura completa de pantalla o la entrada global del editor Android.
+
+## Arquitectura objetivo aclarada: Linux como extremo de trabajo y Android como vista/ejecución
+
+El usuario ha aclarado el flujo deseado: modificará en otro chat una **versión Linux modificada de Godot** y quiere compartir aquí ese componente/proyecto para que ChatGPT solicite cambios que luego se reflejen en su Godot Android. El **ID no es un ID de sesión de conexión ni una clave**: al habilitar la función (sin conectarla), Godot debe mostrar identificadores numéricos por proyecto. El usuario copia uno y lo pega en este chat; ese número permite que ChatGPT y el flujo de herramientas identifiquen sin ambigüedad cuál proyecto quiere modificar. Habilitar/mostrar/copiar el ID no conecta nada ni autoriza cambios por sí solo. El propósito principal es editar el proyecto real, no simplemente retransmitir pantalla o mover el cursor.
+
+**Requisito de interfaz pendiente de alinear:** la experiencia deseada es que, al habilitar la función (sin conectar), los IDs queden visibles en los proyectos para poder copiar el número del proyecto elegido. El prototipo actual documentado usa un dock dentro del proyecto abierto y un paso de revelar/copiar; no debe confundirse ese diseño provisional con el comportamiento final solicitado. Al revisar el Godot Linux y el código actual, comprobar también cómo mostrar IDs en la lista/gestor de proyectos sin iniciar la conexión.
+
+1. **ID visible por proyecto:** al habilitar Live Link sin activarlo/conectarlo, el editor debe mostrar un número identificador en cada proyecto. El usuario copia el número del proyecto deseado y lo comparte en este chat. El ID sirve para desambiguar el destino entre varios proyectos; no es secreto, token, autenticación ni conexión.
+2. **ChatGPT en este chat:** prepara cambios de proyecto (por ejemplo, una casa 3D, un enemigo, escenas, scripts, materiales o ajustes) y usa el ID proporcionado para seleccionar el proyecto correcto mediante una herramienta autorizada, cuando ese puente esté disponible. Recibir el número no da acceso mágico a un proceso arbitrario, no conecta el editor y no salta la autorización.
+3. **Godot Linux modificado:** es el extremo de trabajo/control que el usuario desarrollará en paralelo. Debe ofrecer herramientas explícitas y limitadas para consultar el proyecto activo, aplicar cambios, revisar diffs, validar escenas/recursos y devolver resultados. El usuario quiere pasar este componente a ChatGPT para que pueda trabajar con él, sin API de inferencia.
+4. **Godot Android modificado:** es el editor real en el teléfono. Debe identificar el proyecto receptor, aceptar solo operaciones autorizadas, proteger los archivos y reflejar cambios de proyecto. El objetivo no es reemplazarlo por una app espejo.
+5. **Sincronización entre ambos Godot:** los archivos del proyecto son la fuente compartida de verdad. Un cambio preparado en Linux debe llegar a Android con control de versiones/conflictos y resultado comprobado; abrir/recargar el recurso o escena en Android debe mostrar el cambio. La sincronización de archivos es prioritaria respecto al control remoto de cada botón del editor.
+6. **Red y servicios:** no exigir la misma LAN/Wi‑Fi y no llamar a una API de modelo. Debe investigarse un canal de transporte entre redes diferentes. Un ID por sí solo no crea conectividad. La conexión directa puede estar limitada por NAT/firewalls; si el diseño requiere un relay u otro servicio externo, documentarlo como dependencia y no presentarlo como una conexión sin intermediarios.
+7. **Seguridad y control:** el ID identifica el proyecto, no sustituye autenticación. Aplicar permisos explícitos, confirmación en el editor cuando corresponda, operaciones acotadas al proyecto, diff/backup, hashes, límites de tamaño y resultados inequívocos.
+
+Una prueba de aceptación de extremo a extremo será: el usuario comparte el proyecto/componente Linux y su ID; ChatGPT solicita una modificación autorizada (por ejemplo, crear una casa 3D); el Godot Linux modificado aplica el cambio al proyecto real; Android recibe los archivos y actualiza/abre la escena; el usuario ve la casa en su teléfono; y el sistema informa qué cambió y si hubo conflictos. Debe repetirse con un enemigo 3D y una segunda modificación incremental sin generar un APK nuevo.
+
+## Restricciones de arquitectura confirmadas por el usuario
+
+Estas restricciones son requisitos del proyecto, no sugerencias opcionales:
+
+1. **No depender de APIs de modelos/IA.** No integrar OpenAI API, API de Grok ni servicios de inferencia de pago como requisito para que una IA ya disponible pueda operar el editor. El objetivo es que la IA use herramientas autorizadas de conexión al proyecto; el protocolo de Live Link no debe llamar a una API de modelo.
+2. **No exigir la misma red local.** El teléfono Android y la IA/agente pueden estar en redes distintas. No basar la solución en IP local, Wi‑Fi compartido, descubrimiento LAN, conexión directa al mismo router ni en tener el PC al lado del teléfono.
+3. **No convertir las limitaciones actuales de Android en una renuncia.** Si una función necesaria no está expuesta por Android/Godot, investigar e implementar el punto de integración que falta en el código modificado de Godot (C++ del editor y/o capa nativa Android), y después validarlo. No reemplazar el editor real por otra app ni eliminar las herramientas nativas existentes.
+4. **Separar API de modelo de protocolo de transporte.** Un socket/WebSocket es un protocolo de comunicación, no una API de inferencia. No obstante, un relay público alojado en la nube sigue siendo infraestructura de red y no satisface por sí solo el objetivo de eliminar dependencias externas. Debe documentarse como opción provisional, no como solución final obligatoria.
+5. **Sin promesas mágicas de conexión.** Modificar Godot puede añadir captura, entrada, gestión de sesiones y un cliente de conexión remoto; no puede hacer que ChatGPT Free móvil descubra automáticamente un proceso arbitrario. La integración final debe usar un mecanismo de herramientas/conector que la interfaz de IA admita, sin API de modelo y sin requerir misma LAN. Hasta probarlo de extremo a extremo, se considera pendiente.
+
+### Dirección técnica a investigar
+
+- Añadir la integración en el **editor nativo de Godot** y la capa Android cuando el plugin GDScript no tenga acceso a la interfaz completa o a eventos de sistema.
+- Diseñar un transporte remoto saliente desde Android que funcione detrás de NAT/redes móviles y Wi‑Fi distintas. Evaluar primero opciones de conexión directa negociada y canales de retorno; si una opción exige un servidor de terceros, API de modelo, cuenta de pago o misma LAN, marcarla como no conforme o solo como herramienta de pruebas.
+- No asumir que “sin API” significa “sin comunicación”: el sistema necesita algún canal de transporte y un extremo compatible del lado de la IA. Investigar el mecanismo compatible más pequeño y documentar claramente qué componente inicia la conexión y dónde se ejecuta.
+- Conservar aprobación explícita en el editor, validación de proyecto/rutas, límites de operaciones y respuestas verificadas.
+- No generar APK hasta que la arquitectura esté elegida, el código integrado y las pruebas previas estén consolidadas.
+
+## Hallazgos técnicos que afectan la fiabilidad
+
+### 1. Compatibilidad de Android
+
+El editor Android de Godot sigue teniendo limitaciones específicas y la documentación lo trata como una plataforma experimental/en evolución. Hay que probar cada API de editor y de archivos en el editor Android real, no asumir que una prueba headless de Linux equivale a Android.
+
+La documentación de Godot 4.7 dice que `DirAccess.is_link()` está implementado en macOS, Linux y Windows; Android no aparece en esa lista. Por ello, las comprobaciones actuales de enlaces simbólicos **no deben considerarse una garantía de seguridad en Android**. Antes de afirmar protección completa frente a enlaces simbólicos, se necesita una comprobación nativa Android compatible con no-follow/canonicalización o una restricción de almacenamiento validada en el dispositivo.
+
+### 2. Entrada remota
+
+`Input.parse_input_event()` permite alimentar eventos al motor, pero la documentación advierte que no mueve el cursor del sistema operativo ni cambia entre ventanas del sistema. Por eso no puede darse por probado que el complemento controle todos los menús, paneles, diálogos nativos o ventanas del editor Android. Es necesaria una prueba táctil en el teléfono y, si no alcanza, un punto de integración nativo con el editor.
+
+### 3. Transacciones de archivos
+
+El diario y los archivos temporales/rollback reducen el riesgo de perder el original, y las revalidaciones SHA-256 detectan cambios concurrentes en ventanas conocidas. El harness ya comprueba operaciones reales y dos estados de recuperación (antes de instalar y después de instalar el reemplazo). No elimina por completo las carreras TOCTOU ni sustituye una terminación abrupta del proceso en cada punto de la transacción; esa simulación sigue pendiente.
+
+### 4. Seguridad del relay
+
+- WSS/TLS para cualquier conexión remota; `ws://` solo para loopback o una LAN privada de confianza.
+- Token aleatorio fuerte almacenado como variable de entorno/secret, nunca en el repositorio ni en los logs.
+- Validación en el relay y nuevamente en el editor: proyecto, operación, rutas, tamaño, hashes, rol y resultado.
+- Mantener aprobación visible en Godot y confirmar el resultado de la operación antes de darla por terminada.
+- Añadir límites operativos para conexiones/salas si el relay se despliega públicamente, y registrar eventos de seguridad sin guardar tokens ni contenido sensible.
+- No habilitar ejecución de shell, scripts arbitrarios ni acceso de escritura fuera de la raíz del proyecto.
+
+## Plan de trabajo recomendado
+
+### P0 — contrato y validación (en curso)
+- [x] ID de proyecto y activación explícita de conexión.
+- [x] Operaciones del relay limitadas por rol, tamaño, ruta, SHA-256 y política `android_editor`.
+- [x] Respuesta de resultado ligada al proyecto y a la operación pendiente.
+- [x] Rechazo de resultados tardíos y de IDs de operación repetidos durante la ventana de protección.
+- [x] Validación adicional de ID de operación, huellas y tamaño de contenido antes de pedir aprobación.
+- [ ] Revisión final de estados de error y respuesta clara cuando el proyecto objetivo no coincide.
+
+### P1 — pruebas reales del receptor
+- [x] Crear un harness que ejercite operaciones reales sobre el filesystem en Godot 4.7.2 headless.
+- [x] Probar creación normal, archivo vacío, actualización, conflicto por SHA-256 obsoleto, renombrado y eliminación.
+- [x] Comprobar recuperación tras mover el original a rollback y tras instalar el reemplazo antes de limpiar temporales.
+- [ ] Simular terminación abrupta del proceso tras cada paso del diario/transacción, incluida la restauración de respaldo cuando falle el rename.
+- [ ] Añadir pruebas de destino existente, enlaces simbólicos y modificaciones concurrentes reales; el escaneo se ejecuta tras operaciones exitosas.
+
+### P2 — validación en el editor Android
+- [ ] Probar en LG K51/Android 11, resolución 720×1600.
+- [ ] Confirmar que el dock se muestra y no bloquea el editor.
+- [ ] Verificar captura de pantalla, latencia, uso de memoria y eventos táctiles/teclado.
+- [ ] Aprobar y rechazar operaciones desde el diálogo; verificar el resultado recibido por el agente.
+- [ ] Probar cierre/reinicio del editor y recuperación de transacciones.
+
+### P3 — conexión con IA sin API de modelos ni misma LAN (diseño pendiente)
+- [ ] Elegir un mecanismo de herramientas/conector compatible con la interfaz de IA utilizada, sin llamar a una API de inferencia.
+- [ ] Diseñar el transporte remoto para teléfono y agente en redes distintas; no depender de IP local ni de Wi‑Fi compartido.
+- [ ] Investigar si puede evitarse un relay permanente de terceros mediante conexión saliente/negociada; cualquier dependencia de servidor externo debe quedar identificada y justificada.
+- [ ] Implementar en el editor nativo/C++ y capa Android las capacidades que el plugin no pueda ofrecer (captura/control de UI real, ciclo de vida y conexión remota), en lugar de dar esas limitaciones por definitivas.
+- [ ] Mantener aprobación del lado de Godot y resultados inequívocos: aplicado, rechazado, conflicto o error.
+- [ ] Probar redes diferentes, reconexión, timeout, repetición de operaciones y selección incorrecta de proyecto.
+- [ ] No afirmar que ChatGPT móvil puede conectarse automáticamente hasta completar una prueba real de extremo a extremo.
+
+### P4 — build móvil
+- [ ] Consolidar cambios antes de iniciar la compilación larga.
+- [ ] Validar compilación para `armeabi-v7a` y `arm64-v8a`.
+- [ ] Solo entonces preparar el APK y hacer prueba física. No usar un APK como sustituto de las pruebas previas.
+
+## Referencias oficiales revisadas
+
+- Godot 4.7 — Android editor: https://docs.godotengine.org/en/4.7/tutorials/editor/using_the_android_editor.html
+- Godot 4.7 — `DirAccess.is_link()`: https://docs.godotengine.org/en/4.7/classes/class_diraccess.html
+- Godot — `Input.parse_input_event()`: https://docs.godotengine.org/en/4.7/classes/class_input.html
+- OWASP — WebSocket Security Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/WebSocket_Security_Cheat_Sheet.html
+- OpenAI — Custom MCP servers in ChatGPT: https://help.openai.com/en/articles/12584461-connecting-custom-mcp-servers-in-chatgpt
+
+## Regla para declarar éxito
+
+No marcar Live Link como terminado hasta demostrar el flujo objetivo aclarado: ChatGPT prepara un cambio mediante una herramienta autorizada → Godot Linux modificado aplica/verifica el cambio al proyecto real → el proyecto se sincroniza al Godot Android del usuario → el teléfono refleja la modificación sin reconstruir un APK. Debe funcionar con el Linux y el teléfono en redes diferentes, sin API de inferencia y con autorización/validación/backup/resultados verificables. Además, se requieren pruebas Android ARM32/ARM64 y una prueba física en el LG K51.

@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: godot-live-link-relay
+    runtime: docker
+    dockerfilePath: ./relay/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: LIVE_LINK_TOKEN
+        sync: false

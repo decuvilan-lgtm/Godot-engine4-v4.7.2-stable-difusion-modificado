@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Load both editor addons in the real Godot 4.7.2 editor (headless, Windows runner)."""
+"""Load all editor addons, including Live Link, in Godot 4.7.2."""
 from __future__ import annotations
 
 import argparse
@@ -56,12 +56,13 @@ def main() -> int:
         addons.mkdir()
         shutil.copytree(ROOT / "scripts/github_sync_addon", addons / "github_sync")
         shutil.copytree(ROOT / "scripts/terrain_3d_addon", addons / "terrain_3d")
+        shutil.copytree(ROOT / "scripts/live_link_addon", addons / "live_link")
         (project / "project.godot").write_text(
             'config_version=5\n\n[application]\nconfig/name="Godot Addon Integration Test"\n'
             'run/main_scene="res://scenes/main.tscn"\n\n'
             '[editor_plugins]\n'
             'enabled=PackedStringArray("res://addons/github_sync/plugin.cfg", '
-            '"res://addons/terrain_3d/plugin.cfg")\n',
+            '"res://addons/terrain_3d/plugin.cfg", "res://addons/live_link/plugin.cfg")\n',
             encoding="utf-8",
         )
         write_scene_fixtures(project)
@@ -100,7 +101,7 @@ def main() -> int:
             for line in found:
                 print(line, file=sys.stderr)
             return 1
-        print("PASS: both addons loaded in Godot 4.7.2 and nested PackedScene fixtures parsed without script/resource errors.")
+        print("PASS: all three addons loaded in Godot 4.7.2 and nested PackedScene fixtures parsed without script/resource errors.")
         return 0
 
 

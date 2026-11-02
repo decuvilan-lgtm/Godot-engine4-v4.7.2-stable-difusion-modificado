@@ -210,3 +210,15 @@ The Project Manager import dialog now includes an optional ref field. A blank va
 
 
 Runtime gameplay input includes `mouse_move`, `touch` (press/release), and `swipe` actions in addition to mouse click and keyboard events. These generate Godot input events inside the running game. Coordinate mapping, multitouch behavior, orientation changes, and compatibility with each game's input code require Android device validation.
+
+
+## Live Link Linux emitter tools
+
+The hardened MCP package now adds two typed editor tools:
+
+- `get_live_link_status`: reports whether the desktop Live Link emitter is connected, its Android target ID, whether its baseline is loaded, and queued/in-flight operations.
+- `send_live_link_changes`: asks the desktop emitter to queue changed project files. It does not execute arbitrary code; the Android receiver still asks for approval for each file operation.
+
+The emitter's baseline must be initialized only while the Android and Linux projects are identical. Updates and deletions carry the prior SHA-256 so Android can reject conflicting changes. Common secret files and private keys are excluded, as are `project.godot`, generated folders, and the Live Link/MCP addons themselves. Files larger than 5 MiB are skipped.
+
+The MCP server remains bound to loopback. The tools are packaged and enabled for desktop projects imported through the modified Project Manager, but a secure outbound remote-MCP bridge is still required before ChatGPT in the cloud can reach that local server. Do not expose the editor MCP listener directly to the public Internet. Linux compilation and the MCP embedding smoke test are still running; this section describes the intended behavior, not a completed end-to-end device test.
