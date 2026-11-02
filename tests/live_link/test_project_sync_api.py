@@ -1,4 +1,7 @@
+import sys
 import unittest
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "relay"))
 from project_sync_api import safe_path, validate_manifest
 
 class ManifestValidationTests(unittest.TestCase):
