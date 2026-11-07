@@ -82,6 +82,30 @@ class CommandCenterClientTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(result["status"], "succeeded")
             self.assertEqual(result["result"]["project_name"], "Sandbox")
 
+    async def test_authenticated_requests_do_not_follow_redirects(self):
+        target_hits = 0
+
+        async def redirect(request):
+            raise web.HTTPFound(location="/redirect-target")
+
+        async def redirect_target(request):
+            nonlocal target_hits
+            target_hits += 1
+            return web.json_response({"status": "succeeded"})
+
+        self.server.app.router.add_get("/redirect", redirect)
+        self.server.app.router.add_get("/redirect-target", redirect_target)
+
+        async with CommandCenterClient(
+            self.base_url,
+            "t" * 64,
+            allow_insecure_localhost=True,
+        ) as client:
+            with self.assertRaises(Exception) as raised:
+                await client._request("GET", "/redirect")
+            self.assertEqual(getattr(raised.exception, "status", None), 302)
+        self.assertEqual(target_hits, 0)
+
     async def test_agent_client_rejects_write_actions(self):
         async with CommandCenterClient(
             self.base_url,
