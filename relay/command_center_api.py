@@ -13,6 +13,7 @@ import json
 import os
 import secrets
 import uuid
+from datetime import datetime, timezone
 from aiohttp import web
 
 DEVICE_KINDS = {"android_editor", "web_editor", "agent_controller"}
@@ -41,6 +42,15 @@ def _json_size(value: object) -> int:
         return len(json.dumps(value, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
     except (TypeError, ValueError):
         return MAX_ARGS_BYTES + 1
+
+
+def _decode_json(value):
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except (TypeError, ValueError):
+            return None
+    return value
 
 
 def _pool(request: web.Request):
@@ -227,7 +237,7 @@ async def create_command(request: web.Request) -> web.Response:
                 )
                 if existing is None:
                     raise web.HTTPConflict(text="Idempotency key collision; retry with a new key.")
-                if existing["target"] != target or existing["action"] != action or existing["args"] != args:
+                if existing["target"] != target or existing["action"] != action or _decode_json(existing["args"]) != args:
                     raise web.HTTPConflict(text="Idempotency key was already used for a different command.")
                 return web.json_response({
                     "command_id": str(existing["id"]), "target": existing["target"],
@@ -281,7 +291,7 @@ async def claim_next_command(request: web.Request) -> web.Response:
             )
     return web.json_response({
         "command": {
-            "id": str(row["id"]), "action": row["action"], "args": row["args"],
+            "id": str(row["id"]), "action": row["action"], "args": _decode_json(row["args"]),
             "priority": row["priority"], "expires_at": row["expires_at"].isoformat(),
             "attempt": row["attempt_count"],
         }
@@ -328,9 +338,9 @@ async def submit_command_result(request: web.Request) -> web.Response:
             if existing is not None:
                 return web.json_response({
                     "command_id": str(command_id), "ok": existing["ok"],
-                    "result": existing["result"], "reused": True,
+                    "result": _decode_json(existing["result"]), "reused": True,
                 })
-            if command["status"] != "claimed" or command["claim_expires_at"] is None or command["claim_expires_at"] <= __import__("datetime").datetime.now(__import__("datetime").timezone.utc):
+            if command["status"] != "claimed" or command["claim_expires_at"] is None or command["claim_expires_at"] <= datetime.now(timezone.utc):
                 raise web.HTTPConflict(text="Command lease expired; claim it again before submitting a result.")
             status = "succeeded" if body["ok"] else "failed"
             await conn.execute(
@@ -376,7 +386,7 @@ async def get_command(request: web.Request) -> web.Response:
         "command_id": str(row["id"]), "target": row["target"], "action": row["action"],
         "status": row["status"], "created_at": row["created_at"].isoformat(),
         "finished_at": row["finished_at"].isoformat() if row["finished_at"] else None,
-        "ok": row["ok"], "result": row["result"],
+        "ok": row["ok"], "result": _decode_json(row["result"]),
         "error_code": row["error_code"], "error_message": row["error_message"],
         "duration_ms": row["duration_ms"],
     })
