@@ -74,6 +74,16 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(first, account_api_module.digest_secret("device-secret-example"))
         self.assertNotEqual(first, account_api_module.digest_secret("another-secret"))
         self.assertNotEqual(first.decode("latin1"), "device-secret-example")
+
+    def test_command_idempotency_key_is_mandatory_and_bounded(self):
+        self.assertEqual(
+            command_center_api_module.validate_idempotency_key("operation-123"),
+            "operation-123",
+        )
+        for invalid in (None, "", 123, "x" * 129):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(web.HTTPBadRequest):
+                    command_center_api_module.validate_idempotency_key(invalid)
     async def test_health_endpoint(self):
         response = await self.client.get("/health")
         self.assertEqual(response.status, 200)
