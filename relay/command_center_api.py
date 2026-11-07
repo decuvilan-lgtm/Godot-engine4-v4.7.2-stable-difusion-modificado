@@ -238,7 +238,12 @@ async def pair_device(request: web.Request) -> web.Response:
                 json.dumps({"device_kind": pairing["device_kind"], "label": label.strip()}),
             )
     return web.json_response(
-        {"device_id": str(device_id), "device_credential": credential, "token_type": "Bearer"},
+        {
+            "device_id": str(device_id),
+            "device_kind": pairing["device_kind"],
+            "device_credential": credential,
+            "token_type": "Bearer",
+        },
         status=201,
     )
 
