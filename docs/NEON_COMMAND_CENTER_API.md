@@ -34,6 +34,10 @@ Do not configure a paid Render plan. No Render settings or environment variables
 
 Tests for this client use a local aiohttp test server; they do not connect to the production Render relay.
 
+## Render relay integration
+
+The production relay is the FastAPI service in the separate [Godot Web IA repository](https://github.com/decuvilan-lgtm/Godot-web-ia-integrada), not this engine repository's aiohttp development relay. Its implementation is being added in [Godot Web IA PR #1](https://github.com/decuvilan-lgtm/Godot-web-ia-integrada/pull/1). The Godot addon uses the shared HTTP contract; do not deploy the aiohttp adapter as a replacement for the existing FastAPI/WebSocket service.
+
 ## HTTP API
 
 All device requests use `Authorization: Bearer <device_credential>`. The credential is returned once at pairing; only its SHA-256 hash is stored in Neon.
