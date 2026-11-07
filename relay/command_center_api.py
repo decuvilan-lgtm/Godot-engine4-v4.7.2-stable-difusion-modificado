@@ -30,6 +30,43 @@ MAX_ARGS_BYTES = 256 * 1024
 MAX_RESULT_BYTES = 1024 * 1024
 MAX_IDEMPOTENCY_KEY = 128
 CLAIM_SECONDS = 45
+DEFAULT_ALLOWED_ORIGINS = {"https://godot-web-ia-integrada-rt2l.onrender.com"}
+ALLOWED_CORS_METHODS = {"GET", "POST", "OPTIONS"}
+ALLOWED_CORS_HEADERS = {"authorization", "content-type", "x-command-center-admin"}
+
+
+def _allowed_origins() -> set[str]:
+    configured = os.environ.get("COMMAND_CENTER_ALLOWED_ORIGINS", "")
+    if not configured.strip():
+        return set(DEFAULT_ALLOWED_ORIGINS)
+    return {origin.strip().rstrip("/") for origin in configured.split(",") if origin.strip()}
+
+
+@web.middleware
+async def command_center_cors(request: web.Request, handler):
+    origin = request.headers.get("Origin", "").rstrip("/")
+    allowed = origin in _allowed_origins()
+    if request.method == "OPTIONS":
+        if not allowed:
+            raise web.HTTPForbidden(text="Origin is not allowed.")
+        requested_method = request.headers.get("Access-Control-Request-Method", "").upper()
+        requested_headers = {
+            value.strip().lower()
+            for value in request.headers.get("Access-Control-Request-Headers", "").split(",")
+            if value.strip()
+        }
+        if requested_method not in ALLOWED_CORS_METHODS or not requested_headers.issubset(ALLOWED_CORS_HEADERS):
+            raise web.HTTPForbidden(text="CORS preflight request is not allowed.")
+        response = web.Response(status=204)
+        response.headers["Access-Control-Allow-Methods"] = ", ".join(sorted(ALLOWED_CORS_METHODS))
+        response.headers["Access-Control-Allow-Headers"] = ", ".join(sorted(ALLOWED_CORS_HEADERS))
+        response.headers["Access-Control-Max-Age"] = "300"
+    else:
+        response = await handler(request)
+    if allowed:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Vary"] = "Origin"
+    return response
 
 
 def digest_secret(value: str) -> str:
@@ -414,6 +451,8 @@ async def get_command(request: web.Request) -> web.Response:
 
 
 def install_command_center_routes(app: web.Application) -> None:
+    if command_center_cors not in app.middlewares:
+        app.middlewares.append(command_center_cors)
     app.router.add_post("/v1/command-center/pairing-codes", create_pairing_code)
     app.router.add_post("/v1/command-center/pair", pair_device)
     app.router.add_post("/v1/command-center/commands", create_command)
