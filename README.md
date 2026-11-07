@@ -759,3 +759,13 @@ Para iniciar una compilación completa ARM32 (`armeabi-v7a`) + ARM64 (`arm64-v8a
 - La sincronización no conserva copias locales: GitHub es la fuente de verdad y los cambios locales reemplazados o eliminados pueden perderse.
 - Este commit activa la compilación completa del editor Android para `armeabi-v7a` (ARM32) y `arm64-v8a` (ARM64). El flujo valida el APK generado, sus ABI, firma, alineación y los recursos MCP embebidos.
 - La compilación se ejecuta en el runner Android de GitHub Actions. No es una prueba de ejecución en Linux ni sustituye la instalación y prueba táctil en el LG K51.
+
+
+## Neon Command Center adapter (experimental)
+
+A separate additive branch is developing durable pairing and command leases against the Neon `command_center` schema. It is intentionally read-only and is not yet connected end-to-end to either editor.
+
+- [Adapter API, environment and verification limits](docs/NEON_COMMAND_CENTER_API.md)
+- [Neon migration 002](https://github.com/decuvilan-lgtm/Godot-web-ia-integrada/blob/main/database/migrations/002_live_link_command_leases.sql)
+
+Keep this work in its feature branch until CI and the real relay/device integration have been validated. No Render service configuration was changed.
