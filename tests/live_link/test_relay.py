@@ -542,3 +542,31 @@ class CommandCenterApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertLessEqual(command_center_api_module._json_size({"ok": True}), 64)
         self.assertGreater(command_center_api_module._json_size({"data": "x" * (300 * 1024)}),
                            command_center_api_module.MAX_ARGS_BYTES)
+
+
+    async def test_command_center_cors_allows_configured_web_editor(self):
+        response = await self.client.options(
+            "/v1/command-center/commands",
+            headers={
+                "Origin": "https://godot-web-ia-integrada-rt2l.onrender.com",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "authorization,content-type",
+            },
+        )
+        self.assertEqual(response.status, 204)
+        self.assertEqual(
+            response.headers.get("Access-Control-Allow-Origin"),
+            "https://godot-web-ia-integrada-rt2l.onrender.com",
+        )
+        self.assertIn("authorization", response.headers.get("Access-Control-Allow-Headers", ""))
+
+    async def test_command_center_cors_rejects_unknown_origin(self):
+        response = await self.client.options(
+            "/v1/command-center/commands",
+            headers={
+                "Origin": "https://untrusted.example",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "authorization",
+            },
+        )
+        self.assertEqual(response.status, 403)
