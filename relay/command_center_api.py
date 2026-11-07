@@ -251,8 +251,8 @@ async def create_command(request: web.Request) -> web.Response:
         raise web.HTTPBadRequest(text="Action is not enabled in the read-only command policy.")
     if not isinstance(args, dict) or _json_size(args) > MAX_ARGS_BYTES:
         raise web.HTTPBadRequest(text="Command arguments must be a bounded JSON object.")
-    if key is not None and (not isinstance(key, str) or not (1 <= len(key) <= MAX_IDEMPOTENCY_KEY)):
-        raise web.HTTPBadRequest(text="Invalid idempotency key.")
+    if not isinstance(key, str) or not (1 <= len(key) <= MAX_IDEMPOTENCY_KEY):
+        raise web.HTTPBadRequest(text="A valid idempotency key is required.")
     pool = _pool(request)
     async with pool.acquire() as conn:
         async with conn.transaction():
@@ -265,7 +265,7 @@ async def create_command(request: web.Request) -> web.Response:
                 identity["workspace_id"], identity["id"], target, action,
                 json.dumps(args), key,
             )
-            if command_id is None and key is not None:
+            if command_id is None:
                 existing = await conn.fetchrow(
                     """SELECT id, target, action, args, status FROM command_center.commands
                        WHERE workspace_id=$1 AND idempotency_key=$2""",
