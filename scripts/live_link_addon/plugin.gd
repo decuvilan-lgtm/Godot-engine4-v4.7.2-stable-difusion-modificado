@@ -50,6 +50,28 @@ var _scene_state_sent := false
 var _remote_scene_path := ""
 var _advertised_scene_path := ""
 var _applying_scene_operation := false
+const COMMAND_CENTER_DEFAULT_URL := "https://godot-web-ia-relay.onrender.com"
+const COMMAND_CENTER_MAX_RESULT_BYTES := 1024 * 1024
+const COMMAND_CENTER_MAX_SCRIPT_BYTES := 64 * 1024
+const COMMAND_CENTER_MAX_FILES := 1000
+var _cc_base_url: LineEdit
+var _cc_pair_code: LineEdit
+var _cc_device_label: LineEdit
+var _cc_device_kind: OptionButton
+var _cc_pair_button: Button
+var _cc_poll_button: Button
+var _cc_status: Label
+var _cc_pair_request: HTTPRequest
+var _cc_command_request: HTTPRequest
+var _cc_credential := ""
+var _cc_installation_id := ""
+var _cc_polling := false
+var _cc_pair_busy := false
+var _cc_command_busy := false
+var _cc_request_kind := ""
+var _cc_current_command_id := ""
+var _cc_current_command_started_ms := 0
+var _cc_next_poll_ms := 0
 
 func _enter_tree() -> void:
     add_to_group("live_link_receiver")
@@ -61,6 +83,15 @@ func _enter_tree() -> void:
     _ensure_project_room()
     _recover_interrupted_file_transactions()
     _build_ui()
+    _cc_pair_request = HTTPRequest.new()
+    _cc_pair_request.timeout = 20.0
+    _cc_pair_request.request_completed.connect(_on_cc_pair_completed)
+    add_child(_cc_pair_request)
+    _cc_command_request = HTTPRequest.new()
+    _cc_command_request.timeout = 20.0
+    _cc_command_request.request_completed.connect(_on_cc_command_completed)
+    add_child(_cc_command_request)
+    _ensure_command_center_installation_id()
     get_undo_redo().history_changed.connect(_on_editor_scene_history_changed)
     get_undo_redo().version_changed.connect(_on_editor_scene_history_changed)
     add_control_to_dock(DOCK_SLOT_RIGHT_UL, _panel)
@@ -68,6 +99,12 @@ func _enter_tree() -> void:
     set_process_input(true)
 
 func _exit_tree() -> void:
+    _cc_polling = false
+    _cc_credential = ""
+    if is_instance_valid(_cc_pair_request):
+        _cc_pair_request.cancel_request()
+    if is_instance_valid(_cc_command_request):
+        _cc_command_request.cancel_request()
     remove_from_group("live_link_receiver")
     remove_from_group("live_link_emitter")
     if _ws.get_ready_state() != WebSocketPeer.STATE_CLOSED:
@@ -166,6 +203,45 @@ func _build_ui() -> void:
     send_changes_button.text = "Enviar cambios al Android"
     send_changes_button.pressed.connect(_send_changed_files)
     _panel.add_child(send_changes_button)
+    var cc_title := Label.new()
+    cc_title.text = "Command Center · cola persistente (solo lectura)"
+    cc_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    _panel.add_child(cc_title)
+    _cc_base_url = LineEdit.new()
+    _cc_base_url.text = COMMAND_CENTER_DEFAULT_URL
+    _cc_base_url.placeholder_text = "https://relay.example.com"
+    _panel.add_child(_field("API HTTPS del Command Center", _cc_base_url))
+    _cc_device_kind = OptionButton.new()
+    _cc_device_kind.add_item("Editor Android", 0)
+    _cc_device_kind.add_item("Editor Web", 1)
+    if OS.get_name() == "Android":
+        _cc_device_kind.select(0)
+        _cc_device_kind.set_item_disabled(1, true)
+    elif OS.get_name() == "Web":
+        _cc_device_kind.select(1)
+        _cc_device_kind.set_item_disabled(0, true)
+    _panel.add_child(_field("Tipo de dispositivo", _cc_device_kind))
+    _cc_device_label = LineEdit.new()
+    _cc_device_label.text = "Godot " + OS.get_name()
+    _cc_device_label.max_length = 80
+    _panel.add_child(_field("Nombre de este editor", _cc_device_label))
+    _cc_pair_code = LineEdit.new()
+    _cc_pair_code.secret = true
+    _cc_pair_code.placeholder_text = "Código de emparejamiento de un solo uso"
+    _panel.add_child(_field("Código temporal (vence en 2 minutos)", _cc_pair_code))
+    _cc_pair_button = Button.new()
+    _cc_pair_button.text = "Emparejar dispositivo"
+    _cc_pair_button.pressed.connect(_cc_pair_device)
+    _panel.add_child(_cc_pair_button)
+    _cc_poll_button = Button.new()
+    _cc_poll_button.text = "Iniciar recepción de comandos"
+    _cc_poll_button.disabled = true
+    _cc_poll_button.pressed.connect(_cc_toggle_polling)
+    _panel.add_child(_cc_poll_button)
+    _cc_status = Label.new()
+    _cc_status.text = "Sin emparejar. La credencial se mantendrá solo en memoria."
+    _cc_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    _panel.add_child(_cc_status)
     _status = Label.new()
     _status.text = "Desconectado"
     _status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -416,6 +492,7 @@ func _connect_clicked() -> void:
     _status.text = "Conectando…"
 
 func _process(_delta: float) -> void:
+    _cc_process()
     if _ws.get_ready_state() == WebSocketPeer.STATE_CLOSED:
         if _connecting or _connected:
             _connecting = false
@@ -1074,6 +1151,335 @@ func _dispatch(event: Variant) -> void:
             key.alt_pressed = bool(event.get("alt", false))
             key.meta_pressed = bool(event.get("meta", false))
             Input.parse_input_event(key)
+
+
+func _ensure_command_center_installation_id() -> void:
+    var settings := EditorInterface.get_editor_settings()
+    var key := "live_link_command_center/installation_id"
+    var existing := str(settings.get_setting(key)) if settings.has_setting(key) else ""
+    var regex := RegEx.new()
+    regex.compile("^[a-f0-9]{32}$")
+    if regex.search(existing) != null:
+        _cc_installation_id = existing
+        return
+    var crypto := Crypto.new()
+    _cc_installation_id = crypto.generate_random_bytes(16).hex_encode()
+    settings.set_setting(key, _cc_installation_id)
+    settings.save()
+
+
+func _cc_api_base() -> String:
+    return _cc_base_url.text.strip_edges().trim_suffix("/")
+
+
+func _cc_valid_api_url() -> bool:
+    var regex := RegEx.new()
+    regex.compile("^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?$")
+    var match_result := regex.search(_cc_api_base())
+    if match_result == null:
+        return false
+    var host := _cc_api_base().trim_prefix("https://").split(":")[0]
+    return _is_valid_dns_host(host)
+
+
+func _cc_pair_device() -> void:
+    if _cc_pair_busy or _cc_credential != "":
+        _cc_status.text = "Este editor ya está emparejado o hay una solicitud en curso."
+        return
+    if not _cc_valid_api_url():
+        _cc_status.text = "La API debe ser HTTPS y contener solo el host, sin rutas ni parámetros."
+        return
+    var code := _cc_pair_code.text.strip_edges()
+    var label := _cc_device_label.text.strip_edges()
+    if code.length() < 24 or code.length() > 128:
+        _cc_status.text = "El código temporal no tiene un formato válido."
+        return
+    if label.is_empty() or label.length() > 80:
+        _cc_status.text = "Introduce un nombre de dispositivo de 1 a 80 caracteres."
+        return
+    var kind := "android_editor" if _cc_device_kind.get_selected_id() == 0 else "web_editor"
+    var payload := {
+        "pairing_code": code,
+        "label": label,
+        "installation_id": _cc_installation_id
+    }
+    var headers := PackedStringArray(["Content-Type: application/json"])
+    var error := _cc_pair_request.request(
+        _cc_api_base() + "/v1/command-center/pair",
+        headers,
+        HTTPClient.METHOD_POST,
+        JSON.stringify(payload)
+    )
+    if error != OK:
+        _cc_status.text = "No se pudo iniciar el emparejamiento: " + error_string(error)
+        return
+    _cc_pair_busy = true
+    _cc_pair_button.disabled = true
+    _cc_status.text = "Solicitando emparejamiento seguro (" + kind + ")…"
+
+
+func _on_cc_pair_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+    _cc_pair_busy = false
+    _cc_pair_button.disabled = false
+    var parsed: Variant = JSON.parse_string(body.get_string_from_utf8())
+    if result != HTTPRequest.RESULT_SUCCESS or response_code != 201 or not parsed is Dictionary:
+        var detail := str(parsed.get("error", "Respuesta no válida")) if parsed is Dictionary else body.get_string_from_utf8().left(240)
+        _cc_status.text = "Emparejamiento rechazado (" + str(response_code) + "): " + detail
+        return
+    var credential := str(parsed.get("device_credential", ""))
+    var device_id := str(parsed.get("device_id", ""))
+    if credential.length() < 32 or device_id.is_empty():
+        _cc_status.text = "Respuesta de emparejamiento incompleta; no se guardó ninguna credencial."
+        return
+    _cc_credential = credential
+    _cc_pair_code.clear()
+    _cc_pair_code.editable = false
+    _cc_pair_button.disabled = true
+    _cc_poll_button.disabled = false
+    _cc_status.text = "Emparejado correctamente (" + device_id + "). La credencial está solo en memoria; se perderá al cerrar el editor."
+
+
+func _cc_toggle_polling() -> void:
+    if _cc_credential.is_empty():
+        _cc_status.text = "Empareja primero este editor."
+        return
+    _cc_polling = not _cc_polling
+    if _cc_polling:
+        _cc_poll_button.text = "Detener recepción de comandos"
+        _cc_next_poll_ms = 0
+        _cc_status.text = "Conectado al Command Center. Esperando comandos de solo lectura…"
+    else:
+        _cc_poll_button.text = "Iniciar recepción de comandos"
+        _cc_status.text = "Recepción detenida. El emparejamiento sigue activo hasta cerrar o desconectar."
+
+
+func _cc_stop_and_forget() -> void:
+    _cc_polling = false
+    _cc_credential = ""
+    _cc_current_command_id = ""
+    _cc_pair_code.editable = true
+    _cc_pair_button.disabled = false
+    _cc_poll_button.disabled = true
+    _cc_poll_button.text = "Iniciar recepción de comandos"
+    _cc_status.text = "Credencial eliminada de memoria. Para volver a conectar, solicita un código nuevo."
+
+
+func _cc_process() -> void:
+    if not _cc_polling or _cc_credential.is_empty() or _cc_command_busy:
+        return
+    var now := Time.get_ticks_msec()
+    if now < _cc_next_poll_ms:
+        return
+    if not _cc_valid_api_url():
+        _cc_status.text = "URL de API inválida; recepción pausada."
+        _cc_polling = false
+        _cc_poll_button.text = "Iniciar recepción de comandos"
+        return
+    var target := "android_editor" if _cc_device_kind.get_selected_id() == 0 else "web_editor"
+    var headers := PackedStringArray(["Authorization: Bearer " + _cc_credential])
+    var error := _cc_command_request.request(
+        _cc_api_base() + "/v1/command-center/commands/next?target=" + target,
+        headers,
+        HTTPClient.METHOD_GET
+    )
+    if error != OK:
+        _cc_next_poll_ms = now + 5000
+        _cc_status.text = "Error iniciando consulta: " + error_string(error) + ". Reintentaré."
+        return
+    _cc_command_busy = true
+    _cc_request_kind = "poll"
+
+
+func _on_cc_command_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+    _cc_command_busy = false
+    var parsed: Variant = JSON.parse_string(body.get_string_from_utf8())
+    if _cc_request_kind == "poll":
+        if result != HTTPRequest.RESULT_SUCCESS or response_code != 200 or not parsed is Dictionary:
+            _cc_next_poll_ms = Time.get_ticks_msec() + 5000
+            if response_code == 401:
+                _cc_stop_and_forget()
+                _cc_status.text = "El servidor rechazó la credencial. Empareja de nuevo."
+            else:
+                _cc_status.text = "Error consultando comandos (" + str(response_code) + "). Reintento automático en 5 segundos."
+            return
+        var command: Variant = parsed.get("command", null)
+        if command == null:
+            _cc_next_poll_ms = Time.get_ticks_msec() + 2000
+            return
+        if not command is Dictionary:
+            _cc_next_poll_ms = Time.get_ticks_msec() + 5000
+            _cc_status.text = "El servidor devolvió un comando mal formado."
+            return
+        _cc_current_command_id = str(command.get("id", ""))
+        if _cc_current_command_id.is_empty():
+            _cc_next_poll_ms = Time.get_ticks_msec() + 5000
+            _cc_status.text = "El comando no contiene identificador."
+            return
+        _cc_current_command_started_ms = Time.get_ticks_msec()
+        var execution := _cc_execute_read_only_command(str(command.get("action", "")), command.get("args", {}))
+        _cc_submit_command_result(bool(execution.get("ok", false)), execution.get("result", {}))
+        return
+    if _cc_request_kind == "result":
+        if result == HTTPRequest.RESULT_SUCCESS and response_code in [200, 201]:
+            _cc_status.text = "Comando " + _cc_current_command_id + " finalizado. Esperando el siguiente…"
+            _cc_current_command_id = ""
+            _cc_next_poll_ms = Time.get_ticks_msec() + 500
+        else:
+            _cc_status.text = "No se pudo confirmar el resultado (" + str(response_code) + "). El lease permitirá recuperar el comando; no se repite una operación de escritura."
+            _cc_next_poll_ms = Time.get_ticks_msec() + 5000
+        return
+
+
+func _cc_submit_command_result(ok: bool, result_data: Dictionary) -> void:
+    if _cc_current_command_id.is_empty():
+        _cc_next_poll_ms = Time.get_ticks_msec() + 3000
+        return
+    var duration := maxi(0, Time.get_ticks_msec() - _cc_current_command_started_ms)
+    var payload := {"ok": ok, "result": result_data, "duration_ms": duration}
+    var headers := PackedStringArray([
+        "Authorization: Bearer " + _cc_credential,
+        "Content-Type: application/json"
+    ])
+    var error := _cc_command_request.request(
+        _cc_api_base() + "/v1/command-center/commands/" + _cc_current_command_id + "/result",
+        headers,
+        HTTPClient.METHOD_POST,
+        JSON.stringify(payload)
+    )
+    if error != OK:
+        _cc_status.text = "No se pudo enviar el resultado: " + error_string(error)
+        _cc_next_poll_ms = Time.get_ticks_msec() + 5000
+        return
+    _cc_command_busy = true
+    _cc_request_kind = "result"
+
+
+func _cc_execute_read_only_command(action: String, args: Variant) -> Dictionary:
+    if not args is Dictionary:
+        return {"ok": false, "result": {"error": "Los argumentos deben ser un objeto JSON."}}
+    match action:
+        "ping":
+            return {"ok": true, "result": {
+                "pong": true,
+                "editor": "Godot",
+                "version": Engine.get_version_info(),
+                "platform": OS.get_name()
+            }}
+        "project.get_state":
+            var scene := EditorInterface.get_edited_scene_root()
+            var scene_path := scene.scene_file_path if scene != null else ""
+            var project_name := str(ProjectSettings.get_setting("application/config/name", "Godot Project"))
+            return {"ok": true, "result": {
+                "project_name": project_name,
+                "project_path": ProjectSettings.globalize_path("res://"),
+                "project_id": str(ProjectSettings.get_setting(SETTING_PROJECT_ID, "")),
+                "current_scene": scene_path,
+                "godot_version": Engine.get_version_info(),
+                "platform": OS.get_name()
+            }}
+        "project.list_files":
+            return _cc_list_project_files(args)
+        "scene.inspect":
+            return _cc_inspect_current_scene(args)
+        "script.read":
+            return _cc_read_script(args)
+        _:
+            return {"ok": false, "result": {"error": "Acción no permitida por la política de solo lectura."}}
+
+
+func _cc_list_project_files(args: Dictionary) -> Dictionary:
+    var prefix := str(args.get("path", "")).strip_edges().trim_suffix("/")
+    if not prefix.is_empty() and not _safe_relative_path(prefix):
+        return {"ok": false, "result": {"error": "Ruta no válida."}}
+    var limit := clampi(int(args.get("limit", 250)), 1, COMMAND_CENTER_MAX_FILES)
+    var files: Array[Dictionary] = []
+    if prefix.is_empty():
+        _cc_collect_project_files("", files, limit, 0)
+    elif FileAccess.file_exists("res://" + prefix):
+        files.append({"path": prefix, "size": FileAccess.get_length("res://" + prefix)})
+    elif DirAccess.dir_exists_absolute(ProjectSettings.globalize_path("res://" + prefix)):
+        _cc_collect_project_files(prefix, files, limit, 0)
+    else:
+        return {"ok": false, "result": {"error": "La ruta solicitada no existe."}}
+    return {"ok": true, "result": {"files": files, "count": files.size(), "limit": limit}}
+
+
+func _cc_collect_project_files(relative_dir: String, output: Array[Dictionary], limit: int, depth: int) -> void:
+    if output.size() >= limit or depth > 32:
+        return
+    var open_path := "res://" if relative_dir.is_empty() else "res://" + relative_dir
+    var directory := DirAccess.open(open_path)
+    if directory == null:
+        return
+    directory.list_dir_begin()
+    var entry := directory.get_next()
+    while not entry.is_empty() and output.size() < limit:
+        if entry != "." and entry != ".." and entry.to_lower() not in [".git", ".godot", "node_modules", ".import"]:
+            if not directory.current_is_dir():
+                var relative_file := entry if relative_dir.is_empty() else relative_dir.path_join(entry)
+                output.append({"path": relative_file, "size": FileAccess.get_length("res://" + relative_file)})
+            elif not directory.is_link(entry):
+                var child := entry if relative_dir.is_empty() else relative_dir.path_join(entry)
+                _cc_collect_project_files(child, output, limit, depth + 1)
+        entry = directory.get_next()
+    directory.list_dir_end()
+
+
+func _cc_inspect_current_scene(args: Dictionary) -> Dictionary:
+    var root := EditorInterface.get_edited_scene_root()
+    if root == null:
+        return {"ok": false, "result": {"error": "No hay una escena abierta en el editor."}}
+    var requested := str(args.get("path", ""))
+    if not requested.is_empty() and requested != root.scene_file_path:
+        return {"ok": false, "result": {"error": "Por seguridad solo se inspecciona la escena actualmente abierta."}}
+    var nodes: Array[Dictionary] = []
+    _cc_collect_scene_nodes(root, nodes, 500)
+    return {"ok": true, "result": {
+        "scene_path": root.scene_file_path,
+        "root_name": root.name,
+        "root_class": root.get_class(),
+        "nodes": nodes,
+        "node_count": nodes.size()
+    }}
+
+
+func _cc_collect_scene_nodes(node: Node, output: Array[Dictionary], limit: int) -> void:
+    if output.size() >= limit:
+        return
+    var groups: Array[String] = []
+    for group_name in node.get_groups():
+        groups.append(str(group_name))
+    output.append({
+        "name": str(node.name),
+        "class": node.get_class(),
+        "path": str(node.get_path()),
+        "groups": groups,
+        "child_count": node.get_child_count()
+    })
+    for child in node.get_children():
+        if output.size() >= limit:
+            return
+        _cc_collect_scene_nodes(child, output, limit)
+
+
+func _cc_read_script(args: Dictionary) -> Dictionary:
+    var relative_path := str(args.get("path", ""))
+    if not _safe_relative_path(relative_path) or not relative_path.to_lower().ends_with(".gd"):
+        return {"ok": false, "result": {"error": "Solo se permite leer archivos .gd dentro del proyecto."}}
+    var absolute := _project_absolute_path(relative_path)
+    if absolute.is_empty() or not FileAccess.file_exists(absolute):
+        return {"ok": false, "result": {"error": "El script no existe o su ruta no es segura."}}
+    var file := FileAccess.open(absolute, FileAccess.READ)
+    if file == null:
+        return {"ok": false, "result": {"error": "No se pudo abrir el script."}}
+    var length := file.get_length()
+    if length > COMMAND_CENTER_MAX_SCRIPT_BYTES:
+        file.close()
+        return {"ok": false, "result": {"error": "El script supera el límite de 64 KiB."}}
+    var source := file.get_as_text()
+    file.close()
+    return {"ok": true, "result": {"path": relative_path, "content": source, "bytes": length}}
+
 
 func _is_controller() -> bool:
     return str(ProjectSettings.get_setting(SETTING_ROLE, "target")) == "controller"
