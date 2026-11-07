@@ -261,6 +261,27 @@ async def claim_next_command(request: web.Request) -> web.Response:
     pool = _pool(request)
     async with pool.acquire() as conn:
         async with conn.transaction():
+            expired_rows = await conn.fetch(
+                """UPDATE command_center.commands
+                   SET status='expired', finished_at=now(), claim_expires_at=NULL
+                   WHERE workspace_id=$1 AND target=$2
+                     AND status IN ('queued','claimed')
+                     AND (
+                       (expires_at IS NOT NULL AND expires_at <= now())
+                       OR (status='claimed' AND claim_expires_at IS NOT NULL
+                           AND claim_expires_at <= now() AND attempt_count >= 5)
+                     )
+                   RETURNING id""",
+                identity["workspace_id"], target,
+            )
+            for expired in expired_rows:
+                await conn.execute(
+                    """INSERT INTO command_center.events
+                       (workspace_id, actor_device_id, event_type, payload)
+                       VALUES ($1,$2,'command.expired',$3::jsonb)""",
+                    identity["workspace_id"], identity["id"],
+                    json.dumps({"command_id": str(expired["id"])}),
+                )
             row = await conn.fetchrow(
                 """WITH candidate AS (
                      SELECT id FROM command_center.commands
