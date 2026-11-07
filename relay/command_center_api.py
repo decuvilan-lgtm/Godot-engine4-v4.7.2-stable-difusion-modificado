@@ -137,8 +137,12 @@ async def authenticated_device(request: web.Request):
     )
     if row is None:
         raise web.HTTPUnauthorized(text="Device credential is invalid or revoked.")
+    # Polling devices may authenticate frequently. Avoid a write on every
+    # poll; refresh presence at most once every 30 seconds per device.
     await pool.execute(
-        "UPDATE command_center.devices SET last_seen_at=now() WHERE id=$1", row["id"]
+        """UPDATE command_center.devices SET last_seen_at=now()
+           WHERE id=$1 AND (last_seen_at IS NULL OR last_seen_at < now() - interval '30 seconds')""",
+        row["id"],
     )
     return row
 
