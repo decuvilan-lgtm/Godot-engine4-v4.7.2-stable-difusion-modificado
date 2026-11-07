@@ -14,6 +14,7 @@ from relay.command_center_client import (
 class CommandCenterClientTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.poll_count = 0
+        self.redirect_target_hits = 0
         app = web.Application()
 
         async def create_command(request):
@@ -35,8 +36,17 @@ class CommandCenterClientTests(unittest.IsolatedAsyncioTestCase):
                 "result": {"project_name": "Sandbox"},
             })
 
+        async def redirect(request):
+            raise web.HTTPFound(location="/redirect-target")
+
+        async def redirect_target(request):
+            self.redirect_target_hits += 1
+            return web.json_response({"status": "succeeded"})
+
         app.router.add_post("/v1/command-center/commands", create_command)
         app.router.add_get("/v1/command-center/commands/{command_id}", get_command)
+        app.router.add_get("/redirect", redirect)
+        app.router.add_get("/redirect-target", redirect_target)
         self.server = TestServer(app)
         await self.server.start_server()
         self.base_url = str(self.server.make_url("/")).rstrip("/")
@@ -84,19 +94,6 @@ class CommandCenterClientTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(result["result"]["project_name"], "Sandbox")
 
     async def test_authenticated_requests_do_not_follow_redirects(self):
-        target_hits = 0
-
-        async def redirect(request):
-            raise web.HTTPFound(location="/redirect-target")
-
-        async def redirect_target(request):
-            nonlocal target_hits
-            target_hits += 1
-            return web.json_response({"status": "succeeded"})
-
-        self.server.app.router.add_get("/redirect", redirect)
-        self.server.app.router.add_get("/redirect-target", redirect_target)
-
         async with CommandCenterClient(
             self.base_url,
             "t" * 64,
@@ -105,7 +102,7 @@ class CommandCenterClientTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(CommandCenterError) as raised:
                 await client._request("GET", "/redirect")
             self.assertEqual(raised.exception.status, 302)
-        self.assertEqual(target_hits, 0)
+        self.assertEqual(self.redirect_target_hits, 0)
 
     async def test_agent_client_rejects_write_actions(self):
         async with CommandCenterClient(
