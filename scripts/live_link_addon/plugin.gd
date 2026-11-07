@@ -1450,12 +1450,21 @@ func _cc_list_project_files(args: Dictionary) -> Dictionary:
         if FileAccess.file_exists(safe_absolute):
             if _cc_is_sensitive_file(prefix):
                 return {"ok": false, "result": {"error": "El acceso a archivos sensibles está bloqueado."}}
-            files.append({"path": prefix, "size": FileAccess.get_length(safe_absolute)})
+            files.append({"path": prefix, "size": _cc_file_size(safe_absolute)})
         elif DirAccess.dir_exists_absolute(safe_absolute):
             _cc_collect_project_files(prefix, files, limit, 0)
         else:
             return {"ok": false, "result": {"error": "La ruta solicitada no existe."}}
     return {"ok": true, "result": {"files": files, "count": files.size(), "limit": limit}}
+
+
+func _cc_file_size(path: String) -> int:
+    var file := FileAccess.open(path, FileAccess.READ)
+    if file == null:
+        return 0
+    var size := file.get_length()
+    file.close()
+    return size
 
 
 func _cc_is_sensitive_file(relative_path: String) -> bool:
@@ -1479,7 +1488,7 @@ func _cc_collect_project_files(relative_dir: String, output: Array[Dictionary], 
             if not directory.current_is_dir():
                 var relative_file := entry if relative_dir.is_empty() else relative_dir.path_join(entry)
                 if not _cc_is_sensitive_file(relative_file):
-                    output.append({"path": relative_file, "size": FileAccess.get_length("res://" + relative_file)})
+                    output.append({"path": relative_file, "size": _cc_file_size("res://" + relative_file)})
             else:
                 var child := entry if relative_dir.is_empty() else relative_dir.path_join(entry)
                 _cc_collect_project_files(child, output, limit, depth + 1)
