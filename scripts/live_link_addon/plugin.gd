@@ -71,6 +71,7 @@ var _cc_command_busy := false
 var _cc_request_kind := ""
 var _cc_current_command_id := ""
 var _cc_current_command_started_ms := 0
+var _cc_pending_result_payload: Dictionary = {}
 var _cc_next_poll_ms := 0
 
 func _enter_tree() -> void:
@@ -238,6 +239,10 @@ func _build_ui() -> void:
     _cc_poll_button.disabled = true
     _cc_poll_button.pressed.connect(_cc_toggle_polling)
     _panel.add_child(_cc_poll_button)
+    var cc_forget_button := Button.new()
+    cc_forget_button.text = "Olvidar credencial local"
+    cc_forget_button.pressed.connect(_cc_stop_and_forget)
+    _panel.add_child(cc_forget_button)
     _cc_status = Label.new()
     _cc_status.text = "Sin emparejar. La credencial se mantendrá solo en memoria."
     _cc_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1231,6 +1236,11 @@ func _on_cc_pair_completed(result: int, response_code: int, _headers: PackedStri
     if credential.length() < 32 or device_id.is_empty():
         _cc_status.text = "Respuesta de emparejamiento incompleta; no se guardó ninguna credencial."
         return
+    var paired_kind := str(parsed.get("device_kind", ""))
+    if paired_kind not in ["android_editor", "web_editor"]:
+        _cc_status.text = "El servidor no confirmó un rol de editor válido."
+        return
+    _cc_device_kind.select(0 if paired_kind == "android_editor" else 1)
     _cc_credential = credential
     _cc_pair_code.clear()
     _cc_pair_code.editable = false
@@ -1269,6 +1279,9 @@ func _cc_process() -> void:
         return
     var now := Time.get_ticks_msec()
     if now < _cc_next_poll_ms:
+        return
+    if not _cc_pending_result_payload.is_empty():
+        _cc_send_pending_result()
         return
     if not _cc_valid_api_url():
         _cc_status.text = "URL de API inválida; recepción pausada."
@@ -1323,9 +1336,15 @@ func _on_cc_command_completed(result: int, response_code: int, _headers: PackedS
         if result == HTTPRequest.RESULT_SUCCESS and response_code in [200, 201]:
             _cc_status.text = "Comando " + _cc_current_command_id + " finalizado. Esperando el siguiente…"
             _cc_current_command_id = ""
+            _cc_pending_result_payload.clear()
             _cc_next_poll_ms = Time.get_ticks_msec() + 500
+        elif response_code == 409:
+            _cc_status.text = "El lease expiró antes de confirmar el resultado. El comando podrá recuperarse y repetirse (solo lectura)."
+            _cc_current_command_id = ""
+            _cc_pending_result_payload.clear()
+            _cc_next_poll_ms = Time.get_ticks_msec() + 2000
         else:
-            _cc_status.text = "No se pudo confirmar el resultado (" + str(response_code) + "). El lease permitirá recuperar el comando; no se repite una operación de escritura."
+            _cc_status.text = "No se pudo confirmar el resultado (" + str(response_code) + "). Se conservará para reintentar."
             _cc_next_poll_ms = Time.get_ticks_msec() + 5000
         return
 
@@ -1335,7 +1354,13 @@ func _cc_submit_command_result(ok: bool, result_data: Dictionary) -> void:
         _cc_next_poll_ms = Time.get_ticks_msec() + 3000
         return
     var duration := maxi(0, Time.get_ticks_msec() - _cc_current_command_started_ms)
-    var payload := {"ok": ok, "result": result_data, "duration_ms": duration}
+    _cc_pending_result_payload = {"ok": ok, "result": result_data, "duration_ms": duration}
+    _cc_send_pending_result()
+
+
+func _cc_send_pending_result() -> void:
+    if _cc_current_command_id.is_empty() or _cc_pending_result_payload.is_empty() or _cc_command_busy:
+        return
     var headers := PackedStringArray([
         "Authorization: Bearer " + _cc_credential,
         "Content-Type: application/json"
@@ -1344,10 +1369,10 @@ func _cc_submit_command_result(ok: bool, result_data: Dictionary) -> void:
         _cc_api_base() + "/v1/command-center/commands/" + _cc_current_command_id + "/result",
         headers,
         HTTPClient.METHOD_POST,
-        JSON.stringify(payload)
+        JSON.stringify(_cc_pending_result_payload)
     )
     if error != OK:
-        _cc_status.text = "No se pudo enviar el resultado: " + error_string(error)
+        _cc_status.text = "No se pudo enviar el resultado: " + error_string(error) + ". Se conservará para reintentar."
         _cc_next_poll_ms = Time.get_ticks_msec() + 5000
         return
     _cc_command_busy = true
