@@ -47,7 +47,7 @@ All device requests use `Authorization: Bearer <device_credential>`. The credent
 | POST | `/v1/command-center/commands/{id}/result` | Device holding the command lease |
 | GET | `/v1/command-center/commands/{id}` | Paired device in the same workspace |
 
-Pairing codes expire after two minutes and are single-use. Installation IDs are unique within a workspace. Commands expire after two minutes, leases last 45 seconds, and expired leases can be reclaimed up to five attempts. Every command must carry a 1–128 character idempotency key; retries with the same key are accepted only when target, action and arguments match exactly.
+Pairing codes expire after two minutes and are single-use. Installation IDs are unique within a workspace; presenting a fresh administrator-issued pairing code for an existing installation rotates its bearer credential and reuses the same device record. The pair response includes the authoritative device kind so the editor does not rely on a local role selector. Commands expire after two minutes, leases last 45 seconds, and expired leases can be reclaimed up to five attempts. Every command must carry a 1–128 character idempotency key; retries with the same key are accepted only when target, action and arguments match exactly.
 
 ## Current command policy
 
@@ -64,9 +64,11 @@ Script/file writes, shell execution, arbitrary editor input and project deletion
 
 The adapter and routes are included in the relay's test suite. The CI workflow checks Python syntax and unit/protocol tests. Neon schema columns were verified after migration.
 
+The Live Link addon now contains an experimental HTTP client for device pairing, queue polling, read-only command execution and result acknowledgement. Its credential remains memory-only; closing the editor requires a fresh pairing code. The addon also preserves a stable installation identifier so re-pairing rotates the same device credential instead of creating duplicate device rows.
+
 Not yet completed:
 - relay deployed with `COMMAND_CENTER_DATABASE_URL` and admin secret;
-- pairing of a real Android editor, web editor and controller;
+- pairing of a real Android editor, web editor and controller (the API and addon code are present, but the Render service is not configured);
 - editor-side polling/claim/ack integration;
 - WebSocket authentication unified with device credentials;
 - durable project-file blob storage;
