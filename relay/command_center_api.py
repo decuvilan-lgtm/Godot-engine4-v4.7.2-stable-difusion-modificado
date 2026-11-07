@@ -211,20 +211,23 @@ async def pair_device(request: web.Request) -> web.Response:
             )
             if pairing is None:
                 raise web.HTTPUnauthorized(text="Pairing code expired, used or invalid.")
-            try:
-                device_id = await conn.fetchval(
-                    """INSERT INTO command_center.devices
-                       (workspace_id, device_kind, label, installation_id, token_hash)
-                       VALUES ($1,$2,$3,$4,$5) RETURNING id""",
-                    pairing["workspace_id"], pairing["device_kind"], label.strip(),
-                    installation_id, digest_secret(credential),
-                )
-            except Exception as exc:
-                # asyncpg's UniqueViolationError is deliberately mapped without
-                # exposing database details or consuming the pairing code.
-                if exc.__class__.__name__ == "UniqueViolationError":
-                    raise web.HTTPConflict(text="This installation is already paired to the workspace.")
-                raise
+            # A fresh, admin-issued one-time code rotates the credential for
+            # an existing installation instead of creating an unrecoverable
+            # duplicate device after an editor restart.
+            device_id = await conn.fetchval(
+                """INSERT INTO command_center.devices
+                   (workspace_id, device_kind, label, installation_id, token_hash, last_seen_at, revoked_at)
+                   VALUES ($1,$2,$3,$4,$5,now(),NULL)
+                   ON CONFLICT (workspace_id, installation_id)
+                   DO UPDATE SET device_kind=EXCLUDED.device_kind,
+                                 label=EXCLUDED.label,
+                                 token_hash=EXCLUDED.token_hash,
+                                 last_seen_at=now(),
+                                 revoked_at=NULL
+                   RETURNING id""",
+                pairing["workspace_id"], pairing["device_kind"], label.strip(),
+                installation_id, digest_secret(credential),
+            )
             await conn.execute(
                 """UPDATE command_center.pairing_codes
                    SET consumed_at=now(), consumed_by_device=$2 WHERE id=$1""",
