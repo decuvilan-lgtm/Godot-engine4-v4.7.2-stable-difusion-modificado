@@ -221,12 +221,14 @@ async def create_command(request: web.Request) -> web.Response:
             )
             if command_id is None and key is not None:
                 existing = await conn.fetchrow(
-                    """SELECT id, target, action, status FROM command_center.commands
+                    """SELECT id, target, action, args, status FROM command_center.commands
                        WHERE workspace_id=$1 AND idempotency_key=$2""",
                     identity["workspace_id"], key,
                 )
                 if existing is None:
                     raise web.HTTPConflict(text="Idempotency key collision; retry with a new key.")
+                if existing["target"] != target or existing["action"] != action or existing["args"] != args:
+                    raise web.HTTPConflict(text="Idempotency key was already used for a different command.")
                 return web.json_response({
                     "command_id": str(existing["id"]), "target": existing["target"],
                     "action": existing["action"], "status": existing["status"], "reused": True,
@@ -310,13 +312,15 @@ async def submit_command_result(request: web.Request) -> web.Response:
     async with pool.acquire() as conn:
         async with conn.transaction():
             command = await conn.fetchrow(
-                """SELECT id, workspace_id, status, claimed_by_device
+                """SELECT id, workspace_id, status, target, claimed_by_device, claim_expires_at
                    FROM command_center.commands
                    WHERE id=$1 AND workspace_id=$2 FOR UPDATE""",
                 command_id, identity["workspace_id"],
             )
             if command is None:
                 raise web.HTTPNotFound(text="Command not found.")
+            if command["target"] != identity["device_kind"] or command["claimed_by_device"] != identity["id"]:
+                raise web.HTTPConflict(text="Command is not leased to this device.")
             existing = await conn.fetchrow(
                 "SELECT ok,result FROM command_center.command_results WHERE command_id=$1",
                 command_id,
@@ -326,8 +330,8 @@ async def submit_command_result(request: web.Request) -> web.Response:
                     "command_id": str(command_id), "ok": existing["ok"],
                     "result": existing["result"], "reused": True,
                 })
-            if command["status"] != "claimed" or command["claimed_by_device"] != identity["id"]:
-                raise web.HTTPConflict(text="Command is not leased to this device.")
+            if command["status"] != "claimed" or command["claim_expires_at"] is None or command["claim_expires_at"] <= __import__("datetime").datetime.now(__import__("datetime").timezone.utc):
+                raise web.HTTPConflict(text="Command lease expired; claim it again before submitting a result.")
             status = "succeeded" if body["ok"] else "failed"
             await conn.execute(
                 """INSERT INTO command_center.command_results
@@ -362,8 +366,9 @@ async def get_command(request: web.Request) -> web.Response:
                   r.ok,r.result,r.error_code,r.error_message,r.duration_ms
            FROM command_center.commands c
            LEFT JOIN command_center.command_results r ON r.command_id=c.id
-           WHERE c.id=$1 AND c.workspace_id=$2""",
-        command_id, identity["workspace_id"],
+           WHERE c.id=$1 AND c.workspace_id=$2
+             AND ( $3='agent_controller' OR c.target=$3 OR c.origin_device_id=$4 )""",
+        command_id, identity["workspace_id"], identity["device_kind"], identity["id"],
     )
     if row is None:
         raise web.HTTPNotFound(text="Command not found.")
