@@ -86,10 +86,12 @@ func _enter_tree() -> void:
     _build_ui()
     _cc_pair_request = HTTPRequest.new()
     _cc_pair_request.timeout = 20.0
+    _cc_pair_request.max_redirects = 0
     _cc_pair_request.request_completed.connect(_on_cc_pair_completed)
     add_child(_cc_pair_request)
     _cc_command_request = HTTPRequest.new()
     _cc_command_request.timeout = 20.0
+    _cc_command_request.max_redirects = 0
     _cc_command_request.request_completed.connect(_on_cc_command_completed)
     add_child(_cc_command_request)
     _ensure_command_center_installation_id()
@@ -1231,7 +1233,7 @@ func _on_cc_pair_completed(result: int, response_code: int, _headers: PackedStri
     _cc_pair_button.disabled = false
     var parsed: Variant = JSON.parse_string(body.get_string_from_utf8())
     if result != HTTPRequest.RESULT_SUCCESS or response_code != 201 or not parsed is Dictionary:
-        var detail := str(parsed.get("error", "Respuesta no válida")) if parsed is Dictionary else body.get_string_from_utf8().left(240)
+        var detail := str(parsed.get("detail", parsed.get("error", "Respuesta no válida"))) if parsed is Dictionary else body.get_string_from_utf8().left(240)
         _cc_status.text = "Emparejamiento rechazado (" + str(response_code) + "): " + detail
         return
     var credential := str(parsed.get("device_credential", ""))
