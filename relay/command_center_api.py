@@ -78,6 +78,7 @@ def validate_idempotency_key(value: object) -> str:
         raise web.HTTPBadRequest(text="A valid idempotency key is required.")
     return value
 
+
 def _json_size(value: object) -> int:
     try:
         return len(json.dumps(value, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
