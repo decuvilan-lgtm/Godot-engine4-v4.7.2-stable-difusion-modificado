@@ -6,6 +6,7 @@ from aiohttp import WSMsgType, web
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from account_api import install_account_routes
 from project_sync_api import install_project_sync_routes
+from command_center_api import install_command_center_routes
 
 TOKEN = os.environ.get("LIVE_LINK_TOKEN", "")
 ROOMS: dict[str, set[web.WebSocketResponse]] = {}
@@ -246,4 +247,5 @@ app.router.add_get("/health", health)
 app.router.add_get("/ws", websocket)
 install_account_routes(app)
 install_project_sync_routes(app)
+install_command_center_routes(app)
 if __name__ == "__main__": web.run_app(app, host=os.environ.get("HOST", "127.0.0.1"), port=int(os.environ.get("PORT", "8765")))

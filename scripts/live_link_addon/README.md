@@ -15,6 +15,19 @@ Complemento experimental opcional para enlazar dos editores Godot mediante un re
 - La CI valida el protocolo del relay, carga el complemento con Godot 4.7.2 headless y ejecuta un harness de filesystem real que prueba creación (incluido archivo vacío), actualización, conflicto SHA-256, renombrado, eliminación y dos estados de recuperación del journal. La validación combinada de fuentes también aplica el parche a un upstream limpio y pasa las regresiones de GitHub Sync, Terrain 3D y el overlay de arranque Android. **Todavía no demuestra recuperación tras matar el proceso en cada punto de la transacción, el diálogo de aprobación/rechazo, compilación Android ARM32/ARM64 ni entrada/captura en el teléfono**.
 - El relay y `relay/agent_client.py` no conectan por sí solos ChatGPT al editor. La arquitectura directa necesita un servidor MCP remoto compatible con ChatGPT que invoque al cliente agente y use el relay; no requiere llamar a la API de modelos de OpenAI, pero sí depende de la disponibilidad de conectores MCP de escritura en ChatGPT y de un endpoint remoto seguro. ChatGPT no se conecta directamente a un servidor MCP local desde la app móvil. Hasta implementar y probar ese puente, **no existe una conexión ChatGPT→Godot de extremo a extremo**.
 
+## Neon Command Center (experimental, read-only)
+
+El dock Live Link incluye un cliente HTTP opcional para emparejar este editor con el Command Center y consultar la cola persistente. El cliente:
+- usa HTTPS obligatorio y un código de emparejamiento de un solo uso;
+- recibe del servidor el rol real del dispositivo (android_editor o web_editor), sin confiar en el selector local;
+- conserva la credencial bearer solo en memoria; al cerrar el editor hay que solicitar un código nuevo y volver a emparejar;
+- conserva un identificador aleatorio de instalación en EditorSettings para que un nuevo emparejamiento rote la credencial del mismo dispositivo en lugar de crear duplicados;
+- consulta comandos con intervalos de 2 segundos cuando está inactivo, usa los leases del servidor y conserva el resultado pendiente para reintentar su confirmación;
+- solo ejecuta ping, project.get_state, project.list_files, scene.inspect y script.read. Las respuestas tienen límites de tamaño; el listado omite carpetas generadas y archivos habituales de secretos, y la lectura solo admite scripts .gd de hasta 64 KiB.
+
+El cliente no aplica cambios de archivos, no ejecuta shell, no simula entradas y no modifica escenas. La credencial no se guarda en texto plano ni en el proyecto. El almacenamiento persistente seguro mediante Android Keystore/Web Crypto queda pendiente de una capa nativa/plataforma específica.
+
+**Estado de integración:** el cliente está implementado en el addon, pero el relay Render aún no tiene configuradas las variables COMMAND_CENTER_DATABASE_URL y COMMAND_CENTER_ADMIN_TOKEN; por tanto, el emparejamiento real no está operativo. Tampoco existe todavía una pantalla web para emitir códigos ni una prueba en un dispositivo Android físico. La API sigue siendo una capa separada del WebSocket Live Link heredado.
 ## Ajustes
 
 Los ajustes de URL, sala y rol se guardan en el proyecto. El token se guarda en EditorSettings del usuario, no en project.godot, y puede leerse desde LIVE_LINK_TOKEN.
