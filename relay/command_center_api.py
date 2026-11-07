@@ -73,6 +73,11 @@ def digest_secret(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+def validate_idempotency_key(value: object) -> str:
+    if not isinstance(value, str) or not (1 <= len(value) <= MAX_IDEMPOTENCY_KEY):
+        raise web.HTTPBadRequest(text="A valid idempotency key is required.")
+    return value
+
 def _json_size(value: object) -> int:
     try:
         return len(json.dumps(value, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
@@ -244,15 +249,13 @@ async def create_command(request: web.Request) -> web.Response:
     if not isinstance(body, dict):
         raise web.HTTPBadRequest(text="Expected JSON object.")
     target, action, args = body.get("target"), body.get("action"), body.get("args", {})
-    key = body.get("idempotency_key")
+    key = validate_idempotency_key(body.get("idempotency_key"))
     if target not in EDITOR_KINDS:
         raise web.HTTPBadRequest(text="Invalid command target.")
     if action not in ALLOWED_ACTIONS:
         raise web.HTTPBadRequest(text="Action is not enabled in the read-only command policy.")
     if not isinstance(args, dict) or _json_size(args) > MAX_ARGS_BYTES:
         raise web.HTTPBadRequest(text="Command arguments must be a bounded JSON object.")
-    if not isinstance(key, str) or not (1 <= len(key) <= MAX_IDEMPOTENCY_KEY):
-        raise web.HTTPBadRequest(text="A valid idempotency key is required.")
     pool = _pool(request)
     async with pool.acquire() as conn:
         async with conn.transaction():
