@@ -7,13 +7,14 @@ This branch adds an additive HTTP adapter for the existing `command_center` sche
 The additive migration is maintained in the integration repository:
 
 - [002_live_link_command_leases.sql](https://github.com/decuvilan-lgtm/Godot-web-ia-integrada/blob/main/database/migrations/002_live_link_command_leases.sql)
+- [003_require_command_idempotency_keys.sql](https://github.com/decuvilan-lgtm/Godot-web-ia-integrada/blob/main/database/migrations/003_require_command_idempotency_keys.sql)
 
 It adds:
 - `pairing_codes.workspace_id`, so one-time pairing is scoped to a workspace;
 - `commands.claimed_by_device`, `claim_expires_at` and `attempt_count`, so a worker can lease a command and another worker can recover it after a crash;
 - indexes and foreign-key/check constraints for those fields.
 
-The migration has been applied to Neon project `Godot Command Center`, database `neondb`, branch `production`. The new columns were queried and verified. It is additive and does not remove existing data.
+Migrations 002 and 003 have been applied to Neon project `Godot Command Center`, database `neondb`, branch `production`. Migration 003 was applied after confirming that `commands` contained zero rows; it makes `idempotency_key` non-null and constrains its length to 1–128 characters. The resulting column and constraint were queried and verified.
 
 ## Environment
 
@@ -50,7 +51,7 @@ Pairing codes expire after two minutes and are single-use. Installation IDs are 
 
 ## Current command policy
 
-The queue is deliberately read-only in this first adapter:
+The queue is deliberately read-only in this first adapter. Every command must include a non-empty 1–128 character idempotency key, enforced both by the API and database:
 - `ping`
 - `project.get_state`
 - `project.list_files`
