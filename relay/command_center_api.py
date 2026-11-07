@@ -60,7 +60,7 @@ def _pool(request: web.Request):
 
 
 async def startup(app: web.Application) -> None:
-    dsn = os.environ.get("COMMAND_CENTER_DATABASE_URL") or os.environ.get("DATABASE_URL", "")
+    dsn = os.environ.get("COMMAND_CENTER_DATABASE_URL", "")
     app["command_center_db"] = None
     if dsn.strip():
         import asyncpg
