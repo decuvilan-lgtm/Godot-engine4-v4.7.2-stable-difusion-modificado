@@ -13,7 +13,6 @@ import json
 import os
 import secrets
 import uuid
-from datetime import datetime, timezone
 from aiohttp import web
 
 DEVICE_KINDS = {"android_editor", "web_editor", "agent_controller"}
@@ -343,7 +342,8 @@ async def submit_command_result(request: web.Request) -> web.Response:
     async with pool.acquire() as conn:
         async with conn.transaction():
             command = await conn.fetchrow(
-                """SELECT id, workspace_id, status, target, claimed_by_device, claim_expires_at
+                """SELECT id, workspace_id, status, target, claimed_by_device,
+                          (claim_expires_at > now()) AS lease_valid
                    FROM command_center.commands
                    WHERE id=$1 AND workspace_id=$2 FOR UPDATE""",
                 command_id, identity["workspace_id"],
@@ -361,7 +361,7 @@ async def submit_command_result(request: web.Request) -> web.Response:
                     "command_id": str(command_id), "ok": existing["ok"],
                     "result": _decode_json(existing["result"]), "reused": True,
                 })
-            if command["status"] != "claimed" or command["claim_expires_at"] is None or command["claim_expires_at"] <= datetime.now(timezone.utc):
+            if command["status"] != "claimed" or not command["lease_valid"]:
                 raise web.HTTPConflict(text="Command lease expired; claim it again before submitting a result.")
             status = "succeeded" if body["ok"] else "failed"
             await conn.execute(
