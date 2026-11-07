@@ -27,6 +27,12 @@ The adapter intentionally fails closed (HTTP 503) when the database is not confi
 
 Do not configure a paid Render plan. No Render settings or environment variables were changed by this branch.
 
+## Agent-side client
+
+`relay/command_center_client.py` provides an async client for an agent/controller process. It creates a command with a required idempotency key, reads its status and waits for a terminal result. It requires HTTPS for remote relays; plain HTTP is permitted only for localhost tests with an explicit opt-in. The client repeats the same read-only action allowlist and does not retry command creation automatically.
+
+Tests for this client use a local aiohttp test server; they do not connect to the production Render relay.
+
 ## HTTP API
 
 All device requests use `Authorization: Bearer <device_credential>`. The credential is returned once at pairing; only its SHA-256 hash is stored in Neon.
