@@ -767,5 +767,6 @@ A separate additive branch is developing durable pairing and command leases agai
 
 - [Adapter API, environment and verification limits](docs/NEON_COMMAND_CENTER_API.md)
 - [Neon migration 002](https://github.com/decuvilan-lgtm/Godot-web-ia-integrada/blob/main/database/migrations/002_live_link_command_leases.sql)
+- [Neon migration 003 — mandatory idempotency keys](https://github.com/decuvilan-lgtm/Godot-web-ia-integrada/blob/main/database/migrations/003_require_command_idempotency_keys.sql)
 
 Keep this work in its feature branch until CI and the real relay/device integration have been validated. No Render service configuration was changed.
