@@ -478,6 +478,8 @@ class CommandCenterApiTests(unittest.IsolatedAsyncioTestCase):
         self.old_database_url = os.environ.pop("DATABASE_URL", None)
         self.old_cc_database_url = os.environ.pop("COMMAND_CENTER_DATABASE_URL", None)
         self.old_admin_token = os.environ.pop("COMMAND_CENTER_ADMIN_TOKEN", None)
+        # The Command Center must not accidentally bind to the legacy DATABASE_URL.
+        os.environ["DATABASE_URL"] = "postgresql://invalid:invalid@127.0.0.1:1/not-command-center"
         app = web.Application()
         command_center_api_module.install_command_center_routes(app)
         self.client = TestClient(TestServer(app))
