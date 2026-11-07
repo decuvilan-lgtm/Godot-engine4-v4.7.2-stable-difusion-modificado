@@ -84,6 +84,7 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(invalid=invalid):
                 with self.assertRaises(web.HTTPBadRequest):
                     command_center_api_module.validate_idempotency_key(invalid)
+
     async def test_health_endpoint(self):
         response = await self.client.get("/health")
         self.assertEqual(response.status, 200)
