@@ -6,6 +6,7 @@ from aiohttp.test_utils import TestServer
 
 from relay.command_center_client import (
     CommandCenterClient,
+    CommandCenterError,
     validate_base_url,
 )
 
@@ -101,9 +102,9 @@ class CommandCenterClientTests(unittest.IsolatedAsyncioTestCase):
             "t" * 64,
             allow_insecure_localhost=True,
         ) as client:
-            with self.assertRaises(Exception) as raised:
+            with self.assertRaises(CommandCenterError) as raised:
                 await client._request("GET", "/redirect")
-            self.assertEqual(getattr(raised.exception, "status", None), 302)
+            self.assertEqual(raised.exception.status, 302)
         self.assertEqual(target_hits, 0)
 
     async def test_agent_client_rejects_write_actions(self):
