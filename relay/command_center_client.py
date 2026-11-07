@@ -73,14 +73,17 @@ class CommandCenterClient:
         if payload is not None:
             headers["Content-Type"] = "application/json"
         async with self._session.request(
-            method, self.base_url + path, json=payload, headers=headers
+            method, self.base_url + path, json=payload, headers=headers,
+            allow_redirects=False,
         ) as response:
             try:
                 body = await response.json(content_type=None)
             except (ValueError, aiohttp.ContentTypeError):
                 body = {"error": (await response.text())[:1000]}
-            if response.status >= 400:
+            if response.status >= 300:
                 message = body.get("error") or body.get("message") or body.get("detail") or str(body)
+                if 300 <= response.status < 400:
+                    message = "Redirects are not allowed for authenticated Command Center requests."
                 raise CommandCenterError(response.status, str(message))
             if not isinstance(body, dict):
                 raise CommandCenterError(response.status, "Expected a JSON object response.")
