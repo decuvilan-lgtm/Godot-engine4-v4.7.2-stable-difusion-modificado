@@ -492,7 +492,9 @@ class CommandCenterApiTests(unittest.IsolatedAsyncioTestCase):
             ("COMMAND_CENTER_DATABASE_URL", self.old_cc_database_url),
             ("COMMAND_CENTER_ADMIN_TOKEN", self.old_admin_token),
         ):
-            if value is not None:
+            if value is None:
+                os.environ.pop(key, None)
+            else:
                 os.environ[key] = value
 
     async def test_pairing_code_creation_requires_admin_secret(self):
