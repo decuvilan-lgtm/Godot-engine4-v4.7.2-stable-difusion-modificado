@@ -469,13 +469,11 @@ func _connect_clicked() -> void:
             room = "project-" + target_id
             _room.text = room
         settings.set_setting("live_link_emitter/target_project_id", target_id)
-        settings.save()
     ProjectSettings.set_setting(SETTING_URL, url)
     ProjectSettings.set_setting(SETTING_ROOM, room)
     ProjectSettings.set_setting(SETTING_ROLE, selected_role)
     ProjectSettings.save()
     settings.set_setting(SETTING_TOKEN, token)
-    settings.save()
     if _ws.get_ready_state() != WebSocketPeer.STATE_CLOSED:
         _ws.close()
     _ws = WebSocketPeer.new()
@@ -1179,9 +1177,6 @@ func _ensure_command_center_installation_id() -> void:
             fallback.append(randi_range(0, 255))
         _cc_installation_id = fallback.hex_encode()
     settings.set_setting(key, _cc_installation_id)
-    settings.save()
-
-
 func _cc_api_base() -> String:
     return _cc_base_url.text.strip_edges().trim_suffix("/")
 
