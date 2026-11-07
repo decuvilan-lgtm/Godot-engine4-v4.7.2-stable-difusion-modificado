@@ -1188,12 +1188,11 @@ func _cc_api_base() -> String:
 
 func _cc_valid_api_url() -> bool:
     var regex := RegEx.new()
-    regex.compile("^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?$")
+    regex.compile("^https://([A-Za-z0-9.-]+)(:([0-9]{1,5}))?$")
     var match_result := regex.search(_cc_api_base())
-    if match_result == null:
+    if match_result == null or not _valid_port(match_result, 3):
         return false
-    var host := _cc_api_base().trim_prefix("https://").split(":")[0]
-    return _is_valid_dns_host(host)
+    return _is_valid_dns_host(match_result.get_string(1))
 
 
 func _cc_pair_device() -> void:
@@ -1253,6 +1252,9 @@ func _on_cc_pair_completed(result: int, response_code: int, _headers: PackedStri
     _cc_credential = credential
     _cc_pair_code.clear()
     _cc_pair_code.editable = false
+    _cc_base_url.editable = false
+    _cc_device_label.editable = false
+    _cc_device_kind.disabled = true
     _cc_pair_button.disabled = true
     _cc_poll_button.disabled = false
     _cc_status.text = "Emparejado correctamente (" + device_id + "). La credencial está solo en memoria; se perderá al cerrar el editor."
@@ -1277,7 +1279,13 @@ func _cc_stop_and_forget() -> void:
     _cc_credential = ""
     _cc_current_command_id = ""
     _cc_pending_result_payload.clear()
+    _cc_command_request.cancel_request()
+    _cc_command_busy = false
+    _cc_request_kind = ""
     _cc_pair_code.editable = true
+    _cc_base_url.editable = true
+    _cc_device_label.editable = true
+    _cc_device_kind.disabled = false
     _cc_pair_button.disabled = false
     _cc_poll_button.disabled = true
     _cc_poll_button.text = "Iniciar recepción de comandos"
@@ -1440,6 +1448,8 @@ func _cc_list_project_files(args: Dictionary) -> Dictionary:
         if safe_absolute.is_empty():
             return {"ok": false, "result": {"error": "La ruta solicitada no existe o no es segura."}}
         if FileAccess.file_exists(safe_absolute):
+            if _cc_is_sensitive_file(prefix):
+                return {"ok": false, "result": {"error": "El acceso a archivos sensibles está bloqueado."}}
             files.append({"path": prefix, "size": FileAccess.get_length(safe_absolute)})
         elif DirAccess.dir_exists_absolute(safe_absolute):
             _cc_collect_project_files(prefix, files, limit, 0)
