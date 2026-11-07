@@ -29,7 +29,7 @@ Do not configure a paid Render plan. No Render settings or environment variables
 
 ## Agent-side client
 
-`relay/command_center_client.py` provides an async client for an agent/controller process. It creates a command with a required idempotency key, reads its status and waits for a terminal result. It requires HTTPS for remote relays; plain HTTP is permitted only for localhost tests with an explicit opt-in. The client repeats the same read-only action allowlist and does not retry command creation automatically.
+`relay/command_center_client.py` provides an async client for an agent/controller process. It creates a command with a required idempotency key, reads its status and waits for a terminal result. The relay independently rejects missing, empty, non-string, or overlong keys; retries with the same key are accepted only when target, action and arguments match exactly. It requires HTTPS for remote relays; plain HTTP is permitted only for localhost tests with an explicit opt-in. The client repeats the same read-only action allowlist and does not retry command creation automatically.
 
 Tests for this client use a local aiohttp test server; they do not connect to the production Render relay.
 
@@ -46,7 +46,7 @@ All device requests use `Authorization: Bearer <device_credential>`. The credent
 | POST | `/v1/command-center/commands/{id}/result` | Device holding the command lease |
 | GET | `/v1/command-center/commands/{id}` | Paired device in the same workspace |
 
-Pairing codes expire after two minutes and are single-use. Installation IDs are unique within a workspace. Commands expire after two minutes, leases last 45 seconds, and expired leases can be reclaimed up to five attempts. Idempotency keys prevent duplicate command creation.
+Pairing codes expire after two minutes and are single-use. Installation IDs are unique within a workspace. Commands expire after two minutes, leases last 45 seconds, and expired leases can be reclaimed up to five attempts. Every command must carry a 1–128 character idempotency key; retries with the same key are accepted only when target, action and arguments match exactly.
 
 ## Current command policy
 
