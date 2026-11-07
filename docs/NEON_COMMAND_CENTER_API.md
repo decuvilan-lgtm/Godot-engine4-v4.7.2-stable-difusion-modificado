@@ -21,6 +21,7 @@ Set these only in the relay service's secret environment, never in Git:
 
 - `COMMAND_CENTER_DATABASE_URL`: Neon connection string for `neondb`. Use this dedicated variable so the legacy account API does not mistake the Command Center schema for its older `accounts/projects` schema.
 - `COMMAND_CENTER_ADMIN_TOKEN`: a high-entropy administrator secret used only to create one-time pairing codes.
+- `COMMAND_CENTER_ALLOWED_ORIGINS` (optional): comma-separated exact browser origins. Defaults to `https://godot-web-ia-integrada-rt2l.onrender.com`; do not use `*`.
 
 The adapter intentionally fails closed (HTTP 503) when the database is not configured. It does not silently fall back to in-memory command storage.
 
