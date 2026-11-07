@@ -2,7 +2,7 @@
 
 This module is additive: it does not replace the existing Live Link WebSocket
 transport or its legacy account endpoints. It provides a persistent, authenticated
-command queue using the command_center schema. DATABASE_URL is optional locally;
+command queue using the command_center schema. COMMAND_CENTER_DATABASE_URL is optional locally;
 all routes fail closed when it is absent.
 """
 from __future__ import annotations
