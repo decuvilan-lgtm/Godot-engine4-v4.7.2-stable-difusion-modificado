@@ -20,6 +20,7 @@ relay = importlib.util.module_from_spec(spec)
 assert spec and spec.loader
 spec.loader.exec_module(relay)
 import account_api as account_api_module
+import command_center_api as command_center_api_module
 
 
 class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
@@ -33,6 +34,7 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
         test_app.router.add_get("/health", relay.health)
         test_app.router.add_get("/ws", relay.websocket)
         relay.install_account_routes(test_app)
+        command_center_api_module.install_command_center_routes(test_app)
         self.client = TestClient(TestServer(test_app))
         await self.client.start_server()
 
@@ -469,3 +471,70 @@ class LiveLinkRelayTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CommandCenterApiTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.old_database_url = os.environ.pop("DATABASE_URL", None)
+        self.old_cc_database_url = os.environ.pop("COMMAND_CENTER_DATABASE_URL", None)
+        self.old_admin_token = os.environ.pop("COMMAND_CENTER_ADMIN_TOKEN", None)
+        app = web.Application()
+        command_center_api_module.install_command_center_routes(app)
+        self.client = TestClient(TestServer(app))
+        await self.client.start_server()
+
+    async def asyncTearDown(self):
+        await self.client.close()
+        for key, value in (
+            ("DATABASE_URL", self.old_database_url),
+            ("COMMAND_CENTER_DATABASE_URL", self.old_cc_database_url),
+            ("COMMAND_CENTER_ADMIN_TOKEN", self.old_admin_token),
+        ):
+            if value is not None:
+                os.environ[key] = value
+
+    async def test_pairing_code_creation_requires_admin_secret(self):
+        response = await self.client.post(
+            "/v1/command-center/pairing-codes",
+            json={"device_kind": "android_editor"},
+        )
+        self.assertEqual(response.status, 401)
+
+    async def test_pairing_fails_closed_without_database(self):
+        response = await self.client.post(
+            "/v1/command-center/pair",
+            json={
+                "pairing_code": "p" * 32,
+                "label": "Android editor",
+                "installation_id": "installation-123456",
+            },
+        )
+        self.assertEqual(response.status, 503)
+
+    async def test_command_submission_requires_agent_device(self):
+        response = await self.client.post(
+            "/v1/command-center/commands",
+            json={"target": "android_editor", "action": "ping", "args": {}},
+        )
+        self.assertEqual(response.status, 401)
+
+    async def test_command_poll_requires_editor_device(self):
+        response = await self.client.get("/v1/command-center/commands/next")
+        self.assertEqual(response.status, 401)
+
+    async def test_command_center_secrets_are_hashed(self):
+        first = command_center_api_module.digest_secret("sample-device-credential")
+        self.assertEqual(first, command_center_api_module.digest_secret("sample-device-credential"))
+        self.assertNotEqual(first, command_center_api_module.digest_secret("different-credential"))
+        self.assertNotEqual(first, "sample-device-credential")
+
+    def test_command_policy_is_read_only_allowlist(self):
+        self.assertIn("project.get_state", command_center_api_module.ALLOWED_ACTIONS)
+        self.assertIn("script.read", command_center_api_module.ALLOWED_ACTIONS)
+        self.assertNotIn("script.write", command_center_api_module.ALLOWED_ACTIONS)
+        self.assertNotIn("shell.execute", command_center_api_module.ALLOWED_ACTIONS)
+
+    def test_json_payload_size_is_bounded(self):
+        self.assertLessEqual(command_center_api_module._json_size({"ok": True}), 64)
+        self.assertGreater(command_center_api_module._json_size({"data": "x" * (300 * 1024)}),
+                           command_center_api_module.MAX_ARGS_BYTES)
