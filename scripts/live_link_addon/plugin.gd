@@ -1168,7 +1168,16 @@ func _ensure_command_center_installation_id() -> void:
         _cc_installation_id = existing
         return
     var crypto := Crypto.new()
-    _cc_installation_id = crypto.generate_random_bytes(16).hex_encode()
+    var random_bytes := crypto.generate_random_bytes(16)
+    if random_bytes.size() == 16:
+        _cc_installation_id = random_bytes.hex_encode()
+    else:
+        # The installation ID is an identifier, not an authentication secret.
+        # Some Web export targets may not expose Crypto random bytes.
+        var fallback := PackedByteArray()
+        for _i in range(16):
+            fallback.append(randi_range(0, 255))
+        _cc_installation_id = fallback.hex_encode()
     settings.set_setting(key, _cc_installation_id)
     settings.save()
 
@@ -1267,6 +1276,7 @@ func _cc_stop_and_forget() -> void:
     _cc_polling = false
     _cc_credential = ""
     _cc_current_command_id = ""
+    _cc_pending_result_payload.clear()
     _cc_pair_code.editable = true
     _cc_pair_button.disabled = false
     _cc_poll_button.disabled = true
@@ -1324,9 +1334,12 @@ func _on_cc_command_completed(result: int, response_code: int, _headers: PackedS
             _cc_status.text = "El servidor devolvió un comando mal formado."
             return
         _cc_current_command_id = str(command.get("id", ""))
-        if _cc_current_command_id.is_empty():
+        var uuid_regex := RegEx.new()
+        uuid_regex.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+        if uuid_regex.search(_cc_current_command_id) == null:
+            _cc_current_command_id = ""
             _cc_next_poll_ms = Time.get_ticks_msec() + 5000
-            _cc_status.text = "El comando no contiene identificador."
+            _cc_status.text = "El comando no contiene un UUID válido."
             return
         _cc_current_command_started_ms = Time.get_ticks_msec()
         var execution := _cc_execute_read_only_command(str(command.get("action", "")), command.get("args", {}))
@@ -1343,6 +1356,9 @@ func _on_cc_command_completed(result: int, response_code: int, _headers: PackedS
             _cc_current_command_id = ""
             _cc_pending_result_payload.clear()
             _cc_next_poll_ms = Time.get_ticks_msec() + 2000
+        elif response_code == 401:
+            _cc_stop_and_forget()
+            _cc_status.text = "La credencial fue revocada; empareja de nuevo."
         else:
             _cc_status.text = "No se pudo confirmar el resultado (" + str(response_code) + "). Se conservará para reintentar."
             _cc_next_poll_ms = Time.get_ticks_msec() + 5000
@@ -1396,7 +1412,6 @@ func _cc_execute_read_only_command(action: String, args: Variant) -> Dictionary:
             var project_name := str(ProjectSettings.get_setting("application/config/name", "Godot Project"))
             return {"ok": true, "result": {
                 "project_name": project_name,
-                "project_path": ProjectSettings.globalize_path("res://"),
                 "project_id": str(ProjectSettings.get_setting(SETTING_PROJECT_ID, "")),
                 "current_scene": scene_path,
                 "godot_version": Engine.get_version_info(),
@@ -1420,13 +1435,24 @@ func _cc_list_project_files(args: Dictionary) -> Dictionary:
     var files: Array[Dictionary] = []
     if prefix.is_empty():
         _cc_collect_project_files("", files, limit, 0)
-    elif FileAccess.file_exists("res://" + prefix):
-        files.append({"path": prefix, "size": FileAccess.get_length("res://" + prefix)})
-    elif DirAccess.dir_exists_absolute(ProjectSettings.globalize_path("res://" + prefix)):
-        _cc_collect_project_files(prefix, files, limit, 0)
     else:
-        return {"ok": false, "result": {"error": "La ruta solicitada no existe."}}
+        var safe_absolute := _project_absolute_path(prefix)
+        if safe_absolute.is_empty():
+            return {"ok": false, "result": {"error": "La ruta solicitada no existe o no es segura."}}
+        if FileAccess.file_exists(safe_absolute):
+            files.append({"path": prefix, "size": FileAccess.get_length(safe_absolute)})
+        elif DirAccess.dir_exists_absolute(safe_absolute):
+            _cc_collect_project_files(prefix, files, limit, 0)
+        else:
+            return {"ok": false, "result": {"error": "La ruta solicitada no existe."}}
     return {"ok": true, "result": {"files": files, "count": files.size(), "limit": limit}}
+
+
+func _cc_is_sensitive_file(relative_path: String) -> bool:
+    var lower := relative_path.get_file().to_lower()
+    return lower.begins_with(".env") or lower in [
+        "credentials.json", "secrets.json", "id_rsa", "id_ed25519"
+    ] or lower.ends_with(".pem") or lower.ends_with(".key") or lower.ends_with(".p12") or lower.ends_with(".pfx") or lower.ends_with(".keystore") or lower.ends_with(".jks")
 
 
 func _cc_collect_project_files(relative_dir: String, output: Array[Dictionary], limit: int, depth: int) -> void:
@@ -1439,11 +1465,12 @@ func _cc_collect_project_files(relative_dir: String, output: Array[Dictionary], 
     directory.list_dir_begin()
     var entry := directory.get_next()
     while not entry.is_empty() and output.size() < limit:
-        if entry != "." and entry != ".." and entry.to_lower() not in [".git", ".godot", "node_modules", ".import"]:
+        if entry != "." and entry != ".." and entry.to_lower() not in [".git", ".godot", "node_modules", ".import"] and not directory.is_link(entry):
             if not directory.current_is_dir():
                 var relative_file := entry if relative_dir.is_empty() else relative_dir.path_join(entry)
-                output.append({"path": relative_file, "size": FileAccess.get_length("res://" + relative_file)})
-            elif not directory.is_link(entry):
+                if not _cc_is_sensitive_file(relative_file):
+                    output.append({"path": relative_file, "size": FileAccess.get_length("res://" + relative_file)})
+            else:
                 var child := entry if relative_dir.is_empty() else relative_dir.path_join(entry)
                 _cc_collect_project_files(child, output, limit, depth + 1)
         entry = directory.get_next()
@@ -1491,6 +1518,8 @@ func _cc_read_script(args: Dictionary) -> Dictionary:
     var relative_path := str(args.get("path", ""))
     if not _safe_relative_path(relative_path) or not relative_path.to_lower().ends_with(".gd"):
         return {"ok": false, "result": {"error": "Solo se permite leer archivos .gd dentro del proyecto."}}
+    if _cc_is_sensitive_file(relative_path):
+        return {"ok": false, "result": {"error": "El acceso a archivos sensibles está bloqueado."}}
     var absolute := _project_absolute_path(relative_path)
     if absolute.is_empty() or not FileAccess.file_exists(absolute):
         return {"ok": false, "result": {"error": "El script no existe o su ruta no es segura."}}
