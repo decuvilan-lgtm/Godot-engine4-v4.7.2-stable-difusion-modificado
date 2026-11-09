@@ -133,7 +133,7 @@ void ProjectManager::_install_shared_sync_addon() {
         _show_error(TTR("The selected project does not contain project.godot."));
         return;
     }
-    if (FileAccess::exists(shared_sync_project_path.path_join("addons/godot_project_sync/plugin.gd")) || FileAccess::exists(shared_sync_project_path.path_join("addons/godot_ai_bridge/plugin.gd"))) {
+    if (FileAccess::exists(shared_sync_project_path.path_join("addons/godot_project_sync/plugin.gd")) || FileAccess::exists(shared_sync_project_path.path_join("addons/godot_ai_bridge/plugin.gd")) || FileAccess::exists(shared_sync_project_path.path_join("addons/godot_command_center/plugin.gd"))) {
         _show_error(TTR("Shared Project Sync is already installed. Existing add-on files were not overwritten."));
         return;
     }
@@ -143,6 +143,8 @@ void ProjectManager::_install_shared_sync_addon() {
     shared_sync_files.push_back("godot_project_sync/README.md");
     shared_sync_files.push_back("godot_ai_bridge/plugin.gd");
     shared_sync_files.push_back("godot_ai_bridge/plugin.cfg");
+    shared_sync_files.push_back("godot_command_center/plugin.gd");
+    shared_sync_files.push_back("godot_command_center/plugin.cfg");
     shared_sync_file_index = 0;
     shared_sync_stage_path = OS::get_singleton()->get_cache_path().path_join("godot_shared_project_sync_addon");
     if (DirAccess::make_dir_recursive_absolute(shared_sync_stage_path) != OK) {
@@ -259,6 +261,7 @@ void ProjectManager::_finish_shared_sync_addon_install() {
     PackedStringArray plugin_paths;
     plugin_paths.push_back("res://addons/godot_project_sync/plugin.cfg");
     plugin_paths.push_back("res://addons/godot_ai_bridge/plugin.cfg");
+    plugin_paths.push_back("res://addons/godot_command_center/plugin.cfg");
     for (const String &plugin_path : plugin_paths) {
         if (enabled.find(plugin_path) == -1) {
             enabled.push_back(plugin_path);
@@ -269,7 +272,7 @@ void ProjectManager::_finish_shared_sync_addon_install() {
         _show_error(TTR("The add-on was installed, but project.godot could not be updated. Enable Shared Sync manually in Project Settings > Plugins."));
         return;
     }
-    _show_error(TTR("Shared Project Sync and AI Bridge were installed and enabled. Open the project to use both editor docks."));
+    _show_error(TTR("Shared Project Sync, AI Bridge and Command Center were installed and enabled. Pair Command Center only on the Web editor for remote AI commands."));
 }
 
 void ProjectManager::_new_project() {""")
