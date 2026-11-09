@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply the public GitHub repository import UI to the official Godot 4.7.2 source."""
+"""Apply public GitHub import and shared-project add-on installation to Godot 4.7.2."""
 from pathlib import Path
 import sys
 
@@ -127,6 +127,12 @@ replace_once(SOURCE,
 \t\t\tgithub_import_btn->set_tooltip_text(TTRC("Download a project from a public GitHub repository."));
 \t\t\tgithub_import_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_show_github_import_dialog));
 \t\t\thb->add_child(github_import_btn);
+
+\t\t\tButton *shared_sync_btn = memnew(Button);
+\t\t\tshared_sync_btn->set_text(TTRC("Shared Sync"));
+\t\t\tshared_sync_btn->set_tooltip_text(TTRC("Install the shared project synchronization dock in the selected project."));
+\t\t\tshared_sync_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_install_shared_sync_addon));
+\t\t\thb->add_child(shared_sync_btn);
 
 \t\t\tscan_btn = memnew(Button);""")
 print("GitHub import patch applied successfully to project_manager.h and project_manager.cpp.")
