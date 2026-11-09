@@ -22,10 +22,10 @@ replace_once(HEADER,
     "class HFlowContainer;\nclass HTTPRequest;\nclass LineEdit;")
 replace_once(HEADER,
     "ProjectDialog *project_dialog = nullptr;",
-    "ProjectDialog *project_dialog = nullptr;\n\tConfirmationDialog *github_import_dialog = nullptr;\n\tLineEdit *github_repo_url = nullptr;\n\tHTTPRequest *github_http_request = nullptr;\n\tString github_zip_path;\n\tString github_repo_name;")
+    "ProjectDialog *project_dialog = nullptr;\n\tConfirmationDialog *github_import_dialog = nullptr;\n\tLineEdit *github_repo_url = nullptr;\n\tHTTPRequest *github_http_request = nullptr;\n\tString github_zip_path;\n\tString github_repo_name;\n\tHTTPRequest *shared_sync_http_request = nullptr;\n\tString shared_sync_project_path;\n\tString shared_sync_stage_path;\n\tVector<String> shared_sync_files;\n\tint shared_sync_file_index = 0;")
 replace_once(HEADER,
     "\tvoid _import_project();\n\tvoid _new_project();",
-    "\tvoid _import_project();\n\tvoid _show_github_import_dialog();\n\tvoid _github_import_confirmed();\n\tvoid _github_download_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n\tvoid _new_project();")
+    "\tvoid _import_project();\n\tvoid _show_github_import_dialog();\n\tvoid _github_import_confirmed();\n\tvoid _github_download_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n\tvoid _install_shared_sync_addon();\n\tvoid _download_next_shared_sync_addon_file();\n\tvoid _shared_sync_addon_file_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);\n\tvoid _finish_shared_sync_addon_install();\n\tvoid _new_project();")
 replace_once(SOURCE,
     '#include "scene/gui/separator.h"\n#include "scene/main/scene_tree.h"',
     '#include "scene/gui/separator.h"\n#include "scene/main/http_request.h"\n#include "scene/main/scene_tree.h"')
