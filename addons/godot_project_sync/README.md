@@ -1,6 +1,6 @@
 ## Godot Shared Project Sync
 
-This add-on is included with the modified Godot Android editor source repository. Copy the `addons/godot_project_sync` folder into the root of a Godot project, open it in the modified Android editor, then enable **Godot Shared Project Sync** under Project > Project Settings > Plugins.
+This add-on is included with the modified Godot Android editor source repository. Use the modified Android Project Manager's **Shared Sync** button to install both this add-on and the matching AI Bridge add-on into the selected project. If installing manually, copy the `addons/godot_project_sync` folder and the `addons/godot_ai_bridge` folder from this repository into the project, then enable both plugins under Project > Project Settings > Plugins.
 
 Pair the Android editor using a one-time code created for `android_editor`. Pair the Godot Web editor using a separate code for `web_editor`. Both must use the same Command Center workspace and select the same shared project.
 
