@@ -256,7 +256,9 @@ void ProjectManager::_finish_shared_sync_addon_install() {
             enabled.push_back(String(values[i]));
         }
     }
-    const PackedStringArray plugin_paths = PackedStringArray({"res://addons/godot_project_sync/plugin.cfg", "res://addons/godot_ai_bridge/plugin.cfg"});
+    PackedStringArray plugin_paths;
+    plugin_paths.push_back("res://addons/godot_project_sync/plugin.cfg");
+    plugin_paths.push_back("res://addons/godot_ai_bridge/plugin.cfg");
     for (const String &plugin_path : plugin_paths) {
         if (enabled.find(plugin_path) == -1) {
             enabled.push_back(plugin_path);
