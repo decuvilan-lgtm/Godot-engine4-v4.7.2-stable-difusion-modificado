@@ -72,7 +72,7 @@ Commit `894b99d89c5659f00a6b0a64a4b52517c5c6166e` adds `generate_android_binarie
 
 ## Shared projects between Godot Web and Android
 
-The repository now includes the installable editor add-on at `addons/godot_project_sync`. The Android Project Manager patch adds a **Shared Sync** button: select exactly one project, install the add-on, and reopen that project. The add-on is enabled in that project's `project.godot`; it does not replace the Godot editor or alter project source during installation.
+The repository now includes the editor add-ons at `addons/godot_project_sync` and `addons/godot_ai_bridge`. The Android Project Manager patch adds a **Shared Sync** button: select exactly one project, install both add-ons, and reopen that project. Both are enabled in that project's `project.godot`, so the Web sandbox's editor-plugin list remains compatible when the shared project is opened on Android.
 
 Pair the Android editor with a one-time `android_editor` code and the Godot Web editor with a separate `web_editor` code. Both devices must be paired into the same Command Center workspace. They can then create/select the same shared project from the **Shared Projects** dock.
 
