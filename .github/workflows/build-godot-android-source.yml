@@ -144,3 +144,5 @@ jobs:
         run: python -m py_compile scripts/apply_github_import_patch.py
       - name: Run import integration patcher
         run: python scripts/apply_github_import_patch.py
+      - name: Validate Shared Project Sync add-on in native Godot headless editor
+        run: bash scripts/test-shared-sync-addon.sh
