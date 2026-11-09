@@ -24,6 +24,7 @@ chmod +x "${GODOT_BIN}"
 
 mkdir -p "${PROJECT_DIR}/addons"
 cp -a "${ROOT_DIR}/addons/godot_project_sync" "${PROJECT_DIR}/addons/"
+cp -a "${ROOT_DIR}/addons/godot_ai_bridge" "${PROJECT_DIR}/addons/"
 cat > "${PROJECT_DIR}/project.godot" <<'EOF'
 config_version=5
 
@@ -31,8 +32,8 @@ config_version=5
 config/name="Shared Project Sync Smoke Test"
 
 [editor_plugins]
-enabled=PackedStringArray("res://addons/godot_project_sync/plugin.cfg")
+enabled=PackedStringArray("res://addons/godot_project_sync/plugin.cfg", "res://addons/godot_ai_bridge/plugin.cfg")
 EOF
 
 "${GODOT_BIN}" --headless --editor --path "${PROJECT_DIR}" --quit
-echo "Godot ${VERSION} loaded the Shared Project Sync add-on."
+echo "Godot ${VERSION} loaded both Shared Project Sync and AI Bridge add-ons."
