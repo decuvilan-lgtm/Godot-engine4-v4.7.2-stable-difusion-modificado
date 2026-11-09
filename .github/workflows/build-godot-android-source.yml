@@ -2,6 +2,9 @@ name: Build Godot Android Editor (source pipeline)
 
 on:
   pull_request:
+  push:
+    branches:
+      - feat/shared-project-sync
   workflow_dispatch:
     inputs:
       run_type:
@@ -22,7 +25,7 @@ concurrency:
 
 jobs:
   build-android-editor:
-    if: ${{ inputs.run_type == 'full-android-build' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.run_type == 'full-android-build') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[full-android-build]')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -119,7 +122,7 @@ jobs:
           "$ZIPALIGN" -c -v 4 "$APK"
 
       - name: Upload ARM64-only Android editor APK
-        if: always() && inputs.run_type == 'full-android-build'
+        if: always() && ((github.event_name == 'workflow_dispatch' && inputs.run_type == 'full-android-build') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[full-android-build]')))
         uses: actions/upload-artifact@v4
         with:
           name: godot-4.7.2-android-editor-arm64-only
