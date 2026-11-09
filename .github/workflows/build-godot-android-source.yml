@@ -1,6 +1,7 @@
 name: Build Godot Android Editor (source pipeline)
 
 on:
+  pull_request:
   workflow_dispatch:
     inputs:
       run_type:
@@ -146,3 +147,38 @@ jobs:
         run: python scripts/apply_github_import_patch.py
       - name: Validate Shared Project Sync add-on in native Godot headless editor
         run: bash scripts/test-shared-sync-addon.sh
+
+  validate-shared-sync-patch:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+
+      - name: Checkout official Godot 4.7.2 source
+        uses: actions/checkout@v4
+        with:
+          repository: godotengine/godot
+          ref: 4.7.2-stable
+          path: godot-source
+
+      - name: Set up Python and SCons
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install native editor build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends build-essential pkg-config libx11-dev libxcursor-dev libxinerama-dev libxrandr-dev libxi-dev libgl1-mesa-dev libasound2-dev libpulse-dev libudev-dev libdbus-1-dev libfontconfig1-dev libfreetype6-dev libwayland-dev libxkbcommon-dev libvulkan-dev
+          python -m pip install --upgrade pip scons
+
+      - name: Validate and apply the reproducible editor patch
+        run: |
+          python -m py_compile scripts/apply_github_import_patch.py
+          python scripts/apply_github_import_patch.py
+
+      - name: Compile patched Godot editor C++ sources
+        working-directory: godot-source
+        run: scons platform=linuxbsd target=editor dev_mode=yes module_text_server_fb_enabled=yes -j2
