@@ -117,6 +117,144 @@ void ProjectManager::_github_download_completed(int p_result, int p_response_cod
 \t_install_project(github_zip_path, github_repo_name);
 }
 
+void ProjectManager::_install_shared_sync_addon() {
+    if (shared_sync_http_request) {
+        _show_error(TTR("A shared sync add-on download is already in progress."));
+        return;
+    }
+    Vector<ProjectList::Item> selected = project_list->get_selected_projects();
+    if (selected.size() != 1) {
+        _show_error(TTR("Select exactly one project before installing Shared Sync."));
+        return;
+    }
+    shared_sync_project_path = selected[0].path;
+    const String project_config = shared_sync_project_path.path_join("project.godot");
+    if (!FileAccess::exists(project_config)) {
+        _show_error(TTR("The selected project does not contain project.godot."));
+        return;
+    }
+    if (FileAccess::exists(shared_sync_project_path.path_join("addons/godot_project_sync/plugin.gd"))) {
+        _show_error(TTR("Shared Project Sync is already installed. Existing add-on files were not overwritten."));
+        return;
+    }
+    shared_sync_files.clear();
+    shared_sync_files.push_back("plugin.gd");
+    shared_sync_files.push_back("plugin.cfg");
+    shared_sync_files.push_back("README.md");
+    shared_sync_file_index = 0;
+    shared_sync_stage_path = OS::get_singleton()->get_cache_path().path_join("godot_shared_project_sync_addon");
+    if (DirAccess::make_dir_recursive_absolute(shared_sync_stage_path) != OK) {
+        _show_error(TTR("Could not create a temporary folder for the Shared Sync add-on."));
+        return;
+    }
+    shared_sync_http_request = memnew(HTTPRequest);
+    shared_sync_http_request->set_timeout(60.0);
+    shared_sync_http_request->set_max_redirects(0);
+    shared_sync_http_request->connect("request_completed", callable_mp(this, &ProjectManager::_shared_sync_addon_file_completed));
+    add_child(shared_sync_http_request);
+    _download_next_shared_sync_addon_file();
+}
+
+void ProjectManager::_download_next_shared_sync_addon_file() {
+    if (!shared_sync_http_request) {
+        return;
+    }
+    if (shared_sync_file_index >= shared_sync_files.size()) {
+        _finish_shared_sync_addon_install();
+        return;
+    }
+    const String filename = shared_sync_files[shared_sync_file_index];
+    const String url = "https://raw.githubusercontent.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/main/addons/godot_project_sync/" + filename;
+    PackedStringArray headers;
+    headers.push_back("User-Agent: Godot-Shared-Project-Sync");
+    Error err = shared_sync_http_request->request(url, headers, HTTPClient::METHOD_GET);
+    if (err != OK) {
+        shared_sync_http_request->queue_free();
+        shared_sync_http_request = nullptr;
+        _show_error(TTR("Could not start downloading the Shared Sync add-on."));
+    }
+}
+
+void ProjectManager::_shared_sync_addon_file_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body) {
+    if (!shared_sync_http_request) {
+        return;
+    }
+    if (p_result != HTTPRequest::RESULT_SUCCESS || p_response_code != 200 || p_body.is_empty()) {
+        shared_sync_http_request->queue_free();
+        shared_sync_http_request = nullptr;
+        _show_error(vformat(TTR("Shared Sync add-on download failed (HTTP %d). No project files were enabled."), p_response_code));
+        return;
+    }
+    const String filename = shared_sync_files[shared_sync_file_index];
+    const String stage_file = shared_sync_stage_path.path_join(filename);
+    Ref<FileAccess> file = FileAccess::open(stage_file, FileAccess::WRITE);
+    if (file.is_null()) {
+        shared_sync_http_request->queue_free();
+        shared_sync_http_request = nullptr;
+        _show_error(TTR("Could not write a temporary Shared Sync add-on file."));
+        return;
+    }
+    file->store_buffer(p_body);
+    file->flush();
+    file->close();
+    shared_sync_file_index++;
+    _download_next_shared_sync_addon_file();
+}
+
+void ProjectManager::_finish_shared_sync_addon_install() {
+    if (shared_sync_http_request) {
+        shared_sync_http_request->queue_free();
+        shared_sync_http_request = nullptr;
+    }
+    const String addon_dir = shared_sync_project_path.path_join("addons/godot_project_sync");
+    if (DirAccess::make_dir_recursive_absolute(addon_dir) != OK) {
+        _show_error(TTR("Could not create the Shared Sync add-on folder in the selected project."));
+        return;
+    }
+    for (const String &filename : shared_sync_files) {
+        const String staged = shared_sync_stage_path.path_join(filename);
+        const PackedByteArray bytes = FileAccess::get_file_as_bytes(staged);
+        if (bytes.is_empty()) {
+            _show_error(TTR("A downloaded Shared Sync add-on file is empty or unavailable."));
+            return;
+        }
+        Ref<FileAccess> output = FileAccess::open(addon_dir.path_join(filename), FileAccess::WRITE);
+        if (output.is_null()) {
+            _show_error(TTR("Could not install the Shared Sync add-on into the selected project."));
+            return;
+        }
+        output->store_buffer(bytes);
+        output->flush();
+        output->close();
+    }
+    ConfigFile config;
+    const String config_path = shared_sync_project_path.path_join("project.godot");
+    if (config.load(config_path) != OK) {
+        _show_error(TTR("The add-on files were installed, but project.godot could not be read. Enable the plugin manually in Project Settings."));
+        return;
+    }
+    Variant existing = config.get_value("editor_plugins", "enabled", PackedStringArray());
+    PackedStringArray enabled;
+    if (existing.get_type() == Variant::PACKED_STRING_ARRAY) {
+        enabled = existing;
+    } else if (existing.get_type() == Variant::ARRAY) {
+        Array values = existing;
+        for (int i = 0; i < values.size(); i++) {
+            enabled.push_back(String(values[i]));
+        }
+    }
+    const String plugin_path = "res://addons/godot_project_sync/plugin.cfg";
+    if (enabled.find(plugin_path) == -1) {
+        enabled.push_back(plugin_path);
+    }
+    config.set_value("editor_plugins", "enabled", enabled);
+    if (config.save(config_path) != OK) {
+        _show_error(TTR("The add-on was installed, but project.godot could not be updated. Enable Shared Sync manually in Project Settings > Plugins."));
+        return;
+    }
+    _show_error(TTR("Shared Project Sync was installed and enabled. Open the project to use its Shared Projects dock."));
+}
+
 void ProjectManager::_new_project() {""")
 replace_once(SOURCE,
     "\t\t\thb->add_child(import_btn);\n\n\t\t\tscan_btn = memnew(Button);",
