@@ -133,8 +133,8 @@ void ProjectManager::_install_shared_sync_addon() {
         _show_error(TTR("The selected project does not contain project.godot."));
         return;
     }
-    if (FileAccess::exists(shared_sync_project_path.path_join("addons/godot_project_sync/plugin.gd")) || FileAccess::exists(shared_sync_project_path.path_join("addons/godot_ai_bridge/plugin.gd")) || FileAccess::exists(shared_sync_project_path.path_join("addons/godot_command_center/plugin.gd"))) {
-        _show_error(TTR("Shared Project Sync is already installed. Existing add-on files were not overwritten."));
+    if (FileAccess::exists(shared_sync_project_path.path_join("addons/godot_project_sync/plugin.gd")) && FileAccess::exists(shared_sync_project_path.path_join("addons/godot_ai_bridge/plugin.gd")) && FileAccess::exists(shared_sync_project_path.path_join("addons/godot_command_center/plugin.gd"))) {
+        _show_error(TTR("All three editor integration add-ons are already installed. No files were changed."));
         return;
     }
     shared_sync_files.clear();
@@ -288,7 +288,7 @@ replace_once(SOURCE,
 
 \t\t\tButton *shared_sync_btn = memnew(Button);
 \t\t\tshared_sync_btn->set_text(TTRC("Shared Sync"));
-\t\t\tshared_sync_btn->set_tooltip_text(TTRC("Install the shared project synchronization dock in the selected project."));
+\t\t\tshared_sync_btn->set_tooltip_text(TTRC("Install or repair all shared-project editor add-ons in the selected project."));
 \t\t\tshared_sync_btn->connect(SceneStringName(pressed), callable_mp(this, &ProjectManager::_install_shared_sync_addon));
 \t\t\thb->add_child(shared_sync_btn);
 
