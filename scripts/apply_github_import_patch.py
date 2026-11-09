@@ -133,14 +133,16 @@ void ProjectManager::_install_shared_sync_addon() {
         _show_error(TTR("The selected project does not contain project.godot."));
         return;
     }
-    if (FileAccess::exists(shared_sync_project_path.path_join("addons/godot_project_sync/plugin.gd"))) {
+    if (FileAccess::exists(shared_sync_project_path.path_join("addons/godot_project_sync/plugin.gd")) || FileAccess::exists(shared_sync_project_path.path_join("addons/godot_ai_bridge/plugin.gd"))) {
         _show_error(TTR("Shared Project Sync is already installed. Existing add-on files were not overwritten."));
         return;
     }
     shared_sync_files.clear();
-    shared_sync_files.push_back("plugin.gd");
-    shared_sync_files.push_back("plugin.cfg");
-    shared_sync_files.push_back("README.md");
+    shared_sync_files.push_back("godot_project_sync/plugin.gd");
+    shared_sync_files.push_back("godot_project_sync/plugin.cfg");
+    shared_sync_files.push_back("godot_project_sync/README.md");
+    shared_sync_files.push_back("godot_ai_bridge/plugin.gd");
+    shared_sync_files.push_back("godot_ai_bridge/plugin.cfg");
     shared_sync_file_index = 0;
     shared_sync_stage_path = OS::get_singleton()->get_cache_path().path_join("godot_shared_project_sync_addon");
     if (DirAccess::make_dir_recursive_absolute(shared_sync_stage_path) != OK) {
@@ -164,7 +166,7 @@ void ProjectManager::_download_next_shared_sync_addon_file() {
         return;
     }
     const String filename = shared_sync_files[shared_sync_file_index];
-    const String url = "https://raw.githubusercontent.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/main/addons/godot_project_sync/" + filename;
+    const String url = "https://raw.githubusercontent.com/decuvilan-lgtm/Godot-engine4-v4.7.2-stable-difusion-modificado/main/addons/" + filename;
     PackedStringArray headers;
     headers.push_back("User-Agent: Godot-Shared-Project-Sync");
     Error err = shared_sync_http_request->request(url, headers, HTTPClient::METHOD_GET);
@@ -187,6 +189,12 @@ void ProjectManager::_shared_sync_addon_file_completed(int p_result, int p_respo
     }
     const String filename = shared_sync_files[shared_sync_file_index];
     const String stage_file = shared_sync_stage_path.path_join(filename);
+    if (DirAccess::make_dir_recursive_absolute(stage_file.get_base_dir()) != OK) {
+        shared_sync_http_request->queue_free();
+        shared_sync_http_request = nullptr;
+        _show_error(TTR("Could not create a temporary add-on subfolder."));
+        return;
+    }
     Ref<FileAccess> file = FileAccess::open(stage_file, FileAccess::WRITE);
     if (file.is_null()) {
         shared_sync_http_request->queue_free();
@@ -206,7 +214,7 @@ void ProjectManager::_finish_shared_sync_addon_install() {
         shared_sync_http_request->queue_free();
         shared_sync_http_request = nullptr;
     }
-    const String addon_dir = shared_sync_project_path.path_join("addons/godot_project_sync");
+    const String addon_dir = shared_sync_project_path.path_join("addons");
     if (DirAccess::make_dir_recursive_absolute(addon_dir) != OK) {
         _show_error(TTR("Could not create the Shared Sync add-on folder in the selected project."));
         return;
@@ -218,7 +226,12 @@ void ProjectManager::_finish_shared_sync_addon_install() {
             _show_error(TTR("A downloaded Shared Sync add-on file is empty or unavailable."));
             return;
         }
-        Ref<FileAccess> output = FileAccess::open(addon_dir.path_join(filename), FileAccess::WRITE);
+        const String destination = addon_dir.path_join(filename);
+        if (DirAccess::make_dir_recursive_absolute(destination.get_base_dir()) != OK) {
+            _show_error(TTR("Could not create an add-on folder in the selected project."));
+            return;
+        }
+        Ref<FileAccess> output = FileAccess::open(destination, FileAccess::WRITE);
         if (output.is_null()) {
             _show_error(TTR("Could not install the Shared Sync add-on into the selected project."));
             return;
@@ -243,16 +256,18 @@ void ProjectManager::_finish_shared_sync_addon_install() {
             enabled.push_back(String(values[i]));
         }
     }
-    const String plugin_path = "res://addons/godot_project_sync/plugin.cfg";
-    if (enabled.find(plugin_path) == -1) {
-        enabled.push_back(plugin_path);
+    const PackedStringArray plugin_paths = PackedStringArray({"res://addons/godot_project_sync/plugin.cfg", "res://addons/godot_ai_bridge/plugin.cfg"});
+    for (const String &plugin_path : plugin_paths) {
+        if (enabled.find(plugin_path) == -1) {
+            enabled.push_back(plugin_path);
+        }
     }
     config.set_value("editor_plugins", "enabled", enabled);
     if (config.save(config_path) != OK) {
         _show_error(TTR("The add-on was installed, but project.godot could not be updated. Enable Shared Sync manually in Project Settings > Plugins."));
         return;
     }
-    _show_error(TTR("Shared Project Sync was installed and enabled. Open the project to use its Shared Projects dock."));
+    _show_error(TTR("Shared Project Sync and AI Bridge were installed and enabled. Open the project to use both editor docks."));
 }
 
 void ProjectManager::_new_project() {""")
@@ -273,4 +288,4 @@ replace_once(SOURCE,
 \t\t\thb->add_child(shared_sync_btn);
 
 \t\t\tscan_btn = memnew(Button);""")
-print("GitHub import patch applied successfully to project_manager.h and project_manager.cpp.")
+print("GitHub import and shared-project add-on installers applied successfully to project_manager.h and project_manager.cpp.")
