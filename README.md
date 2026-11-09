@@ -70,6 +70,25 @@ The separate `validate-import-only` option checks the patcher's Python syntax an
 
 Commit `894b99d89c5659f00a6b0a64a4b52517c5c6166e` adds `generate_android_binaries=yes` and removes Gradle `clean` before generating the editor. The workflow still selects `godot-source/bin/android_editor_builds/android_editor-android-debug.apk` and refuses to publish if it is missing or smaller than 50 MB. This correction has **not yet been validated by a new run**; inspect the next run and actual APK artifact before claiming success.
 
+## Shared projects between Godot Web and Android
+
+The repository now includes the editor add-ons at `addons/godot_project_sync`, `addons/godot_ai_bridge` and `addons/godot_command_center`. The Android Project Manager patch adds a **Shared Sync** button: select exactly one project, install both add-ons, and reopen that project. The AI Bridge remains read-only; Shared Sync handles the project files. Both are enabled in that project's `project.godot`, so the Web sandbox's editor-plugin list remains compatible when the shared project is opened on Android.
+
+Pair the Android editor with a one-time `android_editor` code and the Godot Web editor with a separate `web_editor` code. Both devices must be paired into the same Command Center workspace. They can then create/select the same shared project from the **Shared Projects** dock.
+
+The synchronization service is implemented in the companion integration repository. It stores a per-project manifest and revisioned file history in Neon, while file bytes travel only through the authenticated Render relay into private object storage. It does not use GitHub as a file-transfer transport.
+
+Safety rules:
+- Analyze is read-only; Sync recomputes the plan before applying it.
+- SHA-256 baselines distinguish local-only and remote-only changes. Divergent edits to the same file stop the entire planned sync.
+- Before a remote overwrite or deletion, the local file is copied to a rescue folder under the editor's `user://godot_project_sync/rescue` directory.
+- Baselines advance only after the full batch and a fresh server manifest succeed.
+- Sync is manual, capped at 500 operations per run, 10,000 files per project and 32 MiB per file.
+- `.git/`, `.godot/`, environment files and signing credentials are excluded.
+- Credentials remain in memory; no relay or Neon secrets are written to project files.
+
+**Validation status:** the add-on is present in source and the Project Manager installer is added to the reproducible patch. The native headless smoke test and a full Android editor build must pass before claiming that the updated APK is ready. A live two-device project transfer still requires pairing both editors and running the acceptance test.
+
 ## Planned feature: multi-repository GitHub synchronization
 
 **Status: design documented; not implemented yet.** The current GitHub button only imports a public repository ZIP. It does not yet provide the synchronization system described below.
