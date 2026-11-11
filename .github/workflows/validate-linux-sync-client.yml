@@ -24,15 +24,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate Python syntax
-        run: python3 -m py_compile tools/godot_project_sync.py tools/test_godot_project_sync.py
+        run: python3 -m py_compile tools/godot_project_sync.py tools/godot_project_publish.py tools/test_godot_project_sync.py tools/test_godot_project_publish.py
       - name: Run synchronization client tests
         working-directory: tools
-        run: python3 -m unittest -v test_godot_project_sync
+        run: python3 -m unittest -v test_godot_project_sync test_godot_project_publish
       - name: Package portable sync client
         run: |
           mkdir -p dist/godot-project-sync-client
-          cp tools/godot_project_sync.py dist/godot-project-sync-client/
-          cp tools/test_godot_project_sync.py dist/godot-project-sync-client/
+          cp tools/godot_project_sync.py tools/godot_project_publish.py dist/godot-project-sync-client/
+          cp tools/test_godot_project_sync.py tools/test_godot_project_publish.py dist/godot-project-sync-client/
           cp tools/README.md dist/godot-project-sync-client/
           cp docs/LINUX_HEADLESS_AGENT.md dist/godot-project-sync-client/
           tar -czf dist/godot-project-sync-client.tar.gz -C dist godot-project-sync-client
