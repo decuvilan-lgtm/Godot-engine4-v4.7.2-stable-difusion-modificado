@@ -41,7 +41,7 @@ class SyncError(RuntimeError):
 def validate_relative_path(raw: str) -> PurePosixPath:
     if not isinstance(raw, str) or not raw or len(raw.encode("utf-8")) > 1024:
         raise SyncError("El servidor devolvió una ruta vacía o demasiado larga.")
-    if raw.startswith("/") or "\\" in raw or "\x00" in raw or ":" in raw:
+    if raw.startswith("/") or "\\" in raw or "\x00" in raw or ":" in raw or any(ord(ch) < 32 or ord(ch) == 127 for ch in raw):
         raise SyncError(f"Ruta remota no permitida: {raw!r}")
     path = PurePosixPath(raw)
     parts = raw.split("/")
@@ -195,6 +195,9 @@ def pull_snapshot(client: RelayClient, project_id: str, destination: Path) -> Pa
             data = client.download_file(
                 project_id, item["path"], item["byte_size"], item["sha256"]
             )
+            # Verify independently of the transport implementation (defense in depth).
+            if len(data) != item["byte_size"] or hashlib.sha256(data).hexdigest() != item["sha256"]:
+                raise SyncError(f"El contenido descargado no coincide con el manifiesto: {item['path']!r}.")
             # Exclusive creation prevents accidental replacement inside staging.
             with target.open("xb") as handle:
                 handle.write(data)
@@ -220,10 +223,6 @@ def build_parser() -> argparse.ArgumentParser:
         "--relay", default=os.environ.get("GODOT_RELAY_URL", DEFAULT_RELAY),
         help="URL HTTPS del relay (o GODOT_RELAY_URL).",
     )
-    parser.add_argument(
-        "--token", default=os.environ.get("GODOT_AGENT_TOKEN"),
-        help="Bearer temporal agent_controller (o GODOT_AGENT_TOKEN).",
-    )
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("list", help="Lista los proyectos compartidos del workspace.")
     pull = sub.add_parser("sync", aliases=["pull"], help="Descarga un snapshot nuevo sin sobrescribir proyectos.")
@@ -234,11 +233,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    if not args.token:
+    token = os.environ.get("GODOT_AGENT_TOKEN")
+    if not token:
         print("Falta GODOT_AGENT_TOKEN (credencial temporal emparejada como agent_controller).", file=sys.stderr)
         return 2
     try:
-        client = RelayClient(args.relay, args.token)
+        client = RelayClient(args.relay, token)
         if args.command == "list":
             projects = client.list_projects()
             if not projects:
