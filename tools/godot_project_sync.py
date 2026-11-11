@@ -100,6 +100,18 @@ def validate_manifest(payload: dict[str, Any]) -> tuple[dict[str, Any], list[dic
     return project, normalized
 
 
+class SameOriginRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Never forward the bearer token to a different origin or downgrade TLS."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        old = urllib.parse.urlsplit(req.full_url)
+        new = urllib.parse.urlsplit(newurl)
+        if (new.scheme != "https" or old.scheme != new.scheme or
+                old.hostname != new.hostname or old.port != new.port):
+            raise SyncError("El relay intentó redirigir fuera de su origen HTTPS.")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 class RelayClient:
     def __init__(self, base_url: str, token: str, timeout: float = 45.0):
         parsed = urllib.parse.urlsplit(base_url)
@@ -110,6 +122,7 @@ class RelayClient:
         self.base_url = base_url.rstrip("/")
         self.token = token
         self.timeout = timeout
+        self.opener = urllib.request.build_opener(SameOriginRedirectHandler())
 
     def request(self, path: str, *, query: dict[str, str] | None = None) -> tuple[bytes, Any]:
         url = self.base_url + path
@@ -125,7 +138,7 @@ class RelayClient:
             method="GET",
         )
         try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+            with self.opener.open(request, timeout=self.timeout) as response:
                 data = response.read(MAX_TOTAL_BYTES + 1)
                 if len(data) > MAX_TOTAL_BYTES:
                     raise SyncError("La respuesta del relay excede el límite permitido.")
