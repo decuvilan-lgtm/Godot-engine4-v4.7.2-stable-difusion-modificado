@@ -1,0 +1,113 @@
+name: Build Godot Linux Headless Agent Runtime
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/linux-headless-agent-runtime
+    paths:
+      - ".github/workflows/build-godot-linux-headless.yml"
+      - "docs/LINUX_HEADLESS_AGENT.md"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: godot-linux-headless-agent
+  cancel-in-progress: false
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Checkout integration repository
+        uses: actions/checkout@v4
+
+      - name: Checkout official Godot 4.7.2 source
+        uses: actions/checkout@v4
+        with:
+          repository: godotengine/godot
+          ref: 4.7.2-stable
+          path: godot-source
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential pkg-config python3 python3-pip \
+            libx11-dev libxcursor-dev libxinerama-dev libxi-dev \
+            libxrandr-dev libxrender-dev libxext-dev \
+            libgl1-mesa-dev libglu1-mesa-dev \
+            libasound2-dev libpulse-dev libudev-dev libdbus-1-dev \
+            libfontconfig1-dev libfreetype-dev libwayland-dev libxkbcommon-dev
+
+      - name: Install SCons
+        run: python3 -m pip install --user scons
+
+      - name: Build Linux editor runtime
+        working-directory: godot-source
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.local/bin:$PATH"
+          scons platform=linuxbsd target=editor production=yes -j2
+          test -s bin/godot.linuxbsd.editor.x86_64
+          chmod +x bin/godot.linuxbsd.editor.x86_64
+
+      - name: Verify headless execution
+        working-directory: godot-source
+        run: |
+          set -euo pipefail
+          ./bin/godot.linuxbsd.editor.x86_64 --headless --version
+          ./bin/godot.linuxbsd.editor.x86_64 --headless --help > /tmp/godot-headless-help.txt
+          grep -q -- "--path" /tmp/godot-headless-help.txt
+
+      - name: Package persistent Linux runtime
+        run: |
+          set -euo pipefail
+          mkdir -p dist/godot-linux-headless-agent
+          cp godot-source/bin/godot.linuxbsd.editor.x86_64 dist/godot-linux-headless-agent/godot
+          cat > dist/godot-linux-headless-agent/README.txt <<'EOF'
+          Godot 4.7.2 Linux x86_64 editor runtime, built from the official 4.7.2-stable source.
+          This is the separate Linux runtime for headless project import, validation and agent-driven tests.
+          It does not modify or replace the Android editor.
+          
+          Example:
+            ./godot --headless --version
+            ./godot --headless --path /path/to/project --editor --quit
+            ./godot --headless --path /path/to/project
+          
+          The binary is headless-capable; it is not a special reduced-feature server build.
+          EOF
+          chmod +x dist/godot-linux-headless-agent/godot
+          cd dist
+          sha256sum godot-linux-headless-agent/godot > godot-linux-headless-agent/SHA256SUMS
+          tar -czf godot-linux-headless-agent.tar.gz godot-linux-headless-agent
+          sha256sum godot-linux-headless-agent.tar.gz > godot-linux-headless-agent.tar.gz.sha256
+          ls -lh godot-linux-headless-agent.tar.gz godot-linux-headless-agent.tar.gz.sha256
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-4.7.2-linux-headless-agent-x86_64
+          path: |
+            dist/godot-linux-headless-agent.tar.gz
+            dist/godot-linux-headless-agent.tar.gz.sha256
+          retention-days: 90
+
+      - name: Publish persistent Linux runtime release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: godot-linux-headless-agent-v0.1.0
+          target_commitish: feature/linux-headless-agent-runtime
+          name: Godot 4.7.2 Linux Headless Agent Runtime
+          body: |
+            Separate Linux x86_64 Godot runtime for headless project import and testing.
+
+            Built from the official Godot 4.7.2-stable source. The Android editor and its build pipeline are not modified by this workflow.
+
+            The executable supports --headless. It is a full Linux editor binary, not a reduced server-only build.
+          files: |
+            dist/godot-linux-headless-agent.tar.gz
+            dist/godot-linux-headless-agent.tar.gz.sha256
+          fail_on_unmatched_files: true
