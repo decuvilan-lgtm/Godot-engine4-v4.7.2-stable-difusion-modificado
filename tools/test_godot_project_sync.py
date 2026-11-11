@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from godot_project_sync import (
-    RelayClient, SyncError, pull_snapshot, validate_manifest, validate_relative_path,
+    RelayClient, SameOriginRedirectHandler, SyncError, pull_snapshot, validate_manifest, validate_relative_path,
 )
 
 
@@ -73,6 +73,16 @@ class SyncValidationTests(unittest.TestCase):
             RelayClient("http://example.test", "token")
         with self.assertRaises(SyncError):
             RelayClient("https://user:pass@example.test", "token")
+
+    def test_rejects_cross_origin_or_tls_downgrade_redirects(self):
+        class Request:
+            full_url = "https://relay.example.test/v1/projects"
+
+        handler = SameOriginRedirectHandler()
+        with self.assertRaises(SyncError):
+            handler.redirect_request(Request(), None, 302, "Found", {}, "https://attacker.example/file")
+        with self.assertRaises(SyncError):
+            handler.redirect_request(Request(), None, 302, "Found", {}, "http://relay.example.test/file")
 
     def test_pull_creates_verified_snapshot(self):
         with tempfile.TemporaryDirectory() as tmp:
