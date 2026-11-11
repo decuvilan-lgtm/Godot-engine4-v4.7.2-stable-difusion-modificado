@@ -250,11 +250,16 @@ def build_plan(local: dict[str, dict[str, Any]], remote: dict[str, dict[str, Any
             if local_sha:
                 plan["upload"].append(path)
             elif remote_sha:
+                # Publish is intentionally non-destructive: local deletions never delete Web files.
                 plan["remote_only"].append(path)
         elif remote_changed:
-            if remote_sha:
+            if local_sha != remote_sha:
+                # A remote deletion is not silently undone by a push-only client.
                 plan["remote_only"].append(path)
-        elif local_sha and remote_sha and local_sha == remote_sha:
+        elif local_sha != remote_sha:
+            # Keep Web-only edits visible until Linux receives them.
+            plan["remote_only"].append(path)
+        elif local_sha:
             plan["unchanged"].append(path)
     return plan
 
@@ -319,8 +324,8 @@ def publish_project(client: RelayClient, project_id: str, root: Path, state_path
     for path in plan["upload"]:
         if final_remote.get(path, {}).get("sha256") != local[path]["sha256"]:
             raise PublishError(f"La verificación final falló para {path}; el punto de control no avanzó.")
-    final_local = scan_project(root)
-    save_state_atomic(state_path, project_id, final_local, final_remote)
+    # Keep the pre-transfer local hashes. Any edits made while uploading remain pending.
+    save_state_atomic(state_path, project_id, local, final_remote)
     print(f"Publicación verificada · revisión Web {final_manifest['head_revision']} · punto de control actualizado.")
     return plan
 
@@ -334,7 +339,7 @@ def main(argv: list[str] | None = None) -> int:
     pub.add_argument("project_id", help="UUID del proyecto compartido de destino.")
     pub.add_argument("--project", required=True, type=Path, help="Carpeta del proyecto Godot local.")
     pub.add_argument("--state", type=Path, help="Archivo de punto de control; por defecto se guarda en XDG_STATE_HOME.")
-    pub.add_argument("--apply", action="store_true", help="Confirma la publicación de la lista analizada.")
+    pub.add_argument("--apply", action="store_true", help="Confirma la publicación de los archivos locales.")
     args = parser.parse_args(argv)
     token = os.environ.get("GODOT_AGENT_TOKEN")
     if not token:

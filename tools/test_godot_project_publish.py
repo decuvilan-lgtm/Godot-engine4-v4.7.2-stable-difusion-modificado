@@ -147,6 +147,35 @@ class PublishTests(unittest.TestCase):
             self.assertEqual(plan["upload"], ["main.tscn"])
             self.assertEqual(client.files["main.tscn"][0], sha(b"new scene"))
 
+    def test_remote_only_difference_stays_visible(self):
+        local = {"a": {"sha256": "local"}}
+        remote = {"a": {"sha256": "web"}}
+        state = {"files": {"a": {"local_sha256": "local", "remote_sha256": "web"}}}
+        self.assertEqual(build_plan(local, remote, state)["remote_only"], ["a"])
+
+    def test_local_edit_during_upload_remains_pending(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "project"
+            root.mkdir()
+            self.make_project(root)
+            scene = root / "main.tscn"
+            original = scene.read_bytes()
+            class EditingClient(FakeClient):
+                def upload_file(self, project_id, path, data, digest, base_sha):
+                    result = super().upload_file(project_id, path, data, digest, base_sha)
+                    if path == "main.tscn":
+                        scene.write_bytes(b"edited during transfer")
+                    return result
+            client = EditingClient()
+            state_path = Path(tmp) / "state.json"
+            publish_project(client, PROJECT_ID, root, state_path, apply=True)
+            state = __import__("json").loads(state_path.read_text(encoding="utf-8"))
+            next_plan = build_plan(scan_project(root),
+                                   {p: {"sha256": v[0], "byte_size": v[1]} for p, v in client.files.items()},
+                                   state)
+            self.assertIn("main.tscn", next_plan["upload"])
+            self.assertNotEqual(scene.read_bytes(), original)
+
     def test_manifest_must_match_destination(self):
         payload = {"project": {"id": "wrong"}, "head_revision": 0, "files": []}
         with self.assertRaises(PublishError):
