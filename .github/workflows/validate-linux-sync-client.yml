@@ -32,6 +32,7 @@ jobs:
         run: |
           mkdir -p dist/godot-project-sync-client
           cp tools/godot_project_sync.py dist/godot-project-sync-client/
+          cp tools/test_godot_project_sync.py dist/godot-project-sync-client/
           cp tools/README.md dist/godot-project-sync-client/
           cp docs/LINUX_HEADLESS_AGENT.md dist/godot-project-sync-client/
           tar -czf dist/godot-project-sync-client.tar.gz -C dist godot-project-sync-client
